@@ -117,7 +117,8 @@ export function formatCompactScheduledClock(value, timeZone) {
 }
 
 /**
- * Prefer human court labels. Never show raw UUID as "Sân <uuid>".
+ * Prefer human court labels. When only a canonical court id is available,
+ * surface that id rather than claiming the court is unknown.
  */
 export function formatCourtLabel({ courtLabel, courtId } = {}) {
   const label = String(courtLabel || "").trim();
@@ -127,7 +128,7 @@ export function formatCourtLabel({ courtLabel, courtId } = {}) {
   }
   const id = String(courtId || "").trim();
   if (!id) return "Sân chưa xác định";
-  if (isRawTechnicalId(id)) return "Sân chưa xác định";
+  if (isRawTechnicalId(id)) return id;
   if (/^sân\s+/i.test(id)) return id;
   return `Sân ${id}`;
 }

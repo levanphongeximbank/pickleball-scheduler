@@ -639,14 +639,20 @@ export function createCanonicalRefereeApplicationClient(options = {}) {
         modeState?.matchups && Object.values(modeState.matchups)[0]?.scheduledAt
           ? Object.values(modeState.matchups)[0].scheduledAt
           : row.assignedAt || row.scheduledAt || null;
-      const courtLabelFromMode =
-        modeState?.matchups && Object.values(modeState.matchups)[0]?.courtLabel
-          ? Object.values(modeState.matchups)[0].courtLabel
-          : modeState?.courtLabel || null;
+      const matchFromMode =
+        (row.matchId && modeState?.matches?.[row.matchId]) || null;
       const courtIdFromMode =
-        modeState?.matchups && Object.values(modeState.matchups)[0]?.courtId
-          ? Object.values(modeState.matchups)[0].courtId
-          : row.courtId || null;
+        matchFromMode?.courtId ||
+        matchFromMode?.physicalCourtId ||
+        (modeState?.matchups && Object.values(modeState.matchups)[0]?.courtId) ||
+        row.courtId ||
+        null;
+      const courtLabelFromMode =
+        matchFromMode?.courtLabel ||
+        (courtIdFromMode && modeState?.courtLabels?.[courtIdFromMode]) ||
+        (modeState?.matchups && Object.values(modeState.matchups)[0]?.courtLabel) ||
+        modeState?.courtLabel ||
+        null;
       if (!modeHint) {
         const liveInfo = await livePromise;
         homeTiming.queryCount += 1;

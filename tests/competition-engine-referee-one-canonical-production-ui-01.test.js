@@ -1318,9 +1318,14 @@ test("owner visual acceptance â CORE-13 row enriched without raw UUID/MODE/
 test("assignment card formatting helpers reject raw technical labels", () => {
   assert.equal(
     formatCourtLabel({ courtId: "b5cd6975-3a7f-4c11-8006-2ac14e7bef5b" }),
+    "b5cd6975-3a7f-4c11-8006-2ac14e7bef5b"
+  );
+  assert.notEqual(
+    formatCourtLabel({ courtId: "b5cd6975-3a7f-4c11-8006-2ac14e7bef5b" }),
     "Sân chưa xác định"
   );
   assert.equal(formatCourtLabel({ courtLabel: "Sân 1" }), "Sân 1");
+  assert.equal(formatCourtLabel({}), "Sân chưa xác định");
   assert.equal(
     formatCompetitionDisplayName({
       competitionName: null,

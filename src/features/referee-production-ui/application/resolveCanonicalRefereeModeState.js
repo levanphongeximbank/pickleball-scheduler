@@ -372,6 +372,154 @@ async function loadPlayerDisplayNames(client, playerIds) {
   return names;
 }
 
+/**
+ * Resolve physical-court display labels. Never invent court identity from venueId.
+ */
+async function loadCourtDisplayLabels(client, courtIds, tenantId) {
+  const ids = [...new Set((courtIds || []).map(trim).filter(Boolean))];
+  const labels = {};
+  if (!ids.length || !client || typeof client.from !== "function") return labels;
+
+  let query = client
+    .from("court_resource_physical_courts")
+    .select("physical_court_id, display_name, display_code, display_number")
+    .in("physical_court_id", ids);
+  const scopedTenant = trim(tenantId);
+  if (scopedTenant) {
+    query = query.eq("tenant_id", scopedTenant);
+  }
+  const { data } = await query;
+  for (const row of data || []) {
+    const id = trim(row.physical_court_id);
+    if (!id) continue;
+    const label =
+      trim(row.display_name) ||
+      trim(row.display_code) ||
+      (trim(row.display_number) ? `Sân ${trim(row.display_number)}` : "");
+    if (label) labels[id] = label;
+  }
+  return labels;
+}
+
+/**
+ * Harvest entry / player display names already present on durable payload.
+ * Does not invent names — only copies proven labels keyed by canonical ids.
+ */
+function harvestParticipantNamesFromPayload(payload) {
+  const names = {};
+  const root = asObject(payload) || {};
+  const fromMap = asObject(root.participantNames);
+  if (fromMap) {
+    for (const [id, value] of Object.entries(fromMap)) {
+      const key = trim(id);
+      if (!key) continue;
+      if (typeof value === "string" && trim(value)) names[key] = trim(value);
+      else if (asObject(value)) {
+        const label = trim(value.displayName || value.name);
+        if (label) names[key] = label;
+      }
+    }
+  }
+  for (const event of asArray(root.events)) {
+    for (const entry of asArray(event?.entries)) {
+      if (!asObject(entry)) continue;
+      const entryId = trim(entry.id);
+      const entryName = trim(entry.name || entry.displayName);
+      if (entryId && entryName) names[entryId] = entryName;
+      for (const playerId of asArray(entry.playerIds)) {
+        const pid = trim(playerId);
+        if (pid && entryName && !names[pid]) names[pid] = entryName;
+      }
+    }
+  }
+  const players = asObject(root.players) || asObject(root.playerDirectory);
+  if (players) {
+    for (const [id, value] of Object.entries(players)) {
+      const key = trim(id);
+      if (!key) continue;
+      if (typeof value === "string" && trim(value)) names[key] = trim(value);
+      else if (asObject(value)) {
+        const label = trim(value.displayName || value.name);
+        if (label) names[key] = label;
+      }
+    }
+  }
+  return names;
+}
+
+/**
+ * Harvest court labels from durable payload court directories (never venueId→courtId).
+ */
+function harvestCourtLabelsFromPayload(payload) {
+  const labels = {};
+  const root = asObject(payload) || {};
+  const fromMap = asObject(root.courtLabels) || asObject(root.courtNames);
+  if (fromMap) {
+    for (const [id, value] of Object.entries(fromMap)) {
+      const key = trim(id);
+      const label = typeof value === "string" ? trim(value) : trim(value?.name || value?.displayName);
+      if (key && label) labels[key] = label;
+    }
+  }
+  const courts = root.courts;
+  if (Array.isArray(courts)) {
+    for (const court of courts) {
+      if (!asObject(court)) continue;
+      const id = trim(court.id || court.physicalCourtId || court.courtId);
+      const label = trim(court.name || court.displayName || court.label || court.courtLabel);
+      if (id && label) labels[id] = label;
+    }
+  } else if (asObject(courts)) {
+    for (const [id, value] of Object.entries(courts)) {
+      const key = trim(id);
+      if (!key) continue;
+      if (typeof value === "string" && trim(value)) labels[key] = trim(value);
+      else if (asObject(value)) {
+        const label = trim(value.name || value.displayName || value.label || value.courtLabel);
+        if (label) labels[key] = label;
+      }
+    }
+  }
+  return labels;
+}
+
+function collectMatchDirectoryIds(matchesMap) {
+  const playerIds = [];
+  const courtIds = [];
+  for (const match of Object.values(asObject(matchesMap) || {})) {
+    if (!asObject(match)) continue;
+    for (const id of asArray(match.participantIdsA)) {
+      if (trim(id)) playerIds.push(trim(id));
+    }
+    for (const id of asArray(match.participantIdsB)) {
+      if (trim(id)) playerIds.push(trim(id));
+    }
+    const courtId = trim(match.physicalCourtId) || trim(match.courtId);
+    if (courtId) courtIds.push(courtId);
+  }
+  return { playerIds, courtIds };
+}
+
+function enrichMatchesWithCourtLabels(matchesMap, courtLabels) {
+  const source = asObject(matchesMap) || {};
+  const labels = asObject(courtLabels) || {};
+  const out = {};
+  for (const [matchId, match] of Object.entries(source)) {
+    if (!asObject(match)) {
+      out[matchId] = match;
+      continue;
+    }
+    if (trim(match.courtLabel)) {
+      out[matchId] = match;
+      continue;
+    }
+    const courtId = trim(match.physicalCourtId) || trim(match.courtId);
+    const resolved = courtId ? trim(labels[courtId]) : "";
+    out[matchId] = resolved ? { ...match, courtLabel: resolved } : match;
+  }
+  return out;
+}
+
 function lineupIdsForDiscipline(lineupRow, disciplineExternalId) {
   if (!lineupRow?.selections) return [];
   const key = trim(disciplineExternalId);
@@ -609,6 +757,26 @@ async function resolveCanonicalTournamentModeState(client, { tenantId, competiti
     competitionId: resolvedCompetitionId,
   });
   const match = matchId && asObject(matches[matchId]) ? matches[matchId] : null;
+  const scopedMatches = match ? { [matchId]: match } : matches;
+
+  // Directory enrichment (same canonical sources Team already uses).
+  // Adapter B stays translation-only; names/labels live on modeState.
+  const harvestedNames = harvestParticipantNamesFromPayload(payload);
+  const harvestedCourts = harvestCourtLabelsFromPayload(payload);
+  const { playerIds, courtIds } = collectMatchDirectoryIds(scopedMatches);
+  const [loadedPlayerNames, loadedCourtLabels] = await Promise.all([
+    loadPlayerDisplayNames(client, playerIds),
+    loadCourtDisplayLabels(client, courtIds, tenantId),
+  ]);
+  const participantNames = {
+    ...harvestedNames,
+    ...loadedPlayerNames,
+  };
+  const courtLabels = {
+    ...harvestedCourts,
+    ...loadedCourtLabels,
+  };
+  const enrichedMatches = enrichMatchesWithCourtLabels(scopedMatches, courtLabels);
 
   if (!competitionMode) {
     return {
@@ -618,8 +786,9 @@ async function resolveCanonicalTournamentModeState(client, { tenantId, competiti
       competitionName: trim(row.name) || null,
       clubId: row.club_id || null,
       displayPartial: true,
-      matches: match ? { [matchId]: match } : matches,
-      participantNames: asObject(payload.participantNames) || {},
+      matches: enrichedMatches,
+      participantNames,
+      courtLabels,
     };
   }
 
@@ -631,8 +800,9 @@ async function resolveCanonicalTournamentModeState(client, { tenantId, competiti
     clubId: row.club_id || null,
     venueId: row.tenant_id || tenantId,
     canonicalAssignmentAuthorityAvailable: true,
-    participantNames: asObject(payload.participantNames) || {},
-    matches: match ? { [matchId]: match } : matches,
+    participantNames,
+    courtLabels,
+    matches: enrichedMatches,
     session: asObject(payload.session) || undefined,
     scoringRules:
       asObject(payload.scoringRules) ||

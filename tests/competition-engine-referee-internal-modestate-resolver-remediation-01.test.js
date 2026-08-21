@@ -80,7 +80,7 @@ function stagingInternalPayload(overrides = {}) {
   };
 }
 
-function mockCanonicalClient(row) {
+function mockCanonicalClient(row, { athletes = {}, profiles = {}, courts = {} } = {}) {
   return {
     from(table) {
       if (table === "team_tournaments") {
@@ -94,6 +94,83 @@ function mockCanonicalClient(row) {
           maybeSingle: async () => ({ data: null, error: null }),
         };
         return empty;
+      }
+      if (table === "athletes") {
+        const api = {
+          _ids: null,
+          select() {
+            return api;
+          },
+          in(_col, ids) {
+            api._ids = ids;
+            return api;
+          },
+          then(resolve) {
+            const data = (api._ids || [])
+              .map((id) =>
+                athletes[id]
+                  ? { id, display_name: athletes[id] }
+                  : null
+              )
+              .filter(Boolean);
+            return Promise.resolve(resolve({ data, error: null }));
+          },
+        };
+        return api;
+      }
+      if (table === "profiles") {
+        const api = {
+          _ids: null,
+          select() {
+            return api;
+          },
+          in(_col, ids) {
+            api._ids = ids;
+            return api;
+          },
+          then(resolve) {
+            const data = (api._ids || [])
+              .map((id) =>
+                profiles[id]
+                  ? { id, display_name: profiles[id], player_id: null }
+                  : null
+              )
+              .filter(Boolean);
+            return Promise.resolve(resolve({ data, error: null }));
+          },
+        };
+        return api;
+      }
+      if (table === "court_resource_physical_courts") {
+        const api = {
+          _ids: null,
+          select() {
+            return api;
+          },
+          in(_col, ids) {
+            api._ids = ids;
+            return api;
+          },
+          eq() {
+            return api;
+          },
+          then(resolve) {
+            const data = (api._ids || [])
+              .map((id) =>
+                courts[id]
+                  ? {
+                      physical_court_id: id,
+                      display_name: courts[id],
+                      display_code: null,
+                      display_number: null,
+                    }
+                  : null
+              )
+              .filter(Boolean);
+            return Promise.resolve(resolve({ data, error: null }));
+          },
+        };
+        return api;
       }
       assert.equal(table, "canonical_tournaments");
       const api = {
@@ -618,4 +695,364 @@ test("equivalent duplicate match ids across events+payload.matches merge safely"
   );
   assert.equal(Boolean(matches["same-1"]), true);
   assert.equal(matches["same-1"].entryAId, "a1");
+});
+
+test("14. Internal event match participantIds preserved through normalizer", () => {
+  const matches = normalizeCanonicalTournamentMatchesFromPayload(
+    stagingInternalPayload(),
+    { competitionMode: COMPETITION_REFEREE_MODE.INTERNAL, competitionId: FAILING_COMPETITION_ID }
+  );
+  assert.deepEqual(matches[FAILING_MATCH_ID].participantIdsA, [PLAYER_A]);
+  assert.deepEqual(matches[FAILING_MATCH_ID].participantIdsB, [PLAYER_B]);
+  assert.equal(matches[FAILING_MATCH_ID].entryAId, ENTRY_A);
+  assert.equal(matches[FAILING_MATCH_ID].entryBId, ENTRY_B);
+});
+
+test("15. Internal participant names resolved from athletes directory", async () => {
+  const modeState = await resolveCanonicalRefereeModeState(
+    mockCanonicalClient(
+      {
+        id: FAILING_COMPETITION_ID,
+        tenant_id: TENANT,
+        club_id: "club-1",
+        name: "Internal",
+        mode: "internal_tournament",
+        payload: stagingInternalPayload(),
+      },
+      {
+        athletes: { [PLAYER_A]: "Nguyễn A", [PLAYER_B]: "Trần B" },
+        courts: { [COURT_ID]: "Sân 3" },
+      }
+    ),
+    {
+      tenantId: TENANT,
+      competitionId: FAILING_COMPETITION_ID,
+      matchId: FAILING_MATCH_ID,
+    }
+  );
+  assert.equal(modeState.participantNames[PLAYER_A], "Nguyễn A");
+  assert.equal(modeState.participantNames[PLAYER_B], "Trần B");
+});
+
+test("16. Side A/B display correct via Adapter B + match view projection", async () => {
+  const { buildRefereeMatchView } = await import(
+    "../src/features/referee-production-ui/projection/buildRefereeMatchView.js"
+  );
+  const modeState = await resolveCanonicalRefereeModeState(
+    mockCanonicalClient(
+      {
+        id: FAILING_COMPETITION_ID,
+        tenant_id: TENANT,
+        club_id: "club-1",
+        name: "Internal staging fixture",
+        mode: "internal_tournament",
+        payload: stagingInternalPayload(),
+      },
+      {
+        athletes: { [PLAYER_A]: "Nguyễn A", [PLAYER_B]: "Trần B" },
+        courts: { [COURT_ID]: "Sân 3" },
+      }
+    ),
+    {
+      tenantId: TENANT,
+      competitionId: FAILING_COMPETITION_ID,
+      matchId: FAILING_MATCH_ID,
+    }
+  );
+  const adapter = createInternalTournamentRefereeAdapter({ modeState });
+  const req = {
+    tenantId: TENANT,
+    competitionId: FAILING_COMPETITION_ID,
+    matchId: FAILING_MATCH_ID,
+  };
+  const participants = adapter.getParticipants(req);
+  const matchContext = adapter.getMatchContext(req);
+  const view = buildRefereeMatchView({
+    matchId: FAILING_MATCH_ID,
+    competitionMode: COMPETITION_REFEREE_MODE.INTERNAL,
+    adapterSelected: COMPETITION_REFEREE_MODE.INTERNAL,
+    competitionContext: adapter.getCompetitionContext(req),
+    matchContext,
+    participants,
+    modeState,
+    participantNames: modeState.participantNames,
+    assignedMatch: { lifecycleState: "READY_TO_START" },
+  });
+  assert.equal(view.participantDisplay.sideA.playerNames.includes("Nguyễn A"), true);
+  assert.equal(view.participantDisplay.sideB.playerNames.includes("Trần B"), true);
+  assert.equal(view.participantDisplay.sideA.playerNames.includes("VĐV"), false);
+  assert.equal(view.participantDisplay.sideB.playerNames.includes("VĐV"), false);
+  assert.equal(matchContext.courtId, COURT_ID);
+  assert.equal(matchContext.courtLabel, "Sân 3");
+  assert.equal(view.courtLabel, "Sân 3");
+  assert.notEqual(view.courtLabel, "Sân chưa xác định");
+});
+
+test("17. courtId preserved and court label resolved from canonical court source", async () => {
+  const modeState = await resolveCanonicalRefereeModeState(
+    mockCanonicalClient(
+      {
+        id: FAILING_COMPETITION_ID,
+        tenant_id: TENANT,
+        club_id: "club-1",
+        name: "Internal",
+        mode: "internal_tournament",
+        payload: stagingInternalPayload(),
+      },
+      { courts: { [COURT_ID]: "Sân Trung Tâm 1" } }
+    ),
+    {
+      tenantId: TENANT,
+      competitionId: FAILING_COMPETITION_ID,
+      matchId: FAILING_MATCH_ID,
+    }
+  );
+  assert.equal(modeState.matches[FAILING_MATCH_ID].courtId, COURT_ID);
+  assert.equal(modeState.matches[FAILING_MATCH_ID].physicalCourtId, COURT_ID);
+  assert.equal(modeState.matches[FAILING_MATCH_ID].courtLabel, "Sân Trung Tâm 1");
+  assert.equal(modeState.courtLabels[COURT_ID], "Sân Trung Tâm 1");
+});
+
+test("18. valid courtId without label surfaces id (not Sân chưa xác định)", async () => {
+  const { formatCourtLabel } = await import(
+    "../src/features/referee-production-ui/projection/formatRefereeUiLabels.js"
+  );
+  const modeState = await resolveCanonicalRefereeModeState(
+    mockCanonicalClient({
+      id: FAILING_COMPETITION_ID,
+      tenant_id: TENANT,
+      club_id: "club-1",
+      name: "Internal",
+      mode: "internal_tournament",
+      payload: stagingInternalPayload(),
+    }),
+    {
+      tenantId: TENANT,
+      competitionId: FAILING_COMPETITION_ID,
+      matchId: FAILING_MATCH_ID,
+    }
+  );
+  const courtId = modeState.matches[FAILING_MATCH_ID].courtId;
+  assert.equal(courtId, COURT_ID);
+  assert.equal(formatCourtLabel({ courtId }), COURT_ID);
+  assert.notEqual(formatCourtLabel({ courtId }), "Sân chưa xác định");
+});
+
+test("19. no venueId→physicalCourtId fallback", async () => {
+  const modeState = await resolveCanonicalRefereeModeState(
+    mockCanonicalClient({
+      id: FAILING_COMPETITION_ID,
+      tenant_id: TENANT,
+      club_id: "club-1",
+      name: "Internal",
+      mode: "internal_tournament",
+      payload: stagingInternalPayload({
+        events: [
+          {
+            id: EVENT_ID,
+            name: "Singles",
+            entries: [
+              { id: ENTRY_A, playerIds: [PLAYER_A], name: "Entry A" },
+              { id: ENTRY_B, playerIds: [PLAYER_B], name: "Entry B" },
+            ],
+            matches: [
+              {
+                id: FAILING_MATCH_ID,
+                status: "waiting",
+                // intentionally no courtId — must not invent from venue/tenant
+                entryAId: ENTRY_A,
+                entryBId: ENTRY_B,
+                participantIdsA: [PLAYER_A],
+                participantIdsB: [PLAYER_B],
+                scoringRules: SCORING,
+                tournamentId: FAILING_COMPETITION_ID,
+                lineupsLocked: true,
+              },
+            ],
+          },
+        ],
+      }),
+    }),
+    {
+      tenantId: TENANT,
+      competitionId: FAILING_COMPETITION_ID,
+      matchId: FAILING_MATCH_ID,
+    }
+  );
+  assert.equal(modeState.venueId, TENANT);
+  assert.equal(modeState.matches[FAILING_MATCH_ID].courtId, null);
+  assert.equal(modeState.matches[FAILING_MATCH_ID].physicalCourtId, null);
+  assert.notEqual(modeState.matches[FAILING_MATCH_ID].physicalCourtId, TENANT);
+});
+
+test("20. Daily / Official / Team participant+court paths unchanged", () => {
+  const dailyMatches = normalizeCanonicalTournamentMatchesFromPayload(
+    {
+      matches: {
+        "daily-m1": {
+          id: "daily-m1",
+          status: "ready",
+          courtId: "court-1",
+          teamAPlayerIds: ["p1", "p2"],
+          teamBPlayerIds: ["p3", "p4"],
+          scoringRules: SCORING,
+        },
+      },
+    },
+    { competitionMode: COMPETITION_REFEREE_MODE.DAILY_PLAY }
+  );
+  assert.equal(dailyMatches["daily-m1"].courtId, "court-1");
+  assert.equal(dailyMatches["daily-m1"].status, "ready");
+  assert.deepEqual(dailyMatches["daily-m1"].teamAPlayerIds, ["p1", "p2"]);
+
+  const official = normalizeCanonicalTournamentMatchesFromPayload(
+    {
+      events: [
+        {
+          id: "oe1",
+          entries: [
+            { id: "oa", playerIds: ["op1"] },
+            { id: "ob", playerIds: ["op2"] },
+          ],
+          matches: [
+            {
+              id: "m-off",
+              status: "READY_TO_START",
+              entryAId: "oa",
+              entryBId: "ob",
+              courtId: "c2",
+              scoringRules: SCORING,
+              lineupsLocked: true,
+            },
+          ],
+        },
+      ],
+    },
+    { competitionMode: COMPETITION_REFEREE_MODE.OFFICIAL }
+  );
+  assert.equal(official["m-off"].entryAId, "oa");
+  assert.equal(official["m-off"].courtId, "c2");
+
+  const team = createTeamTournamentRefereeAdapter({
+    modeState: {
+      tenantId: TENANT,
+      competitionId: "team-1",
+      competitionMode: COMPETITION_REFEREE_MODE.TEAM,
+      canonicalAssignmentAuthorityAvailable: true,
+      assignments: [{ matchupId: "mu-1", scope: "parent", status: "active" }],
+      matchups: {
+        "mu-1": {
+          matchupId: "mu-1",
+          teamAId: "ta",
+          teamBId: "tb",
+          status: "READY_TO_START",
+          courtId: "c3",
+          courtLabel: "Sân Team",
+          lineupsLocked: true,
+          scoringRules: SCORING,
+          subMatches: [
+            {
+              id: "sub-1",
+              status: "READY_TO_START",
+              lineupA: ["a1"],
+              lineupB: ["b1"],
+              scoringRules: SCORING,
+              lineupsLocked: true,
+            },
+          ],
+        },
+      },
+    },
+  });
+  const teamCtx = team.getMatchContext({
+    tenantId: TENANT,
+    competitionId: "team-1",
+    matchId: "sub-1",
+  });
+  assert.equal(teamCtx.courtId, "c3");
+  assert.equal(teamCtx.courtLabel, "Sân Team");
+});
+
+test("21. failing deep-link getMatchView read-only PASS (fixture-shaped)", async () => {
+  const { buildRefereeMatchView } = await import(
+    "../src/features/referee-production-ui/projection/buildRefereeMatchView.js"
+  );
+  const modeState = await resolveCanonicalRefereeModeState(
+    mockCanonicalClient(
+      {
+        id: FAILING_COMPETITION_ID,
+        tenant_id: TENANT,
+        club_id: "club-1",
+        external_key: FAILING_COMPETITION_ID,
+        name: "CORE13_STAGING_ACCEPTANCE",
+        mode: "internal_tournament",
+        status: "active",
+        payload: stagingInternalPayload({
+          events: [
+            {
+              id: EVENT_ID,
+              name: "Singles",
+              entries: [
+                { id: ENTRY_A, playerIds: [PLAYER_A], name: "Nguyễn A" },
+                { id: ENTRY_B, playerIds: [PLAYER_B], name: "Trần B" },
+              ],
+              matches: [
+                {
+                  id: FAILING_MATCH_ID,
+                  matchId: FAILING_MATCH_ID,
+                  status: "waiting",
+                  courtId: COURT_ID,
+                  physicalCourtId: COURT_ID,
+                  stage: "group",
+                  round: 1,
+                  eventId: EVENT_ID,
+                  entryAId: ENTRY_A,
+                  entryBId: ENTRY_B,
+                  participantIdsA: [PLAYER_A],
+                  participantIdsB: [PLAYER_B],
+                  scheduledAt: "2099-06-16T01:00:00.000Z",
+                  scoringRules: SCORING,
+                  tournamentId: FAILING_COMPETITION_ID,
+                  lineupsLocked: true,
+                },
+              ],
+            },
+          ],
+        }),
+      },
+      {
+        athletes: { [PLAYER_A]: "Nguyễn A", [PLAYER_B]: "Trần B" },
+        courts: { [COURT_ID]: "Sân 3" },
+      }
+    ),
+    {
+      tenantId: TENANT,
+      competitionId: FAILING_COMPETITION_ID,
+      matchId: FAILING_MATCH_ID,
+    }
+  );
+  const adapter = createInternalTournamentRefereeAdapter({ modeState });
+  const req = {
+    tenantId: TENANT,
+    competitionId: FAILING_COMPETITION_ID,
+    matchId: FAILING_MATCH_ID,
+  };
+  const view = buildRefereeMatchView({
+    matchId: FAILING_MATCH_ID,
+    competitionMode: COMPETITION_REFEREE_MODE.INTERNAL,
+    adapterSelected: "internal-tournament-referee-adapter-b",
+    competitionContext: adapter.getCompetitionContext(req),
+    matchContext: adapter.getMatchContext(req),
+    participants: adapter.getParticipants(req),
+    modeState,
+    participantNames: modeState.participantNames,
+    assignedMatch: { lifecycleState: "READY_TO_START" },
+  });
+  assert.equal(view.matchId, FAILING_MATCH_ID);
+  assert.equal(view.competitionId, FAILING_COMPETITION_ID);
+  assert.equal(view.participantDisplay.sideA.playerNames[0], "Nguyễn A");
+  assert.equal(view.participantDisplay.sideB.playerNames[0], "Trần B");
+  assert.equal(view.courtId, COURT_ID);
+  assert.equal(view.courtLabel, "Sân 3");
+  assert.equal(view.courtLabel.includes("chưa xác định"), false);
 });

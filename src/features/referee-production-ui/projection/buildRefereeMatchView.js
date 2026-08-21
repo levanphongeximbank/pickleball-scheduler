@@ -184,9 +184,14 @@ export function buildRefereeMatchView(input) {
       null,
     competitionId: competition.competitionId || matchContext.competitionId,
   });
+  const courtId =
+    matchContext.courtId || assigned.courtId || match.courtAssignmentRef || null;
   const courtLabel = formatCourtLabel({
-    courtLabel: matchContext.courtLabel || null,
-    courtId: matchContext.courtId || assigned.courtId || match.courtAssignmentRef || null,
+    courtLabel:
+      matchContext.courtLabel ||
+      (courtId && input.modeState?.courtLabels?.[courtId]) ||
+      null,
+    courtId,
   });
   const stageName = matchContext.stage || null;
   const roundName = matchContext.round != null ? String(matchContext.round) : null;
@@ -307,7 +312,7 @@ export function buildRefereeMatchView(input) {
     roundName,
     stageRoundLabel: stageRound || null,
     contextRow,
-    courtId: matchContext.courtId || assigned.courtId || match.courtAssignmentRef || null,
+    courtId,
     courtLabel,
     participants: input.participants || { sides: [] },
     participantDisplay,
