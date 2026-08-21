@@ -289,13 +289,17 @@ $$;
 
 revoke all on function public.referee_v5_assert_assignment_write(
   text, text, text, uuid, boolean
-) from public, anon;
+) from public, anon, authenticated, service_role;
 grant execute on function public.referee_v5_assert_assignment_write(
   text, text, text, uuid, boolean
 ) to authenticated, service_role;
 
-revoke all on function public.team_tournament_referee_match_access_ops(text, text) from public, anon;
-grant execute on function public.team_tournament_referee_match_access_ops(text, text) to authenticated;
+revoke all on function public.team_tournament_referee_match_access_ops(text, text)
+  from public, anon, authenticated, service_role;
+grant execute on function public.team_tournament_referee_match_access_ops(text, text)
+  to authenticated;
 
-revoke all on function public.referee_v5_current_user_has_assignment(text, text, text, text[]) from public;
-grant execute on function public.referee_v5_current_user_has_assignment(text, text, text, text[]) to authenticated;
+revoke all on function public.referee_v5_current_user_has_assignment(text, text, text, text[])
+  from public, anon, authenticated, service_role;
+grant execute on function public.referee_v5_current_user_has_assignment(text, text, text, text[])
+  to authenticated;

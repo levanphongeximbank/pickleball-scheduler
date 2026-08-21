@@ -34,7 +34,7 @@ create or replace function public.referee_v5_assignment_effective_status(
 )
 returns text
 language sql
-immutable
+stable
 as $$
   select case
     when p_revoked_at is not null or lower(coalesce(p_status, '')) = 'revoked' then 'revoked'
@@ -394,25 +394,31 @@ begin
 end;
 $$;
 
-revoke all on function public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz) from public;
-grant execute on function public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz) to authenticated, service_role;
+revoke all on function public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)
+  from public, anon, authenticated, service_role;
+grant execute on function public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)
+  to authenticated, service_role;
 
-revoke all on function public.referee_v5_mark_assignment_expired_if_needed(uuid) from public, anon;
-grant execute on function public.referee_v5_mark_assignment_expired_if_needed(uuid) to authenticated, service_role;
+revoke all on function public.referee_v5_mark_assignment_expired_if_needed(uuid)
+  from public, anon, authenticated, service_role;
+grant execute on function public.referee_v5_mark_assignment_expired_if_needed(uuid)
+  to authenticated, service_role;
 
 revoke all on function public.team_tournament_create_referee_assignment(
   text, text, text, uuid, timestamptz, boolean, text, text
-) from public, anon;
+) from public, anon, authenticated, service_role;
 grant execute on function public.team_tournament_create_referee_assignment(
   text, text, text, uuid, timestamptz, boolean, text, text
 ) to authenticated;
 
 revoke all on function public.team_tournament_revoke_referee_assignment(
   text, uuid, integer, text, text
-) from public, anon;
+) from public, anon, authenticated, service_role;
 grant execute on function public.team_tournament_revoke_referee_assignment(
   text, uuid, integer, text, text
 ) to authenticated;
 
-revoke all on function public.team_tournament_list_referee_assignments(text, text) from public, anon;
-grant execute on function public.team_tournament_list_referee_assignments(text, text) to authenticated;
+revoke all on function public.team_tournament_list_referee_assignments(text, text)
+  from public, anon, authenticated, service_role;
+grant execute on function public.team_tournament_list_referee_assignments(text, text)
+  to authenticated;

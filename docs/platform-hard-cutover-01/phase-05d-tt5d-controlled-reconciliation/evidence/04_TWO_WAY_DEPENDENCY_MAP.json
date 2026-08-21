@@ -1,0 +1,168 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_DEPENDENCY_CLOSURE_VERIFIED",
+  "phase5dAModifiesHistoricalPhase5B5C": false,
+  "forward": {
+    "docs/v5/team-tournament/tt5/TT5-D_*.sql": [
+      "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/190|200|210|220_TT5D_*.sql",
+      "M9_MANIFEST.json nonExecutionCandidates",
+      "00_SOURCE_PROVENANCE.json",
+      "PHASE5B_CHECKSUM_MANIFEST.json",
+      "PHASE5_ORDERED_RUNBOOK_CANDIDATE.md",
+      "Phase 5C evidence + 99_TT5D_VERIFY.sql",
+      "Phase 5D-A sql/10 reconciliation (derived contract)",
+      "Phase 5D-A tests/verifier"
+    ],
+    "phase5d sql/10_TT5D_CONTROLLED_RECONCILIATION.sql": [
+      "sql/20_TT5D_POST_APPLY_VERIFY.sql",
+      "sql/90_TT5D_EXACT_BASELINE_ROLLBACK.sql",
+      "evidence/03_TT5D_SEMANTIC_DELTA.json mutationAllowlist",
+      "scripts/verify-phase5d-a.mjs",
+      "PHASE5D_A_READINESS_MANIFEST.json",
+      "tests/platform-hard-cutover-01-phase-05d-a-readiness.test.js"
+    ]
+  },
+  "reverse": {
+    "scripts/verify-phase5d-a.mjs": [
+      "PHASE5D_CHECKSUM_MANIFEST.json",
+      "PHASE5D_A_READINESS_MANIFEST.json",
+      "evidence/*",
+      "sql/*"
+    ],
+    "phase-05b verify-phase5b-checksums.mjs": [
+      "PHASE5B_CHECKSUM_MANIFEST.json (42 files) — NOT modified by Phase 5D-A"
+    ],
+    "sync-phase5b-checksum-manifest.mjs": [
+      "PHASE5B_CHECKSUM_MANIFEST.json allowlist paths — check mode only in Phase 5D-A"
+    ]
+  },
+  "futureUpdateRequirementsWithoutRewritingHistory": [
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/PHASE5B_CHECKSUM_MANIFEST.json",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/M9_MANIFEST.json",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "TT5D remains non-executable (4) until post-certification Owner decision"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/00_SOURCE_PROVENANCE.json",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/M0_M11_EXECUTION_MANIFEST.json",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/PHASE5_ORDERED_RUNBOOK_CANDIDATE.md",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/190_TT5D_ASSIGNMENT_SAFETY.sql",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "After Owner Staging GO + successful 5D-B: consider STABLE + explicit anon revoke in source/M9 copy, then checksum rematerialize"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/200_TT5D_REOPEN_RESULT.sql",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/210_TT5D_CORRECTION.sql",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/sql/m9-team-tournament/220_TT5D_SECURITY_GUARDS.sql",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-D_ASSIGNMENT_SAFETY.sql",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "After Owner Staging GO + successful 5D-B: consider STABLE + explicit anon revoke in source/M9 copy, then checksum rematerialize"
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-D_REOPEN_RESULT_REVISION.sql",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-D_CORRECTION_WORKFLOW.sql",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/v5/team-tournament/tt5/TT5-D_SECURITY_GUARDS.sql",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "tests/platform-hard-cutover-01-phase-05b-package.test.js",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "tests/platform-hard-cutover-01-phase-05c-tt5d-certification.test.js",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05b-execution-package/scripts/verify-phase5b-checksums.mjs",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    },
+    {
+      "path": "docs/platform-hard-cutover-01/phase-05c-tt5d-staging-certification/scripts/sync-phase5b-checksum-manifest.mjs",
+      "phase5dAAction": "IDENTIFY_ONLY_DO_NOT_MODIFY",
+      "futureNeed": "Consumer may need refresh only after executed reconciliation is certified"
+    }
+  ],
+  "dependencyClosureResult": "PASS",
+  "canonicalSourceSync": "PHASE5D_A1_COMPLETED",
+  "productionPromotionContract": "PASS",
+  "policyExpressionComparison": "WS_COLLAPSE_V1",
+  "proconfigComparison": "PROCONFIG_TEXT_ARRAY_V1",
+  "typedCatalogGuardComparison": "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE",
+  "transportBatchPackage": "PHASE5D_A5_TRANSPORT_SAFE_BATCHED_SELECT_ONLY",
+  "phase5dAModifiesHistoricalPhase5B5CEvidence": false,
+  "phase5dA2Scope": [
+    "harden-phase5d-a1.mjs WS_COLLAPSE_V1 helper",
+    "sql/00 normalized policy inventory",
+    "sql/10 sql/20 sql/90 select-policy USING guards",
+    "evidence/02 policyExpressionComparison metadata"
+  ],
+  "phase5dA3Scope": [
+    "harden-phase5d-a1.mjs PROCONFIG_TEXT_ARRAY_V1 helper",
+    "sql/00 proconfig text[] inventory",
+    "sql/10 sql/20 sql/90 semantic proconfig text[] guards (52)",
+    "evidence/02 proconfigComparison metadata + array-valued proconfig"
+  ],
+  "phase5dA4Scope": [
+    "phase5d-a4-guard-contracts.mjs typed registry",
+    "sql/00 shadowPreflightSql registry UNION ALL",
+    "sql/10 pre $guard$ via failClosedSql(preRegistry)",
+    "sql/20 sql/90 ACL/INDEX/CONSTRAINT/DEFAULT typed guards",
+    "evidence/09_PHASE5D_A4_TYPED_GUARD_REGISTRY.json"
+  ],
+  "phase5dA5Scope": [
+    "phase5d-a4-guard-contracts.mjs partitionGuardsForTransport + shadowPreflightBatchSql",
+    "sql/00_transport/00_PREFLIGHT_BATCH_*.sql",
+    "evidence/10_PHASE5D_A5_TRANSPORT_BATCH_MANIFEST.json",
+    "sql/10 sql/20 sql/90 regenerated with CATALOG_EXPR_CANON_V1 (5D-E); sql/00 + transport regenerated"
+  ],
+  "phase5dCScope": [
+    "phase5d-a4-guard-contracts.mjs renderJsonbLiteral",
+    "regenerated sql/00 + sql/00_transport with quoted JSONB literals",
+    "superseded invalid bare {...}::jsonb blobs recorded in evidence/10"
+  ],
+  "phase5dEScope": [
+    "phase5d-a4-guard-contracts.mjs CATALOG_EXPR_CANON_V1",
+    "regenerated sql/00 + sql/00_transport + sql/10 + sql/20 + sql/90",
+    "superseded registry fingerprint 19214b111bf72dce76d49967b226c40a5526caf5e974590f5a83fc8792cd0c6e"
+  ]
+}

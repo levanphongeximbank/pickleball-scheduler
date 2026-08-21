@@ -277,10 +277,12 @@ $$;
 
 revoke all on function public.referee_v5_apply_admin_result_revision(
   text, text, text, uuid, text, jsonb, text, text, text, uuid
-) from public, anon, authenticated;
+) from public, anon, authenticated, service_role;
 grant execute on function public.referee_v5_apply_admin_result_revision(
   text, text, text, uuid, text, jsonb, text, text, text, uuid
 ) to service_role;
 
-revoke all on function public.team_tournament_reopen_referee_match(text, text, text, text) from public, anon;
-grant execute on function public.team_tournament_reopen_referee_match(text, text, text, text) to authenticated;
+revoke all on function public.team_tournament_reopen_referee_match(text, text, text, text)
+  from public, anon, authenticated, service_role;
+grant execute on function public.team_tournament_reopen_referee_match(text, text, text, text)
+  to authenticated;

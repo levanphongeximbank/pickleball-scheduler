@@ -1,0 +1,458 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_CATALOG_BASELINE",
+  "functionCount": 13,
+  "functions": [
+    {
+      "schema": "public",
+      "name": "referee_v5_apply_admin_result_revision",
+      "identityArgs": "p_tenant_id text, p_tournament_id text, p_match_id text, p_actor_id uuid, p_revision_status text, p_proposed_score jsonb, p_proposed_winner text, p_reason text, p_idempotency_key text, p_expected_result_revision_id uuid",
+      "signature": "public.referee_v5_apply_admin_result_revision(text, text, text, uuid, text, jsonb, text, text, text, uuid)",
+      "resultType": "jsonb",
+      "language": "plpgsql",
+      "volatility": "VOLATILE",
+      "securityDefiner": true,
+      "proconfig": [
+        "search_path=pg_catalog, public"
+      ],
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "anonExecute": false,
+      "authenticatedExecute": false,
+      "serviceRoleExecute": true,
+      "publicExecute": false,
+      "defMd5": "11b7d3121eb0efd7c05cf2fd8a92da19",
+      "defSha256": "bc256eb5d86b39d7fb8c88b6dc5ed3c36d3dac9f08e0e88b0882a219fceecfe5"
+    },
+    {
+      "schema": "public",
+      "name": "referee_v5_assert_assignment_write",
+      "identityArgs": "p_tenant_id text, p_tournament_id text, p_match_id text, p_actor_id uuid, p_allow_read_only boolean",
+      "signature": "public.referee_v5_assert_assignment_write(text, text, text, uuid, boolean)",
+      "resultType": "jsonb",
+      "language": "plpgsql",
+      "volatility": "VOLATILE",
+      "securityDefiner": true,
+      "proconfig": [
+        "search_path=public"
+      ],
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "anonExecute": false,
+      "authenticatedExecute": true,
+      "serviceRoleExecute": true,
+      "publicExecute": false,
+      "defMd5": "e7854c03e3ffebf81a7928d6b8740ad5",
+      "defSha256": "1f5817229f73b23e68b3e14ad53bb0f45666a5eb323472ed47803a6f434a5227"
+    },
+    {
+      "schema": "public",
+      "name": "referee_v5_assignment_effective_status",
+      "identityArgs": "p_status text, p_expires_at timestamp with time zone, p_revoked_at timestamp with time zone",
+      "signature": "public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+      "resultType": "text",
+      "language": "sql",
+      "volatility": "IMMUTABLE",
+      "securityDefiner": false,
+      "proconfig": [],
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "anonExecute": true,
+      "authenticatedExecute": true,
+      "serviceRoleExecute": true,
+      "publicExecute": false,
+      "defMd5": "c91ffb1ec3faa1e6fa2b3ea9395c4058",
+      "defSha256": "af04174b41386c244bded827805197c123a3767d71c4a2de809deee3b201a620"
+    },
+    {
+      "schema": "public",
+      "name": "referee_v5_current_user_has_assignment",
+      "identityArgs": "p_tenant_id text, p_tournament_id text, p_match_id text, p_roles text[]",
+      "signature": "public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+      "resultType": "boolean",
+      "language": "sql",
+      "volatility": "STABLE",
+      "securityDefiner": true,
+      "proconfig": [
+        "search_path=public"
+      ],
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "anonExecute": true,
+      "authenticatedExecute": true,
+      "serviceRoleExecute": true,
+      "publicExecute": false,
+      "defMd5": "2223a22afbef0ccccc0d0df04ae873f1",
+      "defSha256": "62cf4a6ba2b625bf7fd682973f471b8023051e75e8aadd77a29fa276ded2676c"
+    },
+    {
+      "schema": "public",
+      "name": "referee_v5_mark_assignment_expired_if_needed",
+      "identityArgs": "p_assignment_id uuid",
+      "signature": "public.referee_v5_mark_assignment_expired_if_needed(uuid)",
+      "resultType": "referee_assignments",
+      "language": "plpgsql",
+      "volatility": "VOLATILE",
+      "securityDefiner": true,
+      "proconfig": [
+        "search_path=public"
+      ],
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "anonExecute": false,
+      "authenticatedExecute": true,
+      "serviceRoleExecute": true,
+      "publicExecute": false,
+      "defMd5": "0f2e5ea3915cf34cdb0297ac3a844d4d",
+      "defSha256": "61cf17327f06172086d05e6e3cb3f737469b83705d44616e51870b3857f3c904"
+    },
+    {
+      "schema": "public",
+      "name": "team_tournament_create_referee_assignment",
+      "identityArgs": "p_tournament_id text, p_matchup_id text, p_sub_match_id text, p_referee_user_id uuid, p_expires_at timestamp with time zone, p_activate boolean, p_idempotency_key text, p_reason text",
+      "signature": "public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)",
+      "resultType": "json",
+      "language": "plpgsql",
+      "volatility": "VOLATILE",
+      "securityDefiner": true,
+      "proconfig": [
+        "search_path=public"
+      ],
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "anonExecute": false,
+      "authenticatedExecute": true,
+      "serviceRoleExecute": true,
+      "publicExecute": false,
+      "defMd5": "08f6d53845ba88c750caef815543fa46",
+      "defSha256": "47a17e4430b7b4105b01812bf3c1a3b33eaff505236b74f1e522070fd0ad59b4"
+    },
+    {
+      "schema": "public",
+      "name": "team_tournament_list_referee_assignments",
+      "identityArgs": "p_tournament_id text, p_sub_match_id text",
+      "signature": "public.team_tournament_list_referee_assignments(text, text)",
+      "resultType": "json",
+      "language": "plpgsql",
+      "volatility": "STABLE",
+      "securityDefiner": true,
+      "proconfig": [
+        "search_path=public"
+      ],
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "anonExecute": false,
+      "authenticatedExecute": true,
+      "serviceRoleExecute": true,
+      "publicExecute": false,
+      "defMd5": "9ec273071d309641425a3d30d704a14b",
+      "defSha256": "1de85474ed366aadfd79d409c866b9785c479aabd29d4ad0cbbc67a8cd191087"
+    },
+    {
+      "schema": "public",
+      "name": "team_tournament_list_referee_corrections",
+      "identityArgs": "p_tournament_id text, p_status text",
+      "signature": "public.team_tournament_list_referee_corrections(text, text)",
+      "resultType": "json",
+      "language": "plpgsql",
+      "volatility": "STABLE",
+      "securityDefiner": true,
+      "proconfig": [
+        "search_path=public"
+      ],
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "anonExecute": false,
+      "authenticatedExecute": true,
+      "serviceRoleExecute": true,
+      "publicExecute": false,
+      "defMd5": "513f41aabc74d5864a879d714796b53a",
+      "defSha256": "a53166544a2cef68b7eda6ae7a2b027757daf606a1cc438c5389074e014aee50"
+    },
+    {
+      "schema": "public",
+      "name": "team_tournament_referee_match_access_ops",
+      "identityArgs": "p_tournament_id text, p_match_id text",
+      "signature": "public.team_tournament_referee_match_access_ops(text, text)",
+      "resultType": "json",
+      "language": "plpgsql",
+      "volatility": "VOLATILE",
+      "securityDefiner": true,
+      "proconfig": [
+        "search_path=public"
+      ],
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "anonExecute": false,
+      "authenticatedExecute": true,
+      "serviceRoleExecute": true,
+      "publicExecute": false,
+      "defMd5": "4229dd7686b6eaae990e9353e764f927",
+      "defSha256": "3c0f91525dbcdd828048953c2f77218db87a34cf10b4d45c929bbbbddf0a11a9"
+    },
+    {
+      "schema": "public",
+      "name": "team_tournament_reopen_referee_match",
+      "identityArgs": "p_tournament_id text, p_sub_match_id text, p_reason text, p_idempotency_key text",
+      "signature": "public.team_tournament_reopen_referee_match(text, text, text, text)",
+      "resultType": "json",
+      "language": "plpgsql",
+      "volatility": "VOLATILE",
+      "securityDefiner": true,
+      "proconfig": [
+        "search_path=public"
+      ],
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "anonExecute": false,
+      "authenticatedExecute": true,
+      "serviceRoleExecute": true,
+      "publicExecute": false,
+      "defMd5": "81f3b086288dc8da26700349bbbab3b2",
+      "defSha256": "8d2e5504f16e7d7bd74ea6fba8dbb6ad568cf84654325b8c248e3468b35c20e0"
+    },
+    {
+      "schema": "public",
+      "name": "team_tournament_request_referee_correction",
+      "identityArgs": "p_tournament_id text, p_match_id text, p_result_revision_id uuid, p_proposed_score jsonb, p_proposed_winner text, p_reason text, p_request_id text, p_expected_revision_version integer, p_idempotency_key text",
+      "signature": "public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)",
+      "resultType": "json",
+      "language": "plpgsql",
+      "volatility": "VOLATILE",
+      "securityDefiner": true,
+      "proconfig": [
+        "search_path=public"
+      ],
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "anonExecute": false,
+      "authenticatedExecute": true,
+      "serviceRoleExecute": true,
+      "publicExecute": false,
+      "defMd5": "42b96c5091086edfc822392ed49999d2",
+      "defSha256": "db754d1059dc4868b5c1af562e19a03e61e3725d49d01d942e6c031a0a1734df"
+    },
+    {
+      "schema": "public",
+      "name": "team_tournament_review_referee_correction",
+      "identityArgs": "p_tournament_id text, p_correction_request_id uuid, p_decision text, p_review_reason text, p_expected_version integer, p_idempotency_key text",
+      "signature": "public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)",
+      "resultType": "json",
+      "language": "plpgsql",
+      "volatility": "VOLATILE",
+      "securityDefiner": true,
+      "proconfig": [
+        "search_path=public"
+      ],
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "anonExecute": false,
+      "authenticatedExecute": true,
+      "serviceRoleExecute": true,
+      "publicExecute": false,
+      "defMd5": "175c9ee13eeefaccdbb67160cd0a5a16",
+      "defSha256": "ec71858f44e595d57d5adf2dce1c0860474aa60eda3d5ef2fa842ea8e49c9453"
+    },
+    {
+      "schema": "public",
+      "name": "team_tournament_revoke_referee_assignment",
+      "identityArgs": "p_tournament_id text, p_assignment_id uuid, p_expected_version integer, p_reason text, p_idempotency_key text",
+      "signature": "public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)",
+      "resultType": "json",
+      "language": "plpgsql",
+      "volatility": "VOLATILE",
+      "securityDefiner": true,
+      "proconfig": [
+        "search_path=public"
+      ],
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "anonExecute": false,
+      "authenticatedExecute": true,
+      "serviceRoleExecute": true,
+      "publicExecute": false,
+      "defMd5": "f3280a760c9f4449aee6916d16c5026d",
+      "defSha256": "98313bd25f063dca3d2465688e5afd29c0fb282e90d342b2e76b8d41fb1e1dff"
+    }
+  ],
+  "proconfigComparison": {
+    "version": "PROCONFIG_TEXT_ARRAY_V1",
+    "catalogType": "text[]",
+    "comparison": "EXACT_ELEMENTWISE_AFTER_NULL_TO_EMPTY_ARRAY",
+    "textSerializationCompared": false,
+    "nullHandling": "COALESCE_NULL_TO_EMPTY_TEXT_ARRAY",
+    "orderSensitive": true,
+    "multiplicitySensitive": true,
+    "caseSensitive": true,
+    "innerElementNormalization": "NONE",
+    "commaContainingElementPreserved": true,
+    "representationOnlyMismatch": {
+      "function": "referee_v5_apply_admin_result_revision",
+      "priorGuardExpectedText": "{search_path=pg_catalog, public}",
+      "liveProconfigText": "{\"search_path=pg_catalog, public\"}",
+      "semanticElements": [
+        "search_path=pg_catalog, public"
+      ],
+      "functionBodyDrift": false,
+      "policyDrift": false,
+      "aclDrift": false,
+      "schemaDrift": false,
+      "committedStagingMutations": 0
+    }
+  },
+  "tables": {
+    "referee_assignments": {
+      "owner": "postgres",
+      "rlsEnabled": true,
+      "rlsForced": false,
+      "tt5dColumns": [
+        {
+          "column": "external_matchup_id",
+          "dataType": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "column": "external_sub_match_id",
+          "dataType": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "column": "matchup_id",
+          "dataType": "uuid",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "column": "sub_match_id",
+          "dataType": "uuid",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "column": "revoke_reason",
+          "dataType": "text",
+          "nullable": true,
+          "default": null
+        },
+        {
+          "column": "version",
+          "dataType": "integer",
+          "nullable": false,
+          "default": "1"
+        }
+      ],
+      "foreignKeys": [
+        {
+          "name": "referee_assignments_matchup_id_fkey",
+          "column": "matchup_id",
+          "references": "public.team_tournament_matchups(id)",
+          "onDelete": "SET NULL"
+        },
+        {
+          "name": "referee_assignments_sub_match_id_fkey",
+          "column": "sub_match_id",
+          "references": "public.team_tournament_sub_matches(id)",
+          "onDelete": "SET NULL"
+        }
+      ],
+      "statusCheck": "CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text, 'expired'::text, 'revoked'::text, 'completed'::text])))",
+      "index": {
+        "name": "referee_assignments_sub_match_idx",
+        "def": "CREATE INDEX referee_assignments_sub_match_idx ON public.referee_assignments USING btree (sub_match_id, status) WHERE (sub_match_id IS NOT NULL)",
+        "owner": "postgres"
+      }
+    },
+    "team_tournament_referee_correction_requests": {
+      "owner": "postgres",
+      "rlsEnabled": true,
+      "rlsForced": false,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "columnCount": 25,
+      "index": {
+        "name": "tt5d_correction_pending_idx",
+        "def": "CREATE INDEX tt5d_correction_pending_idx ON public.team_tournament_referee_correction_requests USING btree (tenant_id, tournament_id, status) WHERE (status = 'pending'::text)",
+        "owner": "postgres"
+      },
+      "policies": [
+        {
+          "name": "tt5d_correction_referee_select",
+          "cmd": "r",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "(team_tournament_can_manage() OR (requested_by = auth.uid()) OR (EXISTS ( SELECT 1 FROM referee_assignments ra WHERE ((ra.id = team_tournament_referee_correction_requests.assignment_id) AND (ra.referee_user_id = auth.uid())))))",
+          "withCheck": null
+        },
+        {
+          "name": "tt5d_correction_no_client_write",
+          "cmd": "*",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "false",
+          "withCheck": "false"
+        }
+      ]
+    }
+  },
+  "migrationHistory": {
+    "tt5dNamedMigrationPresent": false,
+    "phase5cNamedMigrationPresent": false,
+    "phase5dNamedMigrationPresent": false,
+    "relatedRows": [
+      {
+        "version": "20260712231952",
+        "name": "phase_tt5b_bridge_schema"
+      },
+      {
+        "version": "20260712232004",
+        "name": "phase_tt5b_bridge_helpers_rls"
+      }
+    ],
+    "classification": "TT5D_OBJECTS_PRESENT_WITHOUT_CONTROLLED_MIGRATION_PROVENANCE"
+  },
+  "rowValuesCaptured": false,
+  "policyExpressionComparison": {
+    "version": "WS_COLLAPSE_V1",
+    "scope": "tt5d_correction_referee_select.polqual",
+    "pgGetExprPretty": false,
+    "normalization": "COLLAPSE_POSIX_WHITESPACE_TO_SINGLE_SPACE_AND_TRIM",
+    "comparison": "EXACT_AFTER_NORMALIZATION",
+    "semanticTokensMayDiffer": false,
+    "expectedNormalizedUsing": "(team_tournament_can_manage() OR (requested_by = auth.uid()) OR (EXISTS ( SELECT 1 FROM referee_assignments ra WHERE ((ra.id = team_tournament_referee_correction_requests.assignment_id) AND (ra.referee_user_id = auth.uid())))))",
+    "note": "Compact expected string is the canonical normalized expected value, not a claim of raw byte-identical live pg_get_expr output."
+  },
+  "typedCatalogGuardComparison": {
+    "version": "PHASE5D_A4_TYPED_CATALOG_GUARD_CLOSURE",
+    "forbiddenSerializedGuards": [
+      "relacl::text",
+      "proacl::text",
+      "pg_get_indexdef(...) IS DISTINCT FROM",
+      "pg_get_constraintdef(...) IS DISTINCT FROM",
+      "information_schema.column_default equality"
+    ],
+    "contracts": [
+      "ACL_EXPLODED_SET_V1",
+      "INDEX_CATALOG_V1",
+      "CONSTRAINT_CATALOG_V1",
+      "COLUMN_DEFAULT_EXPR_V1",
+      "PROCONFIG_TEXT_ARRAY_V1",
+      "WS_COLLAPSE_V1",
+      "CATALOG_EXPR_CANON_V1"
+    ],
+    "catalogExpressionComparison": {
+      "version": "CATALOG_EXPR_CANON_V1",
+      "scope": [
+        "constraint.pg_get_expr(conbin)",
+        "index.pg_get_expr(indpred)"
+      ],
+      "normalization": "COLLAPSE_POSIX_WHITESPACE_THEN_STRIP_REDUNDANT_WHOLE_EXPRESSION_PARENTHESES",
+      "comparison": "EXACT_AFTER_NORMALIZATION",
+      "preservesInternalGrouping": true,
+      "preservesQuotedLiteralsAndIdentifiers": true
+    },
+    "preMutationGuardCount": 189,
+    "sql00ShadowParity": "SELECT_ONLY_UNION_ALL_REGISTRY"
+  }
+}

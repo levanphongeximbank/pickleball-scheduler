@@ -1,0 +1,256 @@
+{
+  "marker": "PLATFORM_HARD_CUTOVER_01_PHASE5D_A_SEMANTIC_DELTA_VERIFIED",
+  "findings": [
+    {
+      "id": 1,
+      "claim": "referee_v5_assignment_effective_status is declared IMMUTABLE while using now()",
+      "result": "CONFIRMED",
+      "evidence": "volatility=IMMUTABLE; body contains p_expires_at <= now()"
+    },
+    {
+      "id": 2,
+      "claim": "Intended correct volatility is STABLE unless code analysis proves otherwise",
+      "result": "CONFIRMED",
+      "evidence": "SQL function reads now(); STABLE is required; no proof supports IMMUTABLE"
+    },
+    {
+      "id": 3,
+      "claim": "Revoking from PUBLIC alone does not remove a direct anon grant",
+      "result": "CONFIRMED",
+      "evidence": "publicExecute=false on effective_status and current_user_has_assignment while anonExecute=true"
+    },
+    {
+      "id": 4,
+      "claim": "Every protected TT5D function must use explicit role allowlist and explicit revoke from PUBLIC and anon",
+      "result": "CONFIRMED_AS_REQUIREMENT",
+      "evidence": "Package omits anon revoke on effective_status and current_user_has_assignment; Phase 5D migration will revoke PUBLIC+anon for all 13"
+    },
+    {
+      "id": 5,
+      "claim": "Phase 5C 99_TT5D_VERIFY.sql checks only a subset of 13 functions and incomplete ACL/owner/volatility/policy/fingerprint/provenance",
+      "result": "CONFIRMED",
+      "evidence": "99_TT5D_VERIFY.sql lists only 4 function names and no ACL/volatility/policy fingerprint checks"
+    },
+    {
+      "id": 6,
+      "claim": "Phase 5B historical text that TT5D objects were absent is historical only",
+      "result": "CONFIRMED",
+      "evidence": "Current Staging has all 13 functions + tables; no TT5D migration row; historical Phase 5B evidence retained unchanged"
+    },
+    {
+      "id": 7,
+      "claim": "Phase 5C rollback is incomplete because no exact pre-mutation baseline existed",
+      "result": "CONFIRMED",
+      "evidence": "Phase 5C classification ROLLBACK_INCOMPLETE_PREEXISTING_TT5D_WITHOUT_PREAPPLY_BASELINE; Phase 5D-A now captures exact baseline"
+    }
+  ],
+  "aclDrift": [
+    {
+      "function": "public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+      "extraExecuteRoles": [
+        "anon"
+      ],
+      "missingExecuteRoles": [],
+      "packageMissesAnonRevoke": true,
+      "phase5dRequiredRevokeFrom": [
+        "public",
+        "anon"
+      ],
+      "drifted": true,
+      "volatility": "IMMUTABLE",
+      "intendedVolatility": "STABLE"
+    },
+    {
+      "function": "public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+      "extraExecuteRoles": [
+        "anon",
+        "service_role"
+      ],
+      "missingExecuteRoles": [],
+      "packageMissesAnonRevoke": true,
+      "phase5dRequiredRevokeFrom": [
+        "public",
+        "anon"
+      ],
+      "drifted": true,
+      "volatility": "STABLE",
+      "intendedVolatility": "STABLE"
+    },
+    {
+      "function": "public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)",
+      "extraExecuteRoles": [
+        "service_role"
+      ],
+      "missingExecuteRoles": [],
+      "packageMissesAnonRevoke": false,
+      "phase5dRequiredRevokeFrom": [
+        "public",
+        "anon"
+      ],
+      "drifted": true,
+      "volatility": "VOLATILE",
+      "intendedVolatility": "VOLATILE"
+    },
+    {
+      "function": "public.team_tournament_list_referee_assignments(text, text)",
+      "extraExecuteRoles": [
+        "service_role"
+      ],
+      "missingExecuteRoles": [],
+      "packageMissesAnonRevoke": false,
+      "phase5dRequiredRevokeFrom": [
+        "public",
+        "anon"
+      ],
+      "drifted": true,
+      "volatility": "STABLE",
+      "intendedVolatility": "STABLE"
+    },
+    {
+      "function": "public.team_tournament_list_referee_corrections(text, text)",
+      "extraExecuteRoles": [
+        "service_role"
+      ],
+      "missingExecuteRoles": [],
+      "packageMissesAnonRevoke": false,
+      "phase5dRequiredRevokeFrom": [
+        "public",
+        "anon"
+      ],
+      "drifted": true,
+      "volatility": "STABLE",
+      "intendedVolatility": "STABLE"
+    },
+    {
+      "function": "public.team_tournament_referee_match_access_ops(text, text)",
+      "extraExecuteRoles": [
+        "service_role"
+      ],
+      "missingExecuteRoles": [],
+      "packageMissesAnonRevoke": false,
+      "phase5dRequiredRevokeFrom": [
+        "public",
+        "anon"
+      ],
+      "drifted": true,
+      "volatility": "VOLATILE",
+      "intendedVolatility": "VOLATILE"
+    },
+    {
+      "function": "public.team_tournament_reopen_referee_match(text, text, text, text)",
+      "extraExecuteRoles": [
+        "service_role"
+      ],
+      "missingExecuteRoles": [],
+      "packageMissesAnonRevoke": false,
+      "phase5dRequiredRevokeFrom": [
+        "public",
+        "anon"
+      ],
+      "drifted": true,
+      "volatility": "VOLATILE",
+      "intendedVolatility": "VOLATILE"
+    },
+    {
+      "function": "public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)",
+      "extraExecuteRoles": [
+        "service_role"
+      ],
+      "missingExecuteRoles": [],
+      "packageMissesAnonRevoke": false,
+      "phase5dRequiredRevokeFrom": [
+        "public",
+        "anon"
+      ],
+      "drifted": true,
+      "volatility": "VOLATILE",
+      "intendedVolatility": "VOLATILE"
+    },
+    {
+      "function": "public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)",
+      "extraExecuteRoles": [
+        "service_role"
+      ],
+      "missingExecuteRoles": [],
+      "packageMissesAnonRevoke": false,
+      "phase5dRequiredRevokeFrom": [
+        "public",
+        "anon"
+      ],
+      "drifted": true,
+      "volatility": "VOLATILE",
+      "intendedVolatility": "VOLATILE"
+    },
+    {
+      "function": "public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)",
+      "extraExecuteRoles": [
+        "service_role"
+      ],
+      "missingExecuteRoles": [],
+      "packageMissesAnonRevoke": false,
+      "phase5dRequiredRevokeFrom": [
+        "public",
+        "anon"
+      ],
+      "drifted": true,
+      "volatility": "VOLATILE",
+      "intendedVolatility": "VOLATILE"
+    }
+  ],
+  "tableAclDrift": {
+    "table": "public.team_tournament_referee_correction_requests",
+    "observedAuthenticated": "ALL(arwdDxtm)",
+    "packageAuthenticated": "SELECT",
+    "classification": "CONFLICTING_TABLE_GRANT_DRIFT"
+  },
+  "mutationAllowlist": [
+    {
+      "id": "VOLATILITY_EFFECTIVE_STATUS_IMMUTABLE_TO_STABLE",
+      "object": "public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+      "action": "ALTER FUNCTION ... STABLE",
+      "reason": "Declared IMMUTABLE while body uses now(); intended STABLE"
+    },
+    {
+      "id": "ACL_REVOKE_ANON_PUBLIC_AND_ALIGN_ALLOWLIST",
+      "objects": [
+        "public.referee_v5_assignment_effective_status(text, timestamptz, timestamptz)",
+        "public.referee_v5_current_user_has_assignment(text, text, text, text[])",
+        "public.team_tournament_create_referee_assignment(text, text, text, uuid, timestamptz, boolean, text, text)",
+        "public.team_tournament_list_referee_assignments(text, text)",
+        "public.team_tournament_list_referee_corrections(text, text)",
+        "public.team_tournament_referee_match_access_ops(text, text)",
+        "public.team_tournament_reopen_referee_match(text, text, text, text)",
+        "public.team_tournament_request_referee_correction(text, text, uuid, jsonb, text, text, text, integer, text)",
+        "public.team_tournament_review_referee_correction(text, uuid, text, text, integer, text)",
+        "public.team_tournament_revoke_referee_assignment(text, uuid, integer, text, text)"
+      ],
+      "action": "REVOKE ALL FROM public, anon [, extras]; GRANT EXECUTE only to package allowlist",
+      "reason": "Align Staging ACL to package allowlist; Phase 5D requires explicit PUBLIC+anon revoke"
+    },
+    {
+      "id": "TABLE_ACL_CORRECTION_REQUESTS_AUTHENTICATED_SELECT_ONLY",
+      "object": "public.team_tournament_referee_correction_requests",
+      "action": "REVOKE ALL FROM authenticated; GRANT SELECT TO authenticated; keep service_role ALL",
+      "reason": "Staging grants authenticated ALL; package grants SELECT only",
+      "observedAcl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "packageIntent": "REVOKE anon; GRANT SELECT authenticated; GRANT ALL service_role"
+    },
+    {
+      "id": "MIGRATION_PROVENANCE_INSERT",
+      "object": "supabase_migrations.schema_migrations",
+      "action": "INSERT version=20260731150000 name=phase5d_tt5d_controlled_reconciliation",
+      "reason": "Establish controlled migration provenance after successful reconciliation"
+    }
+  ],
+  "objectsNotMutated": [
+    "function bodies (except volatility attribute via ALTER FUNCTION)",
+    "columns",
+    "foreign keys",
+    "indexes",
+    "RLS enable flags",
+    "policy definitions",
+    "table schemas"
+  ],
+  "strategyUnchanged": true,
+  "note": "Additional service_role extras and table SELECT-vs-ALL drift included in allowlist; strategy remains controlled ACL+volatility reconciliation — not widened to DDL recreate/wipe"
+}
