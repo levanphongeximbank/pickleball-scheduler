@@ -224,6 +224,7 @@
   "tests/playerSkillAssessmentEngine.test.js",
   "tests/dashboard-clubData.logic.test.js",
   "tests/dashboard-analytics.test.js",
+  "tests/dashboard-canonical-club-context-bootstrap.test.js",
   "tests/tournament-results.logic.test.js",
   "tests/tournament-bracket.logic.test.js",
   "tests/tournament-standings.logic.test.js",
