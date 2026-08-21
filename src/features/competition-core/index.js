@@ -966,3 +966,28 @@ export {
   createCourtResourceCompetitionAdapter,
   courtResourceCompetitionAdapter,
 } from "./adapters/courtResourceCompetitionAdapter.js";
+
+/**
+ * Canonical Competition Rules & Format — policy domain + Adapter A gateway.
+ * NOT Adapter Contract #17. Extends CORE-01; does not replace it.
+ */
+export {
+  COMPETITION_RULES_DOMAIN_ID,
+  COMPETITION_RULES_DOMAIN_VERSION,
+  COMPETITION_RULES_PROFILE_SCHEMA_V1,
+  COMPETITION_RULES_POLICY_GATEWAY_ID,
+  COMPETITION_RULES_POLICY_GATEWAY_VERSION,
+  COMPETITION_RULES_CONTRACT_ID,
+  COMPETITION_RULES_CONTRACT_VERSION,
+  createCompetitionRulesProfile,
+  validateCompetitionRulesProfile,
+  resolveEffectiveCompetitionRules,
+  deriveQualificationPlan,
+  resolveStageMatchRules,
+  canMutateCompetitionRule,
+  resolveCapabilityState,
+  resolveProfileCapabilityState,
+  CANONICAL_COMPETITION_RULES_CONTRACT,
+  createCompetitionRulesPolicyGateway,
+  competitionRulesPolicyGateway,
+} from "./competition-rules/index.js";
