@@ -316,34 +316,52 @@ function computeUiReadiness(draft, scoringCaps) {
   return { percent, incomplete: percent < 100, missingCount: checks.length - done };
 }
 
+const inactiveControlSx = {
+  "& .MuiInputBase-root": {
+    bgcolor: "#F1F5F9",
+  },
+  "& .MuiInputBase-input.Mui-disabled": {
+    WebkitTextFillColor: TOURNAMENT_COLOR.disabled,
+  },
+  "& .MuiSelect-select.Mui-disabled": {
+    WebkitTextFillColor: TOURNAMENT_COLOR.disabled,
+  },
+};
+
 function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringCaps }) {
   const base = draft?.matchScoring || {};
   const win = base.winCondition || {};
 
   const cellSelectSx = {
+    width: "100%",
     "& .MuiInputBase-root": { fontSize: 12, bgcolor: "#fff" },
-    "& .MuiSelect-select": { py: 0.6 },
+    "& .MuiSelect-select": { py: 0.45, pr: "28px !important" },
+    "& .MuiInputBase-input": { py: 0.45, px: 0.75 },
   };
 
   return (
     <Box>
       <Box
         sx={{
-          overflowX: "auto",
+          // Desktop (lg+): fit center workspace — no forced min-width scroll.
+          // Tablet/mobile: controlled horizontal scroll inside this container only.
+          overflowX: { xs: "auto", lg: "visible" },
           border: `1px solid ${TOURNAMENT_COLOR.divider}`,
           borderRadius: "8px",
+          WebkitOverflowScrolling: "touch",
         }}
       >
         <Box
           component="table"
           sx={{
             width: "100%",
-            minWidth: 720,
+            minWidth: { xs: 560, lg: 0 },
+            tableLayout: "fixed",
             borderCollapse: "collapse",
             "& th, & td": {
               borderBottom: `1px solid ${TOURNAMENT_COLOR.divider}`,
-              px: 1,
-              py: 0.85,
+              px: { xs: 0.5, lg: 0.4 },
+              py: 0.65,
               textAlign: "left",
               verticalAlign: "middle",
               fontSize: 12,
@@ -352,10 +370,22 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
               bgcolor: "#F8FAFC",
               fontWeight: 700,
               color: TOURNAMENT_COLOR.textMuted,
-              whiteSpace: "nowrap",
+              whiteSpace: "normal",
+              lineHeight: 1.2,
+              fontSize: 11,
             },
           }}
         >
+          <colgroup>
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "18%" }} />
+            <col style={{ width: "17%" }} />
+          </colgroup>
           <thead>
             <tr>
               <th>Giai đoạn</th>
@@ -376,7 +406,7 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                 return (
                   <tr key={row.key}>
                     <td>
-                      <Typography sx={{ fontWeight: 700, fontSize: 12.5 }}>{row.label}</Typography>
+                      <Typography sx={{ fontWeight: 700, fontSize: 12 }}>{row.label}</Typography>
                     </td>
                     <td colSpan={6}>
                       <StatusBadge label="Dùng rule cơ sở" tone="ok" />
@@ -386,7 +416,7 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                         size="small"
                         disabled={disabled}
                         onClick={() => updateStage(row.key, "inheritBase", false)}
-                        sx={{ fontSize: 11, textTransform: "none" }}
+                        sx={{ fontSize: 11, textTransform: "none", minWidth: 0, px: 0.75 }}
                       >
                         Ghi đè
                       </Button>
@@ -394,19 +424,24 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                   </tr>
                 );
               }
+              const winByOn =
+                (stage.winCondition?.winByEnabled ?? win.winByEnabled) !== false;
+              const pointCapOn =
+                (stage.winCondition?.pointCapEnabled ?? win.pointCapEnabled) === true;
               return (
                 <tr key={row.key}>
                   <td>
-                    <Typography sx={{ fontWeight: 700, fontSize: 12.5 }}>{row.label}</Typography>
+                    <Typography sx={{ fontWeight: 700, fontSize: 12 }}>{row.label}</Typography>
                   </td>
                   <td>
                     <TextField
                       size="small"
                       select
+                      fullWidth
                       value={stage.scoringMethod || base.scoringMethod || OFFICIAL_SCORING_METHOD.RALLY}
                       disabled={disabled}
                       onChange={(e) => updateStage(row.key, "scoringMethod", e.target.value)}
-                      sx={{ minWidth: 100, ...cellSelectSx }}
+                      sx={cellSelectSx}
                     >
                       <MenuItem value={OFFICIAL_SCORING_METHOD.RALLY}>Rally</MenuItem>
                       <MenuItem
@@ -421,10 +456,11 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                     <TextField
                       size="small"
                       select
+                      fullWidth
                       value={stage.matchFormat || base.matchFormat || OFFICIAL_MATCH_FORMAT.BEST_OF_1}
                       disabled={disabled}
                       onChange={(e) => updateStage(row.key, "matchFormat", e.target.value)}
-                      sx={{ minWidth: 100, ...cellSelectSx }}
+                      sx={cellSelectSx}
                     >
                       <MenuItem value={OFFICIAL_MATCH_FORMAT.BEST_OF_1}>BO1</MenuItem>
                       <MenuItem
@@ -439,28 +475,27 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                     <TextField
                       size="small"
                       type="number"
+                      fullWidth
                       value={stage.targetPoints ?? base.targetPoints ?? 11}
                       disabled={disabled}
                       onChange={(e) =>
                         updateStage(row.key, "targetPoints", Number(e.target.value) || 11)
                       }
-                      sx={{ width: 72, ...cellSelectSx }}
+                      sx={cellSelectSx}
+                      inputProps={{ min: 1 }}
                     />
                   </td>
                   <td>
                     <TextField
                       size="small"
                       select
-                      value={
-                        (stage.winCondition?.winByEnabled ?? win.winByEnabled) !== false
-                          ? "on"
-                          : "off"
-                      }
+                      fullWidth
+                      value={winByOn ? "on" : "off"}
                       disabled={disabled}
                       onChange={(e) =>
                         updateStage(row.key, "winCondition.winByEnabled", e.target.value === "on")
                       }
-                      sx={{ minWidth: 72, ...cellSelectSx }}
+                      sx={cellSelectSx}
                     >
                       <MenuItem value="on">Có</MenuItem>
                       <MenuItem value="off">Không</MenuItem>
@@ -470,8 +505,10 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                     <TextField
                       size="small"
                       type="number"
+                      fullWidth
                       value={stage.winCondition?.winByMargin ?? win.winByMargin ?? 2}
-                      disabled={disabled}
+                      disabled={disabled || !winByOn}
+                      title={!winByOn ? "Chỉ áp dụng khi bật thắng cách biệt" : undefined}
                       onChange={(e) =>
                         updateStage(
                           row.key,
@@ -479,19 +516,20 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                           Number(e.target.value) || 2
                         )
                       }
-                      sx={{ width: 64, ...cellSelectSx }}
+                      sx={{
+                        ...cellSelectSx,
+                        ...(!winByOn ? inactiveControlSx : null),
+                      }}
+                      inputProps={{ min: 1 }}
                     />
                   </td>
                   <td>
-                    <Stack direction="row" spacing={0.5} alignItems="center">
+                    <Stack spacing={0.35}>
                       <TextField
                         size="small"
                         select
-                        value={
-                          (stage.winCondition?.pointCapEnabled ?? win.pointCapEnabled) === true
-                            ? "on"
-                            : "off"
-                        }
+                        fullWidth
+                        value={pointCapOn ? "on" : "off"}
                         disabled={disabled}
                         onChange={(e) =>
                           updateStage(
@@ -500,7 +538,7 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                             e.target.value === "on"
                           )
                         }
-                        sx={{ minWidth: 72, ...cellSelectSx }}
+                        sx={cellSelectSx}
                       >
                         <MenuItem value="on">Có</MenuItem>
                         <MenuItem value="off">Không</MenuItem>
@@ -508,11 +546,15 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                       <TextField
                         size="small"
                         type="number"
-                        value={stage.winCondition?.pointCap ?? win.pointCap ?? ""}
-                        disabled={
-                          disabled ||
-                          (stage.winCondition?.pointCapEnabled ?? win.pointCapEnabled) !== true
+                        fullWidth
+                        value={
+                          pointCapOn
+                            ? (stage.winCondition?.pointCap ?? win.pointCap ?? "")
+                            : ""
                         }
+                        placeholder="—"
+                        disabled={disabled || !pointCapOn}
+                        title={!pointCapOn ? "Chỉ áp dụng khi bật điểm trần" : undefined}
                         onChange={(e) =>
                           updateStage(
                             row.key,
@@ -520,7 +562,11 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                             e.target.value === "" ? null : Number(e.target.value)
                           )
                         }
-                        sx={{ width: 64, ...cellSelectSx }}
+                        sx={{
+                          ...cellSelectSx,
+                          ...(!pointCapOn ? inactiveControlSx : null),
+                        }}
+                        inputProps={{ min: 1 }}
                       />
                     </Stack>
                   </td>
@@ -529,7 +575,16 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                       size="small"
                       disabled={disabled}
                       onClick={() => updateStage(row.key, "inheritBase", true)}
-                      sx={{ fontSize: 11, textTransform: "none", color: TOURNAMENT_COLOR.danger }}
+                      sx={{
+                        fontSize: 11,
+                        textTransform: "none",
+                        color: TOURNAMENT_COLOR.danger,
+                        minWidth: 0,
+                        px: 0.5,
+                        whiteSpace: "normal",
+                        lineHeight: 1.2,
+                        textAlign: "left",
+                      }}
                     >
                       Xóa ghi đè
                     </Button>
@@ -1227,18 +1282,35 @@ export default function OfficialContentFormatSettingsPanel({
                         draft.matchScoring?.winCondition?.winByEnabled === false ||
                         scoringCaps.winBy !== true
                       }
+                      title={
+                        draft.matchScoring?.winCondition?.winByEnabled === false
+                          ? "Chỉ áp dụng khi bật thắng cách biệt"
+                          : undefined
+                      }
+                      helperText={
+                        draft.matchScoring?.winCondition?.winByEnabled === false
+                          ? "Chỉ áp dụng khi bật thắng cách biệt"
+                          : " "
+                      }
+                      FormHelperTextProps={{ sx: { mx: 0, minHeight: 18 } }}
                       onChange={(e) =>
                         patch(
                           "matchScoring.winCondition.winByMargin",
                           Number(e.target.value) || 2
                         )
                       }
+                      sx={
+                        draft.matchScoring?.winCondition?.winByEnabled === false ||
+                        scoringCaps.winBy !== true
+                          ? inactiveControlSx
+                          : undefined
+                      }
                     />
                   </CompactField>
                 </Grid>
                 <Grid size={{ xs: 6, sm: 3 }}>
                   <CompactField label="Điểm trần">
-                    <Stack direction="row" spacing={0.75}>
+                    <Stack direction="row" spacing={0.75} alignItems="flex-start">
                       <TextField
                         size="small"
                         select
@@ -1262,17 +1334,38 @@ export default function OfficialContentFormatSettingsPanel({
                       <TextField
                         size="small"
                         type="number"
-                        value={draft.matchScoring?.winCondition?.pointCap ?? ""}
+                        value={
+                          draft.matchScoring?.winCondition?.pointCapEnabled === true
+                            ? (draft.matchScoring?.winCondition?.pointCap ?? "")
+                            : ""
+                        }
+                        placeholder="—"
                         disabled={
                           disabled || !draft.matchScoring?.winCondition?.pointCapEnabled
                         }
+                        title={
+                          !draft.matchScoring?.winCondition?.pointCapEnabled
+                            ? "Chỉ áp dụng khi bật điểm trần"
+                            : undefined
+                        }
+                        helperText={
+                          !draft.matchScoring?.winCondition?.pointCapEnabled
+                            ? "Chỉ áp dụng khi bật điểm trần"
+                            : " "
+                        }
+                        FormHelperTextProps={{ sx: { mx: 0, minHeight: 18 } }}
                         onChange={(e) =>
                           patch(
                             "matchScoring.winCondition.pointCap",
                             e.target.value === "" ? null : Number(e.target.value)
                           )
                         }
-                        sx={{ flex: 1 }}
+                        sx={{
+                          flex: 1,
+                          ...(!draft.matchScoring?.winCondition?.pointCapEnabled
+                            ? inactiveControlSx
+                            : null),
+                        }}
                       />
                     </Stack>
                   </CompactField>
