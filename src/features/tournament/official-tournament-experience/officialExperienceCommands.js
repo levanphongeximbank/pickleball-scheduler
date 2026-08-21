@@ -46,6 +46,11 @@ import {
   PAIR_FORMATION_MODE,
   resolveOfficialPairFormationMode,
 } from "./pairFormationModeResolver.js";
+import {
+  resolveOfficialEffectiveCapability,
+  createOfficialOpenCompetitionRulesSurface,
+} from "../official-open-adapter-b/officialOpenCompetitionRules.js";
+import { COMPETITION_RULES_CAPABILITY_ID } from "../../competition-core/competition-rules/index.js";
 
 function trim(value) {
   return value != null ? String(value).trim() : "";
@@ -122,13 +127,54 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
       roundTargets: competition.roundTargets,
     },
     scoringCapabilities: {
-      rally: true,
-      sideOut: SIDEOUT_OPERATIONAL,
-      bestOf1: true,
-      bestOf3: BEST_OF_3_OPERATIONAL,
-      winBy: false,
-      changeEnd: false,
+      rally: resolveOfficialEffectiveCapability(
+        COMPETITION_RULES_CAPABILITY_ID.SCORING_METHOD_RALLY
+      ).effectiveSelectable,
+      sideOut: resolveOfficialEffectiveCapability(
+        COMPETITION_RULES_CAPABILITY_ID.SCORING_METHOD_SIDE_OUT
+      ).effectiveSelectable,
+      bestOf1: resolveOfficialEffectiveCapability(
+        COMPETITION_RULES_CAPABILITY_ID.MATCH_SERIES_BEST_OF_1
+      ).effectiveSelectable,
+      bestOf3: resolveOfficialEffectiveCapability(
+        COMPETITION_RULES_CAPABILITY_ID.MATCH_SERIES_BEST_OF_3
+      ).effectiveSelectable,
+      winBy: resolveOfficialEffectiveCapability(
+        COMPETITION_RULES_CAPABILITY_ID.WIN_BY
+      ).effectiveSelectable,
+      changeEnd: resolveOfficialEffectiveCapability(
+        COMPETITION_RULES_CAPABILITY_ID.CHANGE_END
+      ).effectiveSelectable,
+      sideOutBindingGap: !SIDEOUT_OPERATIONAL,
+      bestOf3BindingGap: !BEST_OF_3_OPERATIONAL,
+      source: "min(AdapterA, OfficialClassicBinding)",
     },
+    rulesAdoption: (() => {
+      if (!trim(selectedEventId) && events.length !== 1) {
+        return {
+          ok: false,
+          code: "EVENT_REQUIRED",
+          profileDerived: false,
+        };
+      }
+      const surface = createOfficialOpenCompetitionRulesSurface({ tournament });
+      const eventId = trim(selectedEventId) || String(events[0]?.id || "");
+      const built = surface.buildProfile({ eventId });
+      if (!built.ok) {
+        return { ok: false, code: built.code, error: built.error, profileDerived: false };
+      }
+      const plan = surface.deriveQualificationPlan({ eventId });
+      const wildcard = surface.resolveWildcardRankingPolicy({ eventId });
+      return {
+        ok: true,
+        profileDerived: true,
+        ownsAuthority: false,
+        adapterAId: surface.adapterAId,
+        qualification: plan,
+        wildcardFailClosed: wildcard.failClosed === true,
+        wildcardCode: wildcard.code || null,
+      };
+    })(),
     eligibility: {
       maxLevel: eligibility?.skill?.maxLevel ?? null,
       maxRating: eligibility?.rating?.maxRating ?? null,
@@ -145,7 +191,9 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
       event: "official-open-event-domain",
       registrationSettings: OFFICIAL_EXPERIENCE_AUTHORITY.OFFICIAL_REGISTRATION,
       eligibility: "official-open-eligibility-engine",
-      scoringRules: "official-open-scoring-rules-settings",
+      scoringRules: "competition.rules.policy.gateway.v1",
+      scoringExecution: OFFICIAL_EXPERIENCE_AUTHORITY.SCORING,
+      refereeAssignment: OFFICIAL_EXPERIENCE_AUTHORITY.REFEREE_ASSIGNMENT,
     },
   };
 }

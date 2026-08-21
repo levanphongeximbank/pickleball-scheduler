@@ -657,5 +657,6 @@
   "tests/tournament-experience-wave-f.test.js",
   "tests/wave-o1-official-canonical-experience-adoption-01.test.js",
   "tests/wave-official-core13-assignment-cutover-01.test.js",
-  "tests/wave-official-tournament-bootstrap-remediation-01.test.js"
+  "tests/wave-official-tournament-bootstrap-remediation-01.test.js",
+  "tests/wave-official-open-canonical-rules-adapter-b-adoption-01.test.js"
 ]

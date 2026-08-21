@@ -49,6 +49,7 @@ import {
 } from "./activation.js";
 import { distinguishOfficialOpenScopeIds, resolveOfficialOpenTenantScope } from "./tenant.js";
 import { createOfficialTournamentRefereeAdapter } from "./officialTournamentRefereeAdapter.js";
+import { createOfficialOpenCompetitionRulesSurface } from "./officialOpenCompetitionRules.js";
 
 function trimId(value) {
   return value != null ? String(value).trim() : "";
@@ -213,6 +214,11 @@ export function createOfficialOpenAdapterB(deps = {}) {
     tenantId,
     getTournament: deps.getTournament,
   });
+  const rules = createOfficialOpenCompetitionRulesSurface({
+    tournament,
+    tenantId,
+    gateway: deps.rulesGateway,
+  });
 
   const ratingActivated = shouldActivateOfficialOpenRating(tournament);
   const membershipActivated = shouldActivateOfficialOpenMembership(tournament);
@@ -245,6 +251,7 @@ export function createOfficialOpenAdapterB(deps = {}) {
       audit,
       court,
       referee,
+      rules,
     }),
     status: Object.freeze({
       identity: ADAPTER_B_STATUS.CANONICAL_BOUND,
@@ -263,6 +270,7 @@ export function createOfficialOpenAdapterB(deps = {}) {
           ? ADAPTER_B_STATUS.NOT_CONFIGURED
           : ADAPTER_B_STATUS.CANONICAL_BOUND
         : ADAPTER_B_STATUS.CONDITIONAL_INACTIVE,
+      rules: ADAPTER_B_STATUS.CANONICAL_BOUND,
       court: ADAPTER_B_STATUS.CANONICAL_BOUND,
       referee: ADAPTER_B_STATUS.CANONICAL_BOUND,
       finance: financeGap

@@ -30,6 +30,16 @@ export {
 
 export { createOfficialTournamentRefereeAdapter } from "./officialTournamentRefereeAdapter.js";
 
+export {
+  buildOfficialOpenCompetitionRulesProfile,
+} from "./buildOfficialOpenCompetitionRulesProfile.js";
+
+export {
+  createOfficialOpenCompetitionRulesSurface,
+  resolveOfficialEffectiveCapability,
+  OFFICIAL_CLASSIC_EXECUTION_BINDING,
+} from "./officialOpenCompetitionRules.js";
+
 export { listOfficialOpenEligibleCourts } from "./court.js";
 
 export {

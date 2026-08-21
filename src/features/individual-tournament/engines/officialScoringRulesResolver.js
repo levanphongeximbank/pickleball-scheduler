@@ -31,6 +31,10 @@ import {
   WIN_BY_POLICY_DEFERRED,
   deriveOfficialMatchFormatRules,
 } from "./officialTournamentSettingsEngine.js";
+import {
+  createOfficialOpenCompetitionRulesSurface,
+  resolveOfficialEffectiveCapability,
+} from "../../tournament/official-open-adapter-b/officialOpenCompetitionRules.js";
 
 /** @deprecated Use SIDEOUT_OPERATIONAL === false */
 export const SIDEOUT_POINT_BY_POINT_RUNTIME_BLOCKED = !SIDEOUT_OPERATIONAL;
@@ -89,47 +93,95 @@ export function mapMatchToOfficialRoundKey(match = {}, options = {}) {
 
 /**
  * Single effective scoring-rules resolver for Organizer + Referee + validation.
+ * Target points / stage scoring prefer Adapter A via Official Adapter B when eventId is explicit.
+ * Capability / selectable truth uses min(Adapter A, Official classic binding).
  */
 export function resolveOfficialMatchScoringRules(tournament, match = {}, options = {}) {
   const settings = getOfficialCompetitionSettings(tournament);
   const roundKey = mapMatchToOfficialRoundKey(match, options);
   const configured = Number(settings.roundTargets?.[roundKey]);
-  const targetPoints =
+  let targetPoints =
     Number.isFinite(configured) && configured >= 1
       ? configured
       : CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT;
-  // Fail-closed: never expose side_out as operable method.
-  const scoringMethod = OFFICIAL_SCORING_METHOD.RALLY;
-  const formatRules = deriveOfficialMatchFormatRules(settings.matchFormat);
-  // Fail-closed: never expose BEST_OF_3 as operable classic format.
-  const matchFormat = BEST_OF_3_OPERATIONAL
-    ? formatRules.matchFormat
-    : OFFICIAL_MATCH_FORMAT.BEST_OF_1;
-  const derived = deriveOfficialMatchFormatRules(matchFormat);
+
+  let canonicalStage = null;
+  let rulesSource = "settings.officialCompetition.roundTargets";
+  const eventId = String(options.eventId || match.eventId || "").trim();
+  if (tournament && eventId) {
+    try {
+      const surface = createOfficialOpenCompetitionRulesSurface({ tournament });
+      const stageMap = {
+        [OFFICIAL_ROUND_SCORE_KEY.GROUP]: "GROUP",
+        [OFFICIAL_ROUND_SCORE_KEY.ROUND_OF_16]: "ROUND_OF_16",
+        [OFFICIAL_ROUND_SCORE_KEY.QUARTERFINAL]: "QUARTERFINAL",
+        [OFFICIAL_ROUND_SCORE_KEY.SEMIFINAL]: "SEMIFINAL",
+        [OFFICIAL_ROUND_SCORE_KEY.FINAL]: "FINAL",
+      };
+      canonicalStage = stageMap[roundKey] || "GROUP";
+      const stageRes = surface.resolveStageMatchRules({
+        eventId,
+        stage: canonicalStage,
+      });
+      const stageTarget = Number(
+        stageRes?.matchScoring?.targetPoints ??
+          stageRes?.rules?.matchScoring?.targetPoints ??
+          stageRes?.targetPoints
+      );
+      if (stageRes?.ok !== false && Number.isFinite(stageTarget) && stageTarget >= 1) {
+        targetPoints = stageTarget;
+        rulesSource = "competition.rules.policy.gateway.v1";
+      }
+    } catch {
+      // Compatibility: keep blob targetPoints if gateway unavailable.
+    }
+  }
+
+  const sideOutCap = resolveOfficialEffectiveCapability(
+    "SCORING_METHOD_SIDE_OUT"
+  );
+  const bo3Cap = resolveOfficialEffectiveCapability("MATCH_SERIES_BEST_OF_3");
+  const winByCap = resolveOfficialEffectiveCapability("WIN_BY");
+  const changeEndCap = resolveOfficialEffectiveCapability("CHANGE_END");
+
+  const scoringMethodOperational = OFFICIAL_SCORING_METHOD.RALLY;
+  const matchFormatOperational = OFFICIAL_MATCH_FORMAT.BEST_OF_1;
+  const formatRules = deriveOfficialMatchFormatRules(matchFormatOperational);
 
   return {
-    scoringMethod,
-    scoringMethodLabel: OFFICIAL_SCORING_METHOD_LABELS[scoringMethod] || scoringMethod,
-    matchFormat: derived.matchFormat,
-    matchFormatLabel: OFFICIAL_MATCH_FORMAT_LABELS[derived.matchFormat] || derived.matchFormat,
-    bestOf: derived.bestOf,
-    gamesToWin: derived.gamesToWin,
-    maximumGames: derived.maximumGames,
-    matchFormatIsOperational: derived.matchFormatIsOperational,
-    bestOf3Operational: BEST_OF_3_OPERATIONAL,
     roundKey,
     roundLabel: OFFICIAL_ROUND_SCORE_LABELS[roundKey] || roundKey,
     targetPoints,
-    // No Official win-by authority — align with matchEngine (higher score wins; no margin rule).
+    scoringMethod: scoringMethodOperational,
+    scoringMethodLabel: OFFICIAL_SCORING_METHOD_LABELS[scoringMethodOperational],
+    matchFormat: matchFormatOperational,
+    matchFormatLabel: OFFICIAL_MATCH_FORMAT_LABELS[matchFormatOperational],
+    bestOf: formatRules.bestOf,
+    gamesToWin: formatRules.gamesToWin,
+    maximumGames: formatRules.maximumGames,
+    matchFormatIsOperational: true,
     winBy: null,
     winByPolicyDeferred: WIN_BY_POLICY_DEFERRED,
     allowDraw: false,
-    sideOutPointByPointEnforced: false,
+    changeEndsEnabled: false,
     sideOutOperational: SIDEOUT_OPERATIONAL,
     sideOutRuntimeBlocked: !SIDEOUT_OPERATIONAL,
+    sideOutPointByPointEnforced: false,
+    bestOf3Operational: BEST_OF_3_OPERATIONAL,
+    sideOutSelectable: sideOutCap.effectiveSelectable === true,
+    bestOf3Selectable: bo3Cap.effectiveSelectable === true,
+    winBySelectable: winByCap.effectiveSelectable === true,
+    changeEndSelectable: changeEndCap.effectiveSelectable === true,
+    officialSideOutExecutionBindingGap: sideOutCap.bindingGap === true,
+    officialBestOf3BindingGap: bo3Cap.bindingGap === true,
+    officialWinByBindingGap: winByCap.bindingGap === true,
+    officialChangeEndBindingGap: changeEndCap.bindingGap === true,
+    rulesSource,
+    canonicalStage,
+    authority: "COMPATIBILITY_DELEGATES_ADAPTER_A_WHEN_BOUND",
     summaryLabel: formatOfficialMatchRulesSummary({
-      scoringMethodLabel: OFFICIAL_SCORING_METHOD_LABELS[scoringMethod] || scoringMethod,
-      matchFormatLabel: OFFICIAL_MATCH_FORMAT_LABELS[derived.matchFormat] || derived.matchFormat,
+      scoringMethodLabel: OFFICIAL_SCORING_METHOD_LABELS[scoringMethodOperational],
+      matchFormatLabel: OFFICIAL_MATCH_FORMAT_LABELS[matchFormatOperational],
       targetPoints,
       roundLabel: OFFICIAL_ROUND_SCORE_LABELS[roundKey] || roundKey,
     }),
