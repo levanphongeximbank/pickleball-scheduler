@@ -24,6 +24,10 @@ import {
   OFFICIAL_REGISTRATION_MODE,
 } from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
 import {
+  resolveContentGroupCount,
+  resolveContentRegistrationMode,
+} from "../../individual-tournament/engines/officialContentCompetitionRules.js";
+import {
   OFFICIAL_GROUP_DRAW_AUTHORITY,
   resolveOfficialGroupDrawDispatch,
 } from "../../individual-tournament/engines/officialCompetitionStrategyEngine.js";
@@ -158,7 +162,11 @@ export function listOfficialGroupDrawCompetitionUnits(tournament, { selectedEven
   }
 
   const competition = getOfficialCompetitionSettings(tournament);
-  if (competition.registrationMode === OFFICIAL_REGISTRATION_MODE.PAIR) {
+  if (
+    resolveContentRegistrationMode(tournament, { eventId: event.id }) ===
+      OFFICIAL_REGISTRATION_MODE.PAIR ||
+    competition.registrationMode === OFFICIAL_REGISTRATION_MODE.PAIR
+  ) {
     const registeredPairs = uniqueByEntryId(
       filterDrawEligibleEntries(registrations, tournament).filter(isOfficialPairShapedEntry)
     );
@@ -420,6 +428,9 @@ export function projectOfficialGroupDraw(tournament, { selectedEventId } = {}) {
     : null;
   const sub = event ? projectOfficialDrawSubsteps(tournament, event.id) : null;
   const competition = getOfficialCompetitionSettings(tournament);
+  const contentGroupCount = event
+    ? resolveContentGroupCount(tournament, { eventId: event.id })
+    : competition.groupCount;
   const publish = getDrawPublishStatus(tournament);
   const groups = Array.isArray(event?.groups) ? event.groups : [];
   const downstream = event
@@ -455,7 +466,7 @@ export function projectOfficialGroupDraw(tournament, { selectedEventId } = {}) {
       : null,
     selectedEventExplicit: Boolean(eventId) || events.length === 1,
     needsEventChoice,
-    groupCount: competition.groupCount,
+    groupCount: contentGroupCount,
     unitsReady: units.ok === true,
     unitCount: units.units?.length || 0,
     unitsSource: units.source || null,
@@ -548,13 +559,12 @@ export function buildOfficialCreateGroupDrawPatch(tournament, options = {}) {
     };
   }
 
-  const competition = getOfficialCompetitionSettings(tournament);
-  const groupCount = Number(competition.groupCount) || 0;
+  const groupCount = resolveContentGroupCount(tournament, { eventId: event.id });
   if (groupCount < 1) {
     return {
       ok: false,
       code: "GROUP_COUNT_INVALID",
-      error: "Số bảng (groupCount) chưa cấu hình hợp lệ trong Cài đặt.",
+      error: "Số bảng (groupCount) chưa cấu hình hợp lệ trên Nội dung đang chọn.",
     };
   }
   if (groupCount > unitsResult.units.length) {

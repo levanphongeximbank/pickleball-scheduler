@@ -466,7 +466,9 @@ export function projectOfficialStandings(tournament, { selectedEventId } = {}) {
   }
   const { event } = scoped;
   const units = competitionEntriesForEvent(tournament, event);
-  const qualifiersPerGroup = resolveOfficialQualifiersPerGroup(tournament);
+  const qualifiersPerGroup = resolveOfficialQualifiersPerGroup(tournament, {
+    eventId: scoped.eventId,
+  });
   const eventForStandings = {
     ...event,
     entries: units.length ? units : event.entries,
@@ -491,7 +493,7 @@ export function projectOfficialStandings(tournament, { selectedEventId } = {}) {
     resultCountingPolicy: "officialStandingsEngine:completed_or_forfeit_on_event.matches",
     onlyAcceptedActiveViaCore17: false,
     formulaAuthority: "officialStandingsEngine",
-    qualificationAuthority: "officialQualificationReady",
+    qualificationAuthority: "officialQualificationReady+contentCompetitionRules",
     authority: OFFICIAL_EXPERIENCE_AUTHORITY.OFFICIAL_STANDINGS,
     blocker:
       groupStageMatches(event).length === 0

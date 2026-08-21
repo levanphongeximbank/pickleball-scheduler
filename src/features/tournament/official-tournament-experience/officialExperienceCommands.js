@@ -17,15 +17,16 @@ import {
   OFFICIAL_SCORING_METHOD,
   BEST_OF_3_OPERATIONAL,
   SIDEOUT_OPERATIONAL,
-  patchOfficialCompetitionSettings,
   parseOfficialDecimalLevelInput,
 } from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
 import {
-  getEligibilityRules,
-  patchOfficialVisibleEligibilityLimits,
-} from "../../individual-tournament/engines/eligibilityEngine.js";
+  patchEventContentCompetitionRules,
+  resolveContentCompetitionRules,
+  CONTENT_RULES_SOURCE,
+  CONTENT_COMPETITION_RULES_PROPERTY,
+} from "../../individual-tournament/engines/officialContentCompetitionRules.js";
+import { getRegistrationSettings } from "../../individual-tournament/engines/registrationEngine.js";
 import {
-  getRegistrationSettings,
   isRegistrationLocked,
   lockRegistration,
   setRegistrationWindow,
@@ -90,9 +91,12 @@ export function resolveOfficialRegistrationPublicationStatus(tournament) {
 export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
   const events = listTournamentEvents(tournament);
   const selectedEvent = resolveSelectedEvent(events, selectedEventId);
-  const competition = getOfficialCompetitionSettings(tournament);
-  const eligibility = getEligibilityRules(tournament);
   const registration = getRegistrationSettings(tournament);
+  const eventId = trim(selectedEventId) || (events.length === 1 ? String(events[0].id) : "");
+  const contentResolved = eventId
+    ? resolveContentCompetitionRules(tournament, { eventId })
+    : null;
+  const rules = contentResolved?.ok ? contentResolved.rules : null;
 
   return {
     identity: {
@@ -106,6 +110,10 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
       id: String(event.id),
       name: String(event.name || ""),
       eventType: event.eventType || "",
+      hasExplicitContentRules: Boolean(
+        event?.[CONTENT_COMPETITION_RULES_PROPERTY] &&
+          typeof event[CONTENT_COMPETITION_RULES_PROPERTY] === "object"
+      ),
     })),
     selectedEventId: trim(selectedEventId),
     selectedEvent: selectedEvent
@@ -116,22 +124,26 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
         }
       : null,
     selectedEventExplicit: Boolean(trim(selectedEventId)) || events.length === 1,
-    competition: {
-      registrationMode: competition.registrationMode,
-      groupCount: competition.groupCount,
-      qualifiersPerGroup: competition.qualifiersPerGroup,
-      scoringMethod: competition.scoringMethodOperational || competition.scoringMethod,
-      scoringMethodRequested: competition.scoringMethodRequested,
-      matchFormat: competition.matchFormatOperational || competition.matchFormat,
-      matchFormatRequested: competition.matchFormatRequested,
-      roundTargets: competition.roundTargets,
-      winByEnabled: competition.winByEnabled !== false,
-      winByMargin: competition.winByMargin || 2,
-      pointCapEnabled: competition.pointCapEnabled === true,
-      pointCap: competition.pointCap,
-      changeEndsEnabled: competition.changeEndsEnabled === true,
-      changeEndsAtPoints: competition.changeEndsAtPoints,
-    },
+    competition: rules
+      ? {
+          registrationMode: rules.registrationMode,
+          groupCount: rules.groupStage.groupCount,
+          qualifiersPerGroup: rules.qualification.directQualifiersPerGroup,
+          scoringMethod: rules.matchScoring.scoringMethod,
+          scoringMethodRequested: rules.matchScoring.scoringMethod,
+          matchFormat: rules.matchScoring.matchFormat,
+          matchFormatRequested: rules.matchScoring.matchFormat,
+          roundTargets: rules.roundTargets,
+          winByEnabled: rules.matchScoring.winCondition.winByEnabled,
+          winByMargin: rules.matchScoring.winCondition.winByMargin,
+          pointCapEnabled: rules.matchScoring.winCondition.pointCapEnabled,
+          pointCap: rules.matchScoring.winCondition.pointCap,
+          changeEndsEnabled: rules.matchScoring.changeEnd.changeEndsEnabled,
+          changeEndsAtPoints: rules.matchScoring.changeEnd.changeEndsAtPoints,
+          source: contentResolved.source,
+          persistedSource: contentResolved.persistedSource,
+        }
+      : null,
     scoringCapabilities: {
       rally: resolveOfficialEffectiveCapability(
         COMPETITION_RULES_CAPABILITY_ID.SCORING_METHOD_RALLY
@@ -158,7 +170,7 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
       source: "min(AdapterA, OfficialClassicBinding)",
     },
     rulesAdoption: (() => {
-      if (!trim(selectedEventId) && events.length !== 1) {
+      if (!eventId) {
         return {
           ok: false,
           code: "EVENT_REQUIRED",
@@ -167,7 +179,6 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
         };
       }
       const surface = createOfficialOpenCompetitionRulesSurface({ tournament });
-      const eventId = trim(selectedEventId) || String(events[0]?.id || "");
       const built = surface.buildProfile({ eventId });
       if (!built.ok) {
         return {
@@ -185,10 +196,10 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
       const plan = surface.deriveQualificationPlan({ eventId });
       const wildcard = surface.resolveWildcardRankingPolicy({ eventId });
       const formDraft = Object.freeze({
-        source: "DERIVED_CANONICAL_DEFAULT_PROFILE",
-        persistedSource: built.persistedSource || "settings.officialCompetition",
+        source: contentResolved?.source || CONTENT_RULES_SOURCE.CANONICAL_SYSTEM_DEFAULT,
+        persistedSource: built.persistedSource,
         eventId,
-        registrationMode: competition.registrationMode,
+        registrationMode: rules?.registrationMode,
         scoringMethod:
           String(scoring.scoringMethod || "").toUpperCase() === "SIDE_OUT"
             ? OFFICIAL_SCORING_METHOD.SIDE_OUT
@@ -197,8 +208,8 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
           String(scoring.matchSeries || "").toUpperCase() === "BEST_OF_3"
             ? OFFICIAL_MATCH_FORMAT.BEST_OF_3
             : OFFICIAL_MATCH_FORMAT.BEST_OF_1,
-        targetPoints: Number(scoring.targetPoints) || competition.roundTargets?.group || 11,
-        roundTargets: competition.roundTargets,
+        targetPoints: Number(scoring.targetPoints) || rules?.matchScoring?.targetPoints || 11,
+        roundTargets: rules?.roundTargets || null,
         winByEnabled: win.winByEnabled !== false,
         winByMargin: Number(win.winByMargin) || 2,
         pointCapEnabled: win.pointCapEnabled === true,
@@ -208,10 +219,10 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
           changeEnd.changeEndsAtPoints != null
             ? Number(changeEnd.changeEndsAtPoints)
             : null,
-        groupCount: Number(profile.groupStage?.groupCount) || competition.groupCount || 4,
+        groupCount: Number(profile.groupStage?.groupCount) || rules?.groupStage?.groupCount || 4,
         qualifiersPerGroup:
           Number(profile.qualification?.directQualifiersPerGroup) ||
-          competition.qualifiersPerGroup ||
+          rules?.qualification?.directQualifiersPerGroup ||
           2,
         totalQualifiers:
           Number(profile.qualification?.totalQualifiers) ||
@@ -219,6 +230,8 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
           null,
         groupStageEnabled: profile.groupStage?.groupStageEnabled !== false,
         knockoutEnabled: profile.knockout?.knockoutEnabled !== false,
+        maxLevel: rules?.eligibility?.maxLevel ?? null,
+        maxRating: rules?.eligibility?.maxRating ?? null,
       });
       return {
         ok: true,
@@ -228,12 +241,14 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
         qualification: plan,
         wildcardFailClosed: wildcard.failClosed === true,
         wildcardCode: wildcard.code || null,
+        contentRulesSource: contentResolved?.source || null,
         formDraft,
       };
     })(),
     eligibility: {
-      maxLevel: eligibility?.skill?.maxLevel ?? null,
-      maxRating: eligibility?.rating?.maxRating ?? null,
+      maxLevel: rules?.eligibility?.maxLevel ?? null,
+      maxRating: rules?.eligibility?.maxRating ?? null,
+      scope: "CONTENT",
     },
     registrationWindow: {
       opensAt: registration.opensAt || null,
@@ -241,12 +256,14 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
       maxEntries: registration.maxEntries ?? null,
       lockedAt: registration.lockedAt || null,
       closedAt: registration.closedAt || null,
+      scope: "TOURNAMENT",
     },
     authorities: {
       settings: OFFICIAL_EXPERIENCE_AUTHORITY.OFFICIAL_SETTINGS,
       event: "official-open-event-domain",
+      contentCompetitionRules: `events[].${CONTENT_COMPETITION_RULES_PROPERTY}`,
       registrationSettings: OFFICIAL_EXPERIENCE_AUTHORITY.OFFICIAL_REGISTRATION,
-      eligibility: "official-open-eligibility-engine",
+      eligibility: "content.competitionRules.eligibility",
       scoringRules: "competition.rules.policy.gateway.v1",
       scoringExecution: OFFICIAL_EXPERIENCE_AUTHORITY.SCORING,
       refereeAssignment: OFFICIAL_EXPERIENCE_AUTHORITY.REFEREE_ASSIGNMENT,
@@ -291,9 +308,14 @@ export function projectOfficialRegistration(tournament, { selectedEventId } = {}
 export function projectOfficialParticipants(tournament, { selectedEventId } = {}) {
   const events = listTournamentEvents(tournament);
   const selectedEvent = resolveSelectedEvent(events, selectedEventId);
-  const competition = getOfficialCompetitionSettings(tournament);
+  const eventId = trim(selectedEventId) || (selectedEvent ? String(selectedEvent.id) : "");
+  const content = eventId
+    ? resolveContentCompetitionRules(tournament, { eventId })
+    : null;
+  const registrationMode = content?.ok
+    ? content.rules.registrationMode
+    : getOfficialCompetitionSettings(tournament).registrationMode;
   const entries = Array.isArray(selectedEvent?.entries) ? selectedEvent.entries : [];
-  const registrationMode = competition.registrationMode;
 
   const rows = entries.map((entry) => {
     const playerIds = Array.isArray(entry?.playerIds)
@@ -328,7 +350,13 @@ export function projectOfficialParticipants(tournament, { selectedEventId } = {}
   };
 }
 
-/** Build persist patch for Official settings save (single explicit Save). */
+/**
+ * Build persist patch for Official settings save (single explicit Save).
+ *
+ * Competition rules persist onto event.competitionRules (Content-owned).
+ * Requires draft.eventId / draft.selectedEventId for rules saves.
+ * Does NOT write competition-rule fields into settings.officialCompetition.
+ */
 export function buildOfficialSettingsSavePatch(tournament, draft = {}) {
   const nameResult = normalizeOfficialTournamentName(
     draft.name != null ? draft.name : tournament?.name
@@ -337,6 +365,7 @@ export function buildOfficialSettingsSavePatch(tournament, draft = {}) {
     return { ok: false, error: nameResult.error || "Tên giải không hợp lệ." };
   }
 
+  const eventId = trim(draft.eventId || draft.selectedEventId);
   const scoringMethod = draft.scoringMethod || OFFICIAL_SCORING_METHOD.RALLY;
   if (scoringMethod === OFFICIAL_SCORING_METHOD.SIDE_OUT && !SIDEOUT_OPERATIONAL) {
     return {
@@ -355,49 +384,56 @@ export function buildOfficialSettingsSavePatch(tournament, draft = {}) {
   }
 
   let next = tournament;
-  try {
-    next = patchOfficialCompetitionSettings(next, {
-      registrationMode: draft.registrationMode,
-      scoringMethod,
-      matchFormat,
-      groupCount: draft.groupCount,
-      qualifiersPerGroup: draft.qualifiersPerGroup,
-      roundTargets: draft.roundTargets,
-      winByEnabled: draft.winByEnabled,
-      winByMargin: draft.winByMargin,
-      pointCapEnabled: draft.pointCapEnabled,
-      pointCap: draft.pointCap,
-      changeEndsEnabled: draft.changeEndsEnabled,
-      changeEndsAtPoints: draft.changeEndsAtPoints,
-    });
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : String(err || "Không lưu được cài đặt."),
-      code: err?.code || "SETTINGS_PATCH_FAILED",
-    };
-  }
 
-  const skillParsed = parseOfficialDecimalLevelInput(draft.maxLevel);
-  const ratingParsed = parseOfficialDecimalLevelInput(draft.maxRating);
-  if (!skillParsed.ok) {
-    return { ok: false, error: skillParsed.error || "Trình độ tối đa không hợp lệ." };
-  }
-  if (!ratingParsed.ok) {
-    return { ok: false, error: ratingParsed.error || "Rating tối đa không hợp lệ." };
-  }
+  if (draft.saveContentRules !== false && (draft.scoringMethod != null || draft.groupCount != null || eventId)) {
+    if (!eventId) {
+      return {
+        ok: false,
+        code: "EVENT_REQUIRED",
+        error: "Chọn Nội dung tường minh trước khi lưu luật thi đấu (Content-owned).",
+      };
+    }
+    const skillParsed = parseOfficialDecimalLevelInput(draft.maxLevel);
+    const ratingParsed = parseOfficialDecimalLevelInput(draft.maxRating);
+    if (!skillParsed.ok) {
+      return { ok: false, error: skillParsed.error || "Trình độ tối đa không hợp lệ." };
+    }
+    if (!ratingParsed.ok) {
+      return { ok: false, error: ratingParsed.error || "Rating tối đa không hợp lệ." };
+    }
 
-  const eligibilityPatch = patchOfficialVisibleEligibilityLimits(next, {
-    maxLevel: skillParsed.value,
-    maxRating: ratingParsed.value,
-  });
-  if (!eligibilityPatch.ok) {
-    return {
-      ok: false,
-      error: eligibilityPatch.error || "Không lưu được điều kiện tham gia.",
-    };
+    try {
+      const patched = patchEventContentCompetitionRules(next, eventId, {
+        registrationMode: draft.registrationMode,
+        scoringMethod,
+        matchFormat,
+        groupCount: draft.groupCount,
+        qualifiersPerGroup: draft.qualifiersPerGroup,
+        roundTargets: draft.roundTargets,
+        targetPoints:
+          draft.targetPoints ??
+          draft.roundTargets?.group ??
+          undefined,
+        winByEnabled: draft.winByEnabled,
+        winByMargin: draft.winByMargin,
+        pointCapEnabled: draft.pointCapEnabled,
+        pointCap: draft.pointCap,
+        changeEndsEnabled: draft.changeEndsEnabled,
+        changeEndsAtPoints: draft.changeEndsAtPoints,
+        eligibility: {
+          maxLevel: skillParsed.value,
+          maxRating: ratingParsed.value,
+        },
+      });
+      next = patched.tournament;
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err || "Không lưu được luật Nội dung."),
+        code: err?.code || "CONTENT_RULES_PATCH_FAILED",
+      };
+    }
   }
-  next = eligibilityPatch.tournament;
 
   const identity = buildIdentityPatch({
     name: nameResult.name,
@@ -409,8 +445,12 @@ export function buildOfficialSettingsSavePatch(tournament, draft = {}) {
     ok: true,
     patch: {
       ...identity,
+      events: next.events,
+      // Preserve settings for non-rules tournament fields; do not re-author competition rules here.
       settings: next.settings,
     },
+    contentRulesProperty: CONTENT_COMPETITION_RULES_PROPERTY,
+    eventId: eventId || null,
     authority: OFFICIAL_EXPERIENCE_AUTHORITY.OFFICIAL_SETTINGS,
   };
 }

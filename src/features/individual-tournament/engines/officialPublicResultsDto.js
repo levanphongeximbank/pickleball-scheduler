@@ -5,7 +5,7 @@
 
 import { evaluateOfficialCompletionPredicate, resolveOfficialChampion } from "./officialCompletionEngine.js";
 import { buildOfficialAllGroupStandings, resolveOfficialQualifiersPerGroup } from "./officialStandingsEngine.js";
-import { getOfficialCompetitionSettings } from "./officialTournamentSettingsEngine.js";
+import { resolveContentCompetitionRules } from "./officialContentCompetitionRules.js";
 
 const PUBLIC_MATCH_KEYS = [
   "id",
@@ -43,10 +43,20 @@ function sanitizeBracket(bracket) {
   };
 }
 
-export function buildOfficialPublicResultsDto(tournament) {
-  const event = (tournament?.events || [])[0] || null;
-  const settings = getOfficialCompetitionSettings(tournament);
-  const qualifiersPerGroup = resolveOfficialQualifiersPerGroup(tournament);
+export function buildOfficialPublicResultsDto(tournament, options = {}) {
+  const events = Array.isArray(tournament?.events) ? tournament.events : [];
+  const wanted = String(options.eventId || "").trim();
+  const event = wanted
+    ? events.find((row) => String(row.id) === wanted) || null
+    : events.length === 1
+      ? events[0]
+      : null;
+  const qualifiersPerGroup = event
+    ? resolveOfficialQualifiersPerGroup(tournament, { eventId: event.id })
+    : 2;
+  const content = event
+    ? resolveContentCompetitionRules(tournament, { eventId: event.id })
+    : null;
   const standings = event ? buildOfficialAllGroupStandings(event, { qualifiersPerGroup }) : [];
   const champion = resolveOfficialChampion(tournament, event);
   const completion = evaluateOfficialCompletionPredicate(tournament);
@@ -68,12 +78,15 @@ export function buildOfficialPublicResultsDto(tournament) {
     tournamentId: tournament?.id || "",
     name: tournament?.name || "",
     status: tournament?.status || "",
+    eventId: event ? String(event.id) : null,
     publicStatus: completion.alreadyCompleted || completion.ok === true && tournament?.status === "completed"
       ? "completed"
       : tournament?.status || "",
     completed: Boolean(completion.alreadyCompleted || tournament?.status === "completed"),
-    scoringMethod: "rally",
-    roundTargets: settings.roundTargets,
+    scoringMethod: content?.ok
+      ? content.rules.matchScoring.scoringMethod
+      : "rally",
+    roundTargets: content?.ok ? content.rules.roundTargets : null,
     qualifiersPerGroup,
     groups: publicStandings,
     matches: (event?.matches || []).map((match) => sanitizeMatch(event, match)),

@@ -32,8 +32,11 @@ import { createOfficialOpenCompetitionRulesSurface } from "./officialOpenCompeti
 import {
   OFFICIAL_SCORING_METHOD,
   OFFICIAL_MATCH_FORMAT,
-  getOfficialCompetitionSettings,
 } from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
+import {
+  resolveContentCompetitionRules,
+  CONTENT_RULES_SOURCE,
+} from "../../individual-tournament/engines/officialContentCompetitionRules.js";
 
 export const OFFICIAL_CORE16_LIVE_SCORING_BINDING_ID =
   "official-open-core16-live-scoring-binding";
@@ -164,36 +167,58 @@ export function resolveOfficialCore16ScoringFormat(input = {}) {
     source = "rulesEnvelope";
   }
 
-  if (!core16Shape && tournament) {
-    const settings = getOfficialCompetitionSettings(tournament);
-    const methodRaw = String(
-      settings.scoringMethodRequested || settings.scoringMethod || ""
-    )
-      .trim()
-      .toLowerCase();
-    const scoringSystem =
-      methodRaw === OFFICIAL_SCORING_METHOD.SIDE_OUT
-        ? SCORING_SYSTEM.SIDE_OUT
-        : SCORING_SYSTEM.RALLY;
-    const target =
-      Number(input.targetPoints ?? input.targetScore) ||
-      Number(settings.roundTargets?.group) ||
-      11;
-    core16Shape = {
-      scoringSystem,
-      pointsToWin: target,
-      winBy: 2,
-      maximumScore: null,
-      bestOfGames:
-        String(settings.matchFormat || "").toUpperCase() ===
-        OFFICIAL_MATCH_FORMAT.BEST_OF_3
-          ? 3
-          : 1,
-      sideSwitchAt: scoringSystem === SCORING_SYSTEM.RALLY ? 11 : null,
-      serversPerSide: scoringSystem === SCORING_SYSTEM.SIDE_OUT ? 2 : 1,
-      initialServingSide: SCORING_SIDE.SIDE_A,
-    };
-    source = "settings.officialCompetition";
+  if (!core16Shape && tournament && eventId) {
+    // Content rules / legacy draft only — never active tournament authority override.
+    const content = resolveContentCompetitionRules(tournament, { eventId });
+    if (content.ok) {
+      const scoring = content.rules.matchScoring;
+      const methodRaw = String(scoring.scoringMethod || "")
+        .trim()
+        .toLowerCase();
+      const scoringSystem =
+        methodRaw === OFFICIAL_SCORING_METHOD.SIDE_OUT
+          ? SCORING_SYSTEM.SIDE_OUT
+          : SCORING_SYSTEM.RALLY;
+      const target =
+        Number(input.targetPoints ?? input.targetScore) ||
+        Number(scoring.targetPoints) ||
+        11;
+      const winByEnabled = scoring.winCondition?.winByEnabled !== false;
+      core16Shape = {
+        scoringSystem,
+        pointsToWin: target,
+        winBy: winByEnabled ? Number(scoring.winCondition?.winByMargin) || 2 : 1,
+        maximumScore:
+          scoring.winCondition?.pointCapEnabled === true &&
+          scoring.winCondition?.pointCap != null
+            ? Number(scoring.winCondition.pointCap)
+            : null,
+        bestOfGames:
+          String(scoring.matchFormat || "").toUpperCase() ===
+          OFFICIAL_MATCH_FORMAT.BEST_OF_3
+            ? 3
+            : 1,
+        sideSwitchAt:
+          scoring.changeEnd?.changeEndsEnabled === true &&
+          scoring.changeEnd?.changeEndsAtPoints != null
+            ? Number(scoring.changeEnd.changeEndsAtPoints)
+            : scoringSystem === SCORING_SYSTEM.RALLY
+              ? 11
+              : null,
+        serversPerSide: scoringSystem === SCORING_SYSTEM.SIDE_OUT ? 2 : 1,
+        initialServingSide: SCORING_SIDE.SIDE_A,
+      };
+      source =
+        content.source === CONTENT_RULES_SOURCE.CONTENT_EXPLICIT
+          ? "events[].competitionRules"
+          : content.persistedSource || "content.rules.derived";
+    }
+  } else if (!core16Shape && tournament && !eventId) {
+    return fail(
+      "EVENT_ID_REQUIRED",
+      "Trận thiếu eventId — không dùng tournament.settings.officialCompetition làm authority ghi điểm.",
+      {}
+    );
   }
 
   if (!core16Shape) {

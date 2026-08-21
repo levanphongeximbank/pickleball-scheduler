@@ -53,7 +53,10 @@ export function canGenerateOfficialKnockout(tournament, event, options = {}) {
       code: "KO_ALREADY_GENERATED",
     };
   }
-  const qualifiersPerGroup = resolveOfficialQualifiersPerGroup(tournament, options);
+  const qualifiersPerGroup = resolveOfficialQualifiersPerGroup(tournament, {
+    ...options,
+    eventId: options.eventId || event?.id,
+  });
   const qualification = officialQualificationReady(event, { qualifiersPerGroup });
   if (!qualification.ready) {
     return {

@@ -49,9 +49,7 @@ import {
   OFFICIAL_REGISTRATION_MODE,
   OFFICIAL_SCORING_METHOD,
   OFFICIAL_ROUND_SCORE_KEY,
-  getOfficialCompetitionSettings,
 } from "../../../individual-tournament/engines/officialTournamentSettingsEngine.js";
-import { getEligibilityRules } from "../../../individual-tournament/engines/eligibilityEngine.js";
 import {
   resolveTournamentExperienceAdapter,
   isOfficialTournamentExperience,
@@ -189,7 +187,11 @@ export default function IndividualSettingsPage() {
   const { activeClub, refreshClubs } = useClub();
   const { tournament, loading, error, update } = useCanonicalTournament(activeClub, tournamentId);
   const [scope, setScope] = useState(searchParams.get("eventId") ? "event" : "tournament");
-  const [tab, setTab] = useState("info");
+  const initialTab = (() => {
+    const raw = String(searchParams.get("tab") || "").trim();
+    return TABS.some((row) => row.id === raw) ? raw : "info";
+  })();
+  const [tab, setTab] = useState(initialTab);
   const [name, setName] = useState("");
   const [hostClubName, setHostClubName] = useState("");
   const [officialMode, setOfficialMode] = useState(OFFICIAL_MODE.OPEN);
@@ -246,47 +248,64 @@ export default function IndividualSettingsPage() {
       selectedEventId,
     });
     const draft = projected?.rulesAdoption?.formDraft;
-    const competition = projected?.competition || getOfficialCompetitionSettings(tournament);
-    const eligibility = getEligibilityRules(tournament);
+    const competition = projected?.competition;
+    if (!competition && !draft) {
+      setRulesBootstrapSource(null);
+      return;
+    }
 
-    setRegistrationMode(competition.registrationMode || OFFICIAL_REGISTRATION_MODE.INDIVIDUAL);
-    setGroupCount(draft?.groupCount ?? competition.groupCount ?? 4);
+    setRegistrationMode(
+      draft?.registrationMode ||
+        competition?.registrationMode ||
+        OFFICIAL_REGISTRATION_MODE.INDIVIDUAL
+    );
+    setGroupCount(draft?.groupCount ?? competition?.groupCount ?? 4);
     setQualifiersPerGroup(
-      draft?.qualifiersPerGroup ?? competition.qualifiersPerGroup ?? 2
+      draft?.qualifiersPerGroup ?? competition?.qualifiersPerGroup ?? 2
     );
     setScoringMethod(
       draft?.scoringMethod ||
-        competition.scoringMethod ||
+        competition?.scoringMethod ||
         OFFICIAL_SCORING_METHOD.RALLY
     );
     setMatchFormat(
       draft?.matchFormat ||
-        competition.matchFormat ||
+        competition?.matchFormat ||
         OFFICIAL_MATCH_FORMAT.BEST_OF_1
     );
     setTargetPoints(
       draft?.targetPoints ??
-        competition.roundTargets?.[OFFICIAL_ROUND_SCORE_KEY.GROUP] ??
+        competition?.roundTargets?.[OFFICIAL_ROUND_SCORE_KEY.GROUP] ??
         11
     );
-    setWinByEnabled(draft?.winByEnabled !== false && competition.winByEnabled !== false);
-    setWinByMargin(draft?.winByMargin ?? competition.winByMargin ?? 2);
+    setWinByEnabled(draft?.winByEnabled !== false && competition?.winByEnabled !== false);
+    setWinByMargin(draft?.winByMargin ?? competition?.winByMargin ?? 2);
     setPointCapEnabled(
-      draft?.pointCapEnabled === true || competition.pointCapEnabled === true
+      draft?.pointCapEnabled === true || competition?.pointCapEnabled === true
     );
     setPointCap(
       draft?.pointCap != null
         ? String(draft.pointCap)
-        : competition.pointCap != null
+        : competition?.pointCap != null
           ? String(competition.pointCap)
           : ""
     );
-    setRulesBootstrapSource(draft?.source || "settings.officialCompetition");
+    setRulesBootstrapSource(
+      draft?.source || competition?.source || "canonical.system.default"
+    );
     setMaxLevel(
-      eligibility?.skill?.maxLevel != null ? String(eligibility.skill.maxLevel) : ""
+      draft?.maxLevel != null
+        ? String(draft.maxLevel)
+        : projected?.eligibility?.maxLevel != null
+          ? String(projected.eligibility.maxLevel)
+          : ""
     );
     setMaxRating(
-      eligibility?.rating?.maxRating != null ? String(eligibility.rating.maxRating) : ""
+      draft?.maxRating != null
+        ? String(draft.maxRating)
+        : projected?.eligibility?.maxRating != null
+          ? String(projected.eligibility.maxRating)
+          : ""
     );
   }, [tournament, dirty, selectedEventId]);
 
@@ -304,6 +323,12 @@ export default function IndividualSettingsPage() {
     // Isolate form draft when switching Nội dung — do not leak edits across events.
     setDirty(false);
   }, [selectedEventId]);
+
+  useEffect(() => {
+    const raw = String(searchParams.get("tab") || "").trim();
+    const nextTab = TABS.some((row) => row.id === raw) ? raw : "info";
+    setTab(nextTab);
+  }, [searchParams]);
 
   const persist = async (patch, successText) => {
     setBusy(true);
@@ -324,11 +349,14 @@ export default function IndividualSettingsPage() {
     name,
     hostClubName,
     officialMode,
+    eventId: selectedEventId,
+    selectedEventId,
     registrationMode,
     groupCount: Number(groupCount) || 4,
     qualifiersPerGroup: Number(qualifiersPerGroup) || 2,
     scoringMethod,
     matchFormat,
+    targetPoints: Number(targetPoints) || 11,
     roundTargets: {
       [OFFICIAL_ROUND_SCORE_KEY.GROUP]: Number(targetPoints) || 11,
       [OFFICIAL_ROUND_SCORE_KEY.ROUND_OF_16]: Number(targetPoints) || 11,
@@ -345,17 +373,23 @@ export default function IndividualSettingsPage() {
     maxRating,
   });
 
+  const setSettingsTab = (nextTab) => {
+    setTab(nextTab);
+    const next = new URLSearchParams(searchParams);
+    if (nextTab && nextTab !== "info") next.set("tab", nextTab);
+    else next.delete("tab");
+    setSearchParams(next, { replace: true });
+  };
+
   const handleSaveIdentity = async () => {
     if (official) {
-      const draft = buildOfficialDraftPayload();
-      const built =
-        officialAdapter?.commands?.saveSettings?.(tournament, draft) ||
-        buildOfficialSettingsSavePatch(tournament, draft);
-      if (!built.ok) {
-        setMessage({ type: "error", text: built.error || "Không lưu được." });
-        return;
-      }
-      await persist(built.patch, "Đã lưu cài đặt Official (readback từ hồ sơ).");
+      // Tournament scope: identity only — no competition-rules mutation.
+      const patch = buildIdentityPatch({
+        name,
+        hostClubName,
+        officialMode,
+      });
+      await persist(patch, "Đã lưu thông tin giải (không gồm luật Nội dung).");
       return;
     }
     const patch = buildIdentityPatch({
@@ -401,25 +435,27 @@ export default function IndividualSettingsPage() {
       setMessage({ type: "error", text: result.error });
       return;
     }
-    // When saving from format tab, also persist Official competition rules into
-    // existing officialCompetition blob (no second SSOT).
-    if (official && tab === "format") {
-      const draft = buildOfficialDraftPayload();
-      const settingsBuilt =
-        officialAdapter?.commands?.saveSettings?.(tournament, draft) ||
-        buildOfficialSettingsSavePatch(tournament, draft);
-      if (!settingsBuilt.ok) {
-        setMessage({ type: "error", text: settingsBuilt.error || "Không lưu được thể thức." });
+    // Format / competition rules always Content-owned when Official + event selected.
+    if (official && (tab === "format" || tab === "info")) {
+      if (tab === "format") {
+        const draft = buildOfficialDraftPayload();
+        const settingsBuilt =
+          officialAdapter?.commands?.saveSettings?.(tournament, draft) ||
+          buildOfficialSettingsSavePatch(tournament, draft);
+        if (!settingsBuilt.ok) {
+          setMessage({ type: "error", text: settingsBuilt.error || "Không lưu được thể thức." });
+          return;
+        }
+        await persist(
+          {
+            ...result.patch,
+            events: settingsBuilt.patch.events,
+            settings: settingsBuilt.patch.settings,
+          },
+          "Đã lưu Nội dung + luật Content-owned (event.competitionRules)."
+        );
         return;
       }
-      await persist(
-        {
-          ...result.patch,
-          settings: settingsBuilt.patch.settings,
-        },
-        "Đã lưu nội dung + thể thức (canonical profile qua Adapter B)."
-      );
-      return;
     }
     await persist(result.patch, "Đã lưu nội dung đang chọn.");
   };
@@ -717,7 +753,7 @@ export default function IndividualSettingsPage() {
 
         <Tabs
           value={tab}
-          onChange={(_e, value) => setTab(value)}
+          onChange={(_e, value) => setSettingsTab(value)}
           variant="scrollable"
           allowScrollButtonsMobile
           sx={{ mb: 1.5, minHeight: 36, "& .MuiTab-root": { textTransform: "none", minHeight: 36 } }}
@@ -917,23 +953,18 @@ export default function IndividualSettingsPage() {
 
         {tab === "format" ? (
           official ? (
-            selectedEvent || scope === "tournament" ? (
+            selectedEvent ? (
               <Stack spacing={1.25} data-testid="official-competition-settings">
-                {selectedEvent && formatSteps.length > 0 ? (
-                  <FormatDesigner
-                    steps={formatSteps}
-                    locked={competitionLocked}
-                    emptyText="Chưa có bước thể thức đã chạy trên nội dung này — dùng form mặc định bên dưới."
-                  />
-                ) : null}
                 <Alert severity="info">
-                  {selectedEvent
-                    ? `Thể thức Nội dung «${selectedEvent.name || selectedEvent.id}»: form bootstrap từ canonical profile (Adapter B). Không ghi DB khi mở trang.`
-                    : "Chọn Nội dung để bootstrap profile theo eventId. Cài đặt Official lưu qua officialCompetition — không tạo SSOT thứ hai."}
+                  Đang cấu hình Nội dung: {selectedEvent.name || selectedEvent.id}. Luật lưu trên
+                  event.competitionRules (Content-owned). Không kế thừa luật Tournament.
                 </Alert>
                 {rulesBootstrapSource ? (
                   <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted }}>
                     Nguồn form: {rulesBootstrapSource}
+                    {rulesAdoption?.contentRulesSource
+                      ? ` · ${rulesAdoption.contentRulesSource}`
+                      : ""}
                     {rulesAdoption?.wildcardFailClosed
                       ? " · Wildcard xếp hạng chéo bảng: khóa (fail-closed)."
                       : ""}
@@ -1134,13 +1165,13 @@ export default function IndividualSettingsPage() {
                       size="small"
                       fullWidth
                       select
-                      label="Đổi sân (change-end)"
+                      label="Đổi đầu sân (change-end)"
                       value="off"
                       disabled
                       helperText={
                         scoringCaps.changeEnd === true
-                          ? "Có thể chọn theo capability — execution vẫn partial."
-                          : "Chưa vận hành trên Settings (session ACK only)."
+                          ? "Policy có thể chọn — execution vẫn partial (không phải đổi sân vật lý)."
+                          : "Chưa vận hành trên Settings (session ACK only). Không phải đổi sân vật lý."
                       }
                     >
                       <MenuItem value="off">Tắt / chưa sẵn sàng</MenuItem>
@@ -1157,7 +1188,7 @@ export default function IndividualSettingsPage() {
                         setDirty(true);
                         setMaxLevel(event.target.value);
                       }}
-                      helperText="eligibilityEngine — max skill ceiling"
+                      helperText="Eligibility theo Nội dung (Content-owned)"
                     />
                   </Grid>
                   <Grid size={{ xs: 12, sm: 6 }}>
@@ -1171,7 +1202,7 @@ export default function IndividualSettingsPage() {
                         setDirty(true);
                         setMaxRating(event.target.value);
                       }}
-                      helperText="eligibilityEngine — max rating ceiling"
+                      helperText="Eligibility theo Nội dung (Content-owned)"
                     />
                   </Grid>
                 </Grid>

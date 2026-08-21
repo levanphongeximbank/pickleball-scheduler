@@ -27,6 +27,11 @@ export function normalizeEvent(event, index = 0) {
     tournamentId: event.tournamentId ? String(event.tournamentId).trim() : "",
     name: String(event.name || `Nội dung ${index + 1}`).trim(),
     eventType: normalizeEventType(event.eventType),
+    // Content-owned competition rules (Official/Open). Preserved as-is; mode engines normalize.
+    competitionRules:
+      event.competitionRules && typeof event.competitionRules === "object"
+        ? event.competitionRules
+        : undefined,
     entries: normalizeEntries(event.entries || []),
     drawEntries: normalizeEntries(event.drawEntries || []),
     groups: normalizeGroups(event.groups || []),

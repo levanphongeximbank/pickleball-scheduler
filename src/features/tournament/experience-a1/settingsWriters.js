@@ -12,8 +12,11 @@ import {
 } from "../../../models/tournament/constants.js";
 import {
   OFFICIAL_REGISTRATION_MODE,
-  patchOfficialCompetitionSettings,
 } from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
+import {
+  CONTENT_COMPETITION_RULES_PROPERTY,
+  deriveCanonicalDefaultContentRules,
+} from "../../individual-tournament/engines/officialContentCompetitionRules.js";
 
 export const A1_SETTINGS_WRITER = Object.freeze({
   command: "updateTournamentCommand",
@@ -88,27 +91,28 @@ export function buildAddOfficialEventPatch(tournament, eventTypeOrOptions) {
     status: "draft",
   });
 
+  // Content-owned registration mode seed — do NOT write tournament officialCompetition rules.
+  if (registrationMode) {
+    const seeded = deriveCanonicalDefaultContentRules({
+      registrationMode,
+    });
+    event[CONTENT_COMPETITION_RULES_PROPERTY] = {
+      schemaVersion: seeded.schemaVersion,
+      registrationMode: seeded.registrationMode,
+      matchScoring: seeded.matchScoring,
+      stageOverrides: seeded.stageOverrides,
+      roundTargets: seeded.roundTargets,
+      groupStage: seeded.groupStage,
+      qualification: seeded.qualification,
+      knockout: seeded.knockout,
+      eligibility: seeded.eligibility,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
   const patch = {
     events: upsertEventById(listEvents(tournament), event),
   };
-
-  if (registrationMode) {
-    try {
-      const withMode = patchOfficialCompetitionSettings(
-        { ...tournament, events: patch.events },
-        { registrationMode }
-      );
-      patch.settings = withMode.settings;
-    } catch (err) {
-      return {
-        ok: false,
-        code: err?.code || "REGISTRATION_MODE_DENIED",
-        error: err instanceof Error ? err.message : String(err || "Không đặt chế độ đăng ký."),
-        patch: null,
-        event: null,
-      };
-    }
-  }
 
   return {
     ok: true,

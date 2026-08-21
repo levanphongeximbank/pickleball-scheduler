@@ -2,7 +2,16 @@
  * Official/Open → competition.rules.profile.v1 translator.
  * Translation only. No persistence. No second rules SSOT.
  *
- * Persisted source remains tournament.settings.officialCompetition (+ event scope).
+ * Persisted source (active):
+ *   event.competitionRules  (official.content.competitionRules.v1)
+ *
+ * Legacy compatibility input (only when Content rules absent):
+ *   tournament.settings.officialCompetition → LEGACY_COMPATIBILITY_DRAFT
+ *
+ * Precedence for effective values (via Adapter A after translation):
+ *   STAGE_OVERRIDE > CONTENT_RULE > CANONICAL_SYSTEM_DEFAULT
+ *
+ * NO tournament-rule inheritance layer.
  */
 
 import {
@@ -18,13 +27,16 @@ import {
 import { EVENT_TYPE } from "../../../models/tournament/constants.js";
 import { isDoubleEventType, isSingleEventType } from "../../../tournament/engines/officialTournamentEngine.js";
 import {
-  getOfficialCompetitionSettings,
   OFFICIAL_SCORING_METHOD,
   OFFICIAL_MATCH_FORMAT,
+  OFFICIAL_REGISTRATION_MODE,
   OFFICIAL_ROUND_SCORE_KEY,
-  DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP,
   CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT,
 } from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
+import {
+  resolveContentCompetitionRules,
+  CONTENT_RULES_SOURCE,
+} from "../../individual-tournament/engines/officialContentCompetitionRules.js";
 
 const ROUND_KEY_TO_STAGE = Object.freeze({
   [OFFICIAL_ROUND_SCORE_KEY.GROUP]: COMPETITION_RULES_STAGE.GROUP,
@@ -36,37 +48,6 @@ const ROUND_KEY_TO_STAGE = Object.freeze({
 
 function trim(value) {
   return value != null ? String(value).trim() : "";
-}
-
-function resolveExplicitEvent(tournament, eventId) {
-  const events = Array.isArray(tournament?.events) ? tournament.events : [];
-  const wanted = trim(eventId);
-  if (!wanted) {
-    if (events.length === 0) {
-      return {
-        ok: false,
-        code: "EVENT_REQUIRED",
-        error: "Chọn nội dung trước khi dựng Competition Rules Profile.",
-      };
-    }
-    if (events.length > 1) {
-      return {
-        ok: false,
-        code: "EVENT_REQUIRED",
-        error: "Nhiều nội dung — bắt buộc eventId tường minh (không dùng events[0]).",
-      };
-    }
-    return { ok: true, event: events[0], inferredSoleEvent: true };
-  }
-  const event = events.find((row) => String(row.id) === wanted);
-  if (!event) {
-    return {
-      ok: false,
-      code: "EVENT_NOT_FOUND",
-      error: "Không tìm thấy nội dung (eventId).",
-    };
-  }
-  return { ok: true, event, inferredSoleEvent: false };
 }
 
 function mapScoringMethod(officialMethod) {
@@ -86,23 +67,30 @@ function mapMatchSeries(officialFormat) {
   return MATCH_SERIES.BEST_OF_1;
 }
 
-function mapCompetitionUnit(event) {
+function mapCompetitionUnit(event, registrationMode) {
   const type = event?.eventType || EVENT_TYPE.MEN_DOUBLE;
+  const reg =
+    registrationMode === OFFICIAL_REGISTRATION_MODE.INDIVIDUAL
+      ? REGISTRATION_UNIT_KIND.PLAYER
+      : registrationMode === OFFICIAL_REGISTRATION_MODE.PAIR
+        ? REGISTRATION_UNIT_KIND.PAIR
+        : null;
+
   if (isSingleEventType(type)) {
     return {
       competitionUnitKind: COMPETITION_UNIT_KIND.SINGLES,
-      registrationUnitKind: REGISTRATION_UNIT_KIND.PLAYER,
+      registrationUnitKind: reg || REGISTRATION_UNIT_KIND.PLAYER,
     };
   }
   if (isDoubleEventType(type)) {
     return {
       competitionUnitKind: COMPETITION_UNIT_KIND.DOUBLES,
-      registrationUnitKind: REGISTRATION_UNIT_KIND.PAIR,
+      registrationUnitKind: reg || REGISTRATION_UNIT_KIND.PAIR,
     };
   }
   return {
     competitionUnitKind: COMPETITION_UNIT_KIND.DOUBLES,
-    registrationUnitKind: REGISTRATION_UNIT_KIND.PAIR,
+    registrationUnitKind: reg || REGISTRATION_UNIT_KIND.PAIR,
   };
 }
 
@@ -118,10 +106,10 @@ function buildStageOverrides(roundTargets = {}) {
 }
 
 /**
- * Build competition.rules.profile.v1 from Official persisted settings.
+ * Build competition.rules.profile.v1 from Content-owned rules.
  *
  * @param {object} tournament
- * @param {{ eventId?: string, lifecycleEvidence?: object }} [options]
+ * @param {{ eventId?: string, lifecycleEvidence?: object, tenantId?: string }} [options]
  */
 export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {}) {
   const tenantId = trim(options.tenantId || tournament?.tenantId);
@@ -141,86 +129,96 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
     };
   }
 
-  const scoped = resolveExplicitEvent(tournament, options.eventId);
-  if (!scoped.ok) return scoped;
+  const resolved = resolveContentCompetitionRules(tournament, {
+    eventId: options.eventId,
+  });
+  if (!resolved.ok) return resolved;
 
-  const settings = getOfficialCompetitionSettings(tournament);
-  const blob = tournament?.settings?.officialCompetition || {};
-  const groupCount = Number(settings.groupCount) || 4;
+  const { rules, event, eventId, source } = resolved;
+  const groupCount = Number(rules.groupStage.groupCount) || 4;
   const directQualifiersPerGroup =
-    Number(settings.qualifiersPerGroup) || DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP;
-  const totalQualifiersExplicit = Number(blob.totalQualifiers);
+    Number(rules.qualification.directQualifiersPerGroup) || 2;
   const totalQualifiers =
-    Number.isFinite(totalQualifiersExplicit) && totalQualifiersExplicit >= 1
-      ? Math.floor(totalQualifiersExplicit)
-      : groupCount * directQualifiersPerGroup;
+    Number(rules.qualification.totalQualifiers) ||
+    groupCount * directQualifiersPerGroup;
 
   const defaultTarget =
-    Number(settings.roundTargets?.[OFFICIAL_ROUND_SCORE_KEY.GROUP]) ||
+    Number(rules.matchScoring.targetPoints) ||
+    Number(rules.roundTargets?.[OFFICIAL_ROUND_SCORE_KEY.GROUP]) ||
     CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT;
 
-  const unit = mapCompetitionUnit(scoped.event);
-  const scoringMethodRequested = mapScoringMethod(
-    settings.scoringMethodRequested || settings.scoringMethod
-  );
+  const unit = mapCompetitionUnit(event, rules.registrationMode);
+  const scoringMethodRequested = mapScoringMethod(rules.matchScoring.scoringMethod);
   const matchSeriesRequested = mapMatchSeries(
-    settings.matchFormatRequested || settings.matchFormat
+    rules.matchScoring.matchSeries || rules.matchScoring.matchFormat
   );
+  const win = rules.matchScoring.winCondition || {};
+  const changeEnd = rules.matchScoring.changeEnd || {};
+
+  const persistedSource =
+    source === CONTENT_RULES_SOURCE.CONTENT_EXPLICIT
+      ? "events[].competitionRules"
+      : source === CONTENT_RULES_SOURCE.LEGACY_COMPATIBILITY_DRAFT
+        ? "settings.officialCompetition (legacy compatibility draft)"
+        : "canonical.system.default";
 
   const rawProfile = {
     schemaVersion: COMPETITION_RULES_PROFILE_SCHEMA_V1,
     tenantId,
     competitionId,
-    profileId: `official-open:${competitionId}:${scoped.event.id}`,
+    profileId: `official-open:${competitionId}:${eventId}`,
     competitionUnit: unit,
     matchScoring: {
-      // Profile preserves configured intent; effective selectable uses binding min().
-      // Win-by / point-cap / change-end policy projected for CORE-16 format binding.
       scoringMethod: scoringMethodRequested,
       matchSeries: matchSeriesRequested,
       targetPoints: defaultTarget,
       winCondition: {
-        winByEnabled: blob.winByEnabled !== false,
+        winByEnabled: win.winByEnabled !== false,
         winByMargin:
-          blob.winByMargin != null && Number(blob.winByMargin) >= 1
-            ? Math.floor(Number(blob.winByMargin))
+          win.winByMargin != null && Number(win.winByMargin) >= 1
+            ? Math.floor(Number(win.winByMargin))
             : 2,
-        pointCapEnabled: Boolean(blob.pointCapEnabled),
+        pointCapEnabled: Boolean(win.pointCapEnabled),
         pointCap:
-          blob.pointCap != null && Number(blob.pointCap) >= 1
-            ? Math.floor(Number(blob.pointCap))
+          win.pointCap != null && Number(win.pointCap) >= 1
+            ? Math.floor(Number(win.pointCap))
             : null,
       },
       changeEnd: {
-        // Policy may describe change-end; Official execution remains PARTIAL (session ACK).
-        changeEndsEnabled: Boolean(blob.changeEndsEnabled),
+        // CHANGE-END / đổi đầu sân — not physical court reassignment.
+        changeEndsEnabled: Boolean(changeEnd.changeEndsEnabled),
         changeEndsAtPoints:
-          blob.changeEndsAtPoints != null && Number(blob.changeEndsAtPoints) >= 1
-            ? Math.floor(Number(blob.changeEndsAtPoints))
+          changeEnd.changeEndsAtPoints != null &&
+          Number(changeEnd.changeEndsAtPoints) >= 1
+            ? Math.floor(Number(changeEnd.changeEndsAtPoints))
             : scoringMethodRequested === SCORING_METHOD.RALLY
               ? 11
               : null,
-        changeEndsBetweenGames: true,
-        decidingGameChangeEndsAt: null,
+        changeEndsBetweenGames: changeEnd.changeEndsBetweenGames !== false,
+        decidingGameChangeEndsAt:
+          changeEnd.decidingGameChangeEndsAt != null &&
+          Number(changeEnd.decidingGameChangeEndsAt) >= 1
+            ? Math.floor(Number(changeEnd.decidingGameChangeEndsAt))
+            : null,
       },
     },
-    stageOverrides: buildStageOverrides(settings.roundTargets),
+    stageOverrides: buildStageOverrides(rules.roundTargets),
     groupStage: {
-      groupStageEnabled: true,
+      groupStageEnabled: rules.groupStage.groupStageEnabled !== false,
       groupCount,
-      groupSizingPolicy: "FIXED_GROUP_COUNT",
-      roundRobinPolicy: "SINGLE",
-      allowUnevenGroups: true,
+      groupSizingPolicy: rules.groupStage.groupSizingPolicy || "FIXED_GROUP_COUNT",
+      roundRobinPolicy: rules.groupStage.roundRobinPolicy || "SINGLE",
+      allowUnevenGroups: rules.groupStage.allowUnevenGroups !== false,
     },
     qualification: {
       totalQualifiers,
       directQualifiersPerGroup,
     },
     knockout: {
-      knockoutEnabled: true,
+      knockoutEnabled: rules.knockout.knockoutEnabled !== false,
       qualifierCount: totalQualifiers,
-      pairingPolicy: "CROSS_GROUP",
-      avoidSameGroupFirstRound: true,
+      pairingPolicy: rules.knockout.pairingPolicy || "CROSS_GROUP",
+      avoidSameGroupFirstRound: rules.knockout.avoidSameGroupFirstRound !== false,
     },
     refereeRequirement: {
       byStage: {
@@ -231,12 +229,16 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
     },
     metadata: {
       source: "official-open-adapter-b",
-      persistedSource: "settings.officialCompetition",
-      eventId: String(scoped.event.id),
-      inferredSoleEvent: scoped.inferredSoleEvent === true,
+      persistedSource,
+      derivedSource: source,
+      eventId: String(eventId),
+      contentId: String(eventId),
+      inferredSoleEvent: resolved.inferredSoleEvent === true,
       ownsAuthority: false,
       translationOnly: true,
+      tournamentRuleInheritance: false,
       lifecycleEvidence: options.lifecycleEvidence || null,
+      pr459AdmissionDeferred: true,
     },
   };
 
@@ -244,10 +246,13 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
   return {
     ok: true,
     profile,
-    event: scoped.event,
-    eventId: String(scoped.event.id),
-    persistedSource: "settings.officialCompetition",
-    derived: true,
+    event,
+    eventId: String(eventId),
+    contentId: String(eventId),
+    contentRules: rules,
+    contentRulesSource: source,
+    persistedSource,
+    derived: source !== CONTENT_RULES_SOURCE.CONTENT_EXPLICIT,
     ownsAuthority: false,
   };
 }

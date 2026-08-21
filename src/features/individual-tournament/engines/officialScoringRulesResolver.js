@@ -4,11 +4,13 @@
  * Does not invent a second scoreboard engine.
  *
  * BEST_OF_3 remains fail-closed until multi-game Official live/result exists.
+ *
+ * Active rule source: Content competitionRules via Adapter B → Adapter A.
+ * Tournament.settings.officialCompetition is NOT active authority when Content rules exist.
  */
 
 import { MATCH_STAGE } from "../../../models/tournament/constants.js";
 import {
-  getOfficialCompetitionSettings,
   OFFICIAL_ROUND_SCORE_KEY,
   OFFICIAL_SCORING_METHOD,
   OFFICIAL_SCORING_METHOD_LABELS,
@@ -25,6 +27,10 @@ import {
   WIN_BY_POLICY_DEFERRED,
   deriveOfficialMatchFormatRules,
 } from "./officialTournamentSettingsEngine.js";
+import {
+  resolveContentCompetitionRules,
+  CONTENT_RULES_SOURCE,
+} from "./officialContentCompetitionRules.js";
 import {
   createOfficialOpenCompetitionRulesSurface,
   resolveOfficialEffectiveCapability,
@@ -92,21 +98,80 @@ export function mapMatchToOfficialRoundKey(match = {}, options = {}) {
 
 /**
  * Single effective scoring-rules resolver for Organizer + Referee + validation.
- * Target points / stage scoring prefer Adapter A via Official Adapter B when eventId is explicit.
- * Capability / selectable truth uses min(Adapter A, Official classic binding).
+ * Active source: Content competitionRules → Adapter B → Adapter A stage rules.
+ * Fail closed when match lacks Content identity (eventId).
  */
 export function resolveOfficialMatchScoringRules(tournament, match = {}, options = {}) {
-  const settings = getOfficialCompetitionSettings(tournament);
   const roundKey = mapMatchToOfficialRoundKey(match, options);
-  const configured = Number(settings.roundTargets?.[roundKey]);
-  let targetPoints =
-    Number.isFinite(configured) && configured >= 1
-      ? configured
-      : CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT;
-
-  let canonicalStage = null;
-  let rulesSource = "settings.officialCompetition.roundTargets";
   const eventId = String(options.eventId || match.eventId || "").trim();
+
+  let targetPoints = CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT;
+  let scoringMethodOperational = OFFICIAL_SCORING_METHOD.RALLY;
+  let winByMargin = 2;
+  let winByEnabled = true;
+  let pointCapEnabled = false;
+  let pointCap = null;
+  let changeEndsEnabled = false;
+  let rulesSource = "canonical.system.default";
+  let contentRulesSource = null;
+  let canonicalStage = null;
+
+  if (!eventId) {
+    return {
+      ok: false,
+      code: "EVENT_ID_REQUIRED",
+      error: "Trận thiếu eventId/contentId — không suy đoán luật từ tournament blob.",
+      roundKey,
+      roundLabel: OFFICIAL_ROUND_SCORE_LABELS[roundKey] || roundKey,
+      targetPoints,
+      scoringMethod: scoringMethodOperational,
+      scoringMethodLabel: OFFICIAL_SCORING_METHOD_LABELS[scoringMethodOperational],
+      matchFormat: OFFICIAL_MATCH_FORMAT.BEST_OF_1,
+      matchFormatLabel: OFFICIAL_MATCH_FORMAT_LABELS[OFFICIAL_MATCH_FORMAT.BEST_OF_1],
+      bestOf: 1,
+      gamesToWin: 1,
+      maximumGames: 1,
+      matchFormatIsOperational: true,
+      winBy: null,
+      winByPolicyDeferred: WIN_BY_POLICY_DEFERRED === true,
+      allowDraw: false,
+      changeEndsEnabled: false,
+      sideOutOperational: SIDEOUT_OPERATIONAL,
+      sideOutRuntimeBlocked: !SIDEOUT_OPERATIONAL,
+      sideOutPointByPointEnforced: false,
+      bestOf3Operational: BEST_OF_3_OPERATIONAL,
+      rulesSource: "FAIL_CLOSED_MISSING_EVENT_ID",
+      authority: "CORE-16_VIA_OFFICIAL_ADAPTER_B",
+      summaryLabel: "Thiếu eventId — không giải được luật nội dung.",
+    };
+  }
+
+  const content = resolveContentCompetitionRules(tournament, { eventId });
+  if (content.ok) {
+    const rules = content.rules;
+    contentRulesSource = content.source;
+    targetPoints =
+      Number(rules.roundTargets?.[roundKey]) ||
+      Number(rules.matchScoring.targetPoints) ||
+      CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT;
+    scoringMethodOperational =
+      String(rules.matchScoring.scoringMethod || "").toLowerCase() ===
+      OFFICIAL_SCORING_METHOD.SIDE_OUT
+        ? OFFICIAL_SCORING_METHOD.SIDE_OUT
+        : OFFICIAL_SCORING_METHOD.RALLY;
+    winByEnabled = rules.matchScoring.winCondition.winByEnabled !== false;
+    winByMargin = Number(rules.matchScoring.winCondition.winByMargin) || 2;
+    pointCapEnabled = rules.matchScoring.winCondition.pointCapEnabled === true;
+    pointCap = rules.matchScoring.winCondition.pointCap;
+    changeEndsEnabled = rules.matchScoring.changeEnd.changeEndsEnabled === true;
+    rulesSource =
+      content.source === CONTENT_RULES_SOURCE.CONTENT_EXPLICIT
+        ? "events[].competitionRules"
+        : content.source === CONTENT_RULES_SOURCE.LEGACY_COMPATIBILITY_DRAFT
+          ? "legacy.compatibility.draft"
+          : "canonical.system.default";
+  }
+
   if (tournament && eventId) {
     try {
       const surface = createOfficialOpenCompetitionRulesSurface({ tournament });
@@ -131,8 +196,22 @@ export function resolveOfficialMatchScoringRules(tournament, match = {}, options
         targetPoints = stageTarget;
         rulesSource = "competition.rules.policy.gateway.v1";
       }
+      const stageScoring = stageRes?.matchScoring || stageRes?.rules?.matchScoring;
+      if (stageScoring?.scoringMethod) {
+        const method = String(stageScoring.scoringMethod).toUpperCase();
+        scoringMethodOperational =
+          method === "SIDE_OUT"
+            ? OFFICIAL_SCORING_METHOD.SIDE_OUT
+            : OFFICIAL_SCORING_METHOD.RALLY;
+      }
+      if (stageScoring?.winCondition) {
+        winByEnabled = stageScoring.winCondition.winByEnabled !== false;
+        winByMargin = Number(stageScoring.winCondition.winByMargin) || winByMargin;
+        pointCapEnabled = stageScoring.winCondition.pointCapEnabled === true;
+        pointCap = stageScoring.winCondition.pointCap;
+      }
     } catch {
-      // Compatibility: keep blob targetPoints if gateway unavailable.
+      // Keep Content / default targets if gateway unavailable.
     }
   }
 
@@ -143,24 +222,24 @@ export function resolveOfficialMatchScoringRules(tournament, match = {}, options
   const winByCap = resolveOfficialEffectiveCapability("WIN_BY");
   const changeEndCap = resolveOfficialEffectiveCapability("CHANGE_END");
 
-  const requestedMethod = String(
-    settings.scoringMethodRequested || settings.scoringMethod || ""
-  )
-    .trim()
-    .toLowerCase();
-  const scoringMethodOperational =
-    requestedMethod === OFFICIAL_SCORING_METHOD.SIDE_OUT &&
-    sideOutCap.effectiveSelectable === true
-      ? OFFICIAL_SCORING_METHOD.SIDE_OUT
-      : OFFICIAL_SCORING_METHOD.RALLY;
+  if (
+    scoringMethodOperational === OFFICIAL_SCORING_METHOD.SIDE_OUT &&
+    sideOutCap.effectiveSelectable !== true
+  ) {
+    scoringMethodOperational = OFFICIAL_SCORING_METHOD.RALLY;
+  }
+
   const matchFormatOperational = OFFICIAL_MATCH_FORMAT.BEST_OF_1;
   const formatRules = deriveOfficialMatchFormatRules(matchFormatOperational);
   const winBy =
-    winByCap.effectiveSelectable === true && WIN_BY_POLICY_DEFERRED !== true
-      ? 2
+    winByEnabled &&
+    winByCap.effectiveSelectable === true &&
+    WIN_BY_POLICY_DEFERRED !== true
+      ? winByMargin
       : null;
 
   return {
+    ok: true,
     roundKey,
     roundLabel: OFFICIAL_ROUND_SCORE_LABELS[roundKey] || roundKey,
     targetPoints,
@@ -173,9 +252,14 @@ export function resolveOfficialMatchScoringRules(tournament, match = {}, options
     maximumGames: formatRules.maximumGames,
     matchFormatIsOperational: true,
     winBy,
+    winByEnabled,
+    winByMargin,
+    pointCapEnabled,
+    pointCap,
     winByPolicyDeferred: WIN_BY_POLICY_DEFERRED === true,
     allowDraw: false,
-    changeEndsEnabled: changeEndCap.effectiveSelectable === true,
+    changeEndsEnabled:
+      changeEndsEnabled && changeEndCap.effectiveSelectable === true,
     sideOutOperational: SIDEOUT_OPERATIONAL,
     sideOutRuntimeBlocked: !SIDEOUT_OPERATIONAL,
     sideOutPointByPointEnforced:
@@ -190,7 +274,9 @@ export function resolveOfficialMatchScoringRules(tournament, match = {}, options
     officialWinByBindingGap: winByCap.bindingGap === true,
     officialChangeEndBindingGap: changeEndCap.bindingGap === true,
     rulesSource,
+    contentRulesSource,
     canonicalStage,
+    eventId,
     authority: "CORE-16_VIA_OFFICIAL_ADAPTER_B",
     summaryLabel: formatOfficialMatchRulesSummary({
       scoringMethodLabel: OFFICIAL_SCORING_METHOD_LABELS[scoringMethodOperational],

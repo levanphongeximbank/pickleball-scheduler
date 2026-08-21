@@ -12,6 +12,7 @@ import {
   OFFICIAL_REGISTRATION_MODE,
   getOfficialCompetitionSettings,
 } from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
+import { resolveContentRegistrationMode } from "../../individual-tournament/engines/officialContentCompetitionRules.js";
 
 export const PAIR_FORMATION_MODE = Object.freeze({
   RANDOM_PAIRING: "RANDOM_PAIRING",
@@ -34,12 +35,21 @@ export const PAIR_FORMATION_MODE = Object.freeze({
  *   code?: string,
  * }}
  */
-export function resolveOfficialPairFormationMode(tournament) {
+export function resolveOfficialPairFormationMode(tournament, options = {}) {
   const officialMode = tournament?.officialMode || null;
-  const competition = getOfficialCompetitionSettings(tournament);
-  const registrationMode = competition.registrationMode || null;
+  const eventId = String(options.eventId || options.selectedEventId || "").trim();
+  let registrationMode;
+  let unresolved = false;
 
-  if (competition.registrationModeUnresolved || !registrationMode) {
+  if (eventId) {
+    registrationMode = resolveContentRegistrationMode(tournament, { eventId });
+  } else {
+    const competition = getOfficialCompetitionSettings(tournament);
+    registrationMode = competition.registrationMode || null;
+    unresolved = competition.registrationModeUnresolved === true;
+  }
+
+  if (unresolved || !registrationMode) {
     return {
       ok: false,
       mode: PAIR_FORMATION_MODE.NOT_SUPPORTED,

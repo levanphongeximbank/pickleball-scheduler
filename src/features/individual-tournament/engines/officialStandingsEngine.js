@@ -7,6 +7,7 @@
 
 import { buildGroupStandingFromMatches } from "../../../tournament/engines/rankingEngine.js";
 import { DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP as SETTINGS_DEFAULT_Q } from "./officialTournamentSettingsEngine.js";
+import { resolveContentQualifiersPerGroup } from "./officialContentCompetitionRules.js";
 
 export const QUALIFICATION_TIE_UNRESOLVED = "QUALIFICATION_TIE_UNRESOLVED";
 export const DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP = SETTINGS_DEFAULT_Q;
@@ -40,10 +41,12 @@ export function resolveOfficialQualifiersPerGroup(tournament, options = {}) {
   if (options.qualifiersPerGroup != null) {
     return Math.max(1, Number(options.qualifiersPerGroup) || DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP);
   }
-  const blob = tournament?.settings?.officialCompetition || {};
-  if (blob.qualifiersPerGroup != null) {
-    return Math.max(1, Number(blob.qualifiersPerGroup) || DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP);
+  const eventId = String(options.eventId || options.selectedEventId || "").trim();
+  if (tournament && eventId) {
+    return resolveContentQualifiersPerGroup(tournament, { eventId });
   }
+  // Fail closed: no tournament-level active authority when eventId missing.
+  // Callers must pass explicit eventId for Content-scoped qualification.
   return DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP;
 }
 
