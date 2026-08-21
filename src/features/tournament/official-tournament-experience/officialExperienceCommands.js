@@ -550,4 +550,12 @@ export const OFFICIAL_COMMAND_DELEGATION_MAP = Object.freeze({
     "resolveOfficialPairFormationMode → formOfficialIndividualPairs(suggestOpenRandomEntriesFromPlayers|suggestBalancedEntriesFromIndividuals) → event.drawEntries",
   presentPairDraw:
     "listOfficialPairDrawUnits → buildPairingSteps (presentation only; mutates=false)",
+  createGroupDraw:
+    "resolveOfficialGroupDrawDispatch(OPEN_RANDOM) → getOfficialGroupDrawUnits → buildOfficialOpenPlan → event.groups + settings.draw (matches stripped in O5)",
+  lockGroupDraw: "lockDraw → settings.draw",
+  publishGroupDraw: "publishDraw → settings.draw (no schedule/match mutation)",
+  reopenGroupDraw: "resolveDrawReopenPermission → reopenDraw → settings.draw",
+  regenerateGroupDraw:
+    "canRegenerateDraw / downstream guards → forceRedrawDraw? → buildOfficialCreateGroupDrawPatch",
+  presentGroupDraw: "buildRandomDrawSteps(event.groups) presentation only",
 });

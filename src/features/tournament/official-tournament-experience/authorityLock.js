@@ -26,7 +26,7 @@ export const OFFICIAL_EXPERIENCE_AUTHORITY = Object.freeze({
 });
 
 export const OFFICIAL_EXPERIENCE_AUTHORITY_MIGRATION = Object.freeze({
-  wave: "O4",
+  wave: "O5",
   migrated: false,
   note: "Authorities remain on existing Official/Open domain/runtime and CORE-* modules.",
 });

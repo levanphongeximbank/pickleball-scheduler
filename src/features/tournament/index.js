@@ -110,6 +110,8 @@ export {
   projectOfficialPairDraw,
   buildOfficialPresentPairDraw,
   listOfficialPairDrawUnits,
+  projectOfficialGroupDraw,
+  buildOfficialCreateGroupDrawPatch,
   resolveOfficialRegistrationPublicationStatus,
   OFFICIAL_COMMAND_DELEGATION_MAP,
   PAIR_FORMATION_MODE,

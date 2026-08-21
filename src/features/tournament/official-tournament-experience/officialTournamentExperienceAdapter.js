@@ -38,6 +38,15 @@ import {
   buildOfficialPresentPairDraw,
   projectOfficialPairDraw,
 } from "./pairDrawProjection.js";
+import {
+  buildOfficialCreateGroupDrawPatch,
+  buildOfficialLockGroupDrawPatch,
+  buildOfficialPresentGroupDraw,
+  buildOfficialPublishGroupDrawPatch,
+  buildOfficialRegenerateGroupDrawPatch,
+  buildOfficialReopenGroupDrawPatch,
+  projectOfficialGroupDraw,
+} from "./groupDrawProjection.js";
 
 function trim(value) {
   return value != null ? String(value).trim() : "";
@@ -208,6 +217,7 @@ export function projectOfficialTournamentExperience(tournament, options = {}) {
     participants: projectOfficialParticipants(tournament, options),
     pairFormation: projectOfficialPairFormation(tournament, options),
     pairDraw: projectOfficialPairDraw(tournament, options),
+    groupDraw: projectOfficialGroupDraw(tournament, options),
   };
 }
 
@@ -227,14 +237,20 @@ export function createOfficialExperienceCommandBoundary() {
     formPairs: buildOfficialFormPairsPatch,
     runPairing: buildOfficialFormPairsPatch,
     presentPairDraw: buildOfficialPresentPairDraw,
-    // No Pair Draw writer — lock/publish/recordDrawCreated are Group Draw (Screen 08).
     createPairDraw: null,
     lockPairDraw: null,
     publishPairDraw: null,
     reopenPairDraw: null,
     regeneratePairDraw: null,
-    // Deferred / not in O4
-    runGroupDraw: null,
+    // Wave O5 — Group Draw
+    createGroupDraw: buildOfficialCreateGroupDrawPatch,
+    runGroupDraw: buildOfficialCreateGroupDrawPatch,
+    regenerateGroupDraw: buildOfficialRegenerateGroupDrawPatch,
+    lockGroupDraw: buildOfficialLockGroupDrawPatch,
+    publishGroupDraw: buildOfficialPublishGroupDrawPatch,
+    reopenGroupDraw: buildOfficialReopenGroupDrawPatch,
+    presentGroupDraw: buildOfficialPresentGroupDraw,
+    // Deferred / not in O5
     publishSchedule: null,
     scoreMatch: null,
     assignReferee: null,
@@ -248,7 +264,7 @@ export function createOfficialTournamentExperienceAdapter(tournament, options = 
   const projection = projectOfficialTournamentExperience(tournament, options);
   return Object.freeze({
     kind: "official-tournament-experience-adapter",
-    wave: "O4",
+    wave: "O5",
     projection,
     commands: createOfficialExperienceCommandBoundary(),
     project(nextTournament = tournament, nextOptions = options) {

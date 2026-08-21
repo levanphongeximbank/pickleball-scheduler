@@ -159,13 +159,13 @@ describe("wave-o4-official-pair-draw-01", () => {
     assert.equal(JSON.stringify(formed), snapshot);
 
     const adapter = resolveTournamentExperienceAdapter(formed, { selectedEventId: "ev-a" });
-    assert.equal(adapter.wave, "O4");
+    assert.equal(adapter.wave, "O5");
     assert.equal(typeof adapter.commands.presentPairDraw, "function");
     assert.equal(adapter.commands.createPairDraw, null);
     assert.equal(adapter.commands.lockPairDraw, null);
     assert.equal(adapter.commands.publishPairDraw, null);
     assert.equal(adapter.commands.regeneratePairDraw, null);
-    assert.equal(adapter.commands.runGroupDraw, null);
+    assert.equal(typeof adapter.commands.runGroupDraw, "function");
   });
 
   it("16-20 OPEN PAIR + AI Balance membership", () => {

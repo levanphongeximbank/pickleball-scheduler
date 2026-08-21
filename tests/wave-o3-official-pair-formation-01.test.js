@@ -298,9 +298,9 @@ describe("wave-o3-official-pair-formation-01", () => {
     const adapter = resolveTournamentExperienceAdapter(officialBase(), {
       selectedEventId: "ev-a",
     });
-    assert.equal(adapter.wave, "O4");
+    assert.equal(adapter.wave, "O5");
     assert.equal(typeof adapter.commands.formPairs, "function");
-    assert.equal(adapter.commands.runGroupDraw, null);
+    assert.equal(typeof adapter.commands.runGroupDraw, "function");
     assert.equal(adapter.commands.assignReferee, null);
     assert.equal(adapter.commands.scoreMatch, null);
     assert.equal(OFFICIAL_EXPERIENCE_AUTHORITY.REFEREE_ASSIGNMENT, "CORE-13");

@@ -1843,7 +1843,7 @@ export default function OfficialTournamentSetup() {
       alerts={
         <>
           <Alert severity="info" sx={{ mb: 2 }}>
-            Wave O4 — Hình thành cặp:{" "}
+            Wave O5 — Canonical:{" "}
             <Button
               component={RouterLink}
               to={`/tournament/${encodeURIComponent(tournamentId)}/pairs`}
@@ -1853,7 +1853,6 @@ export default function OfficialTournamentSetup() {
               /pairs
             </Button>
             {" · "}
-            Bốc thăm ghép cặp:{" "}
             <Button
               component={RouterLink}
               to={`/tournament/${encodeURIComponent(tournamentId)}/pair-draw`}
@@ -1862,7 +1861,16 @@ export default function OfficialTournamentSetup() {
             >
               /pair-draw
             </Button>
-            . Setup legacy giữ Group Draw / Schedule chưa adopt.
+            {" · "}
+            <Button
+              component={RouterLink}
+              to={`/tournament/${encodeURIComponent(tournamentId)}/group-draw`}
+              size="small"
+              sx={{ textTransform: "none", p: 0, minWidth: 0, verticalAlign: "baseline" }}
+            >
+              /group-draw
+            </Button>
+            . Setup legacy giữ Schedule / Match chưa adopt.
           </Alert>
           {broadcastFeatureEnabled && broadcast.lastVodUpload ? (
             <BroadcastVodResultAlert

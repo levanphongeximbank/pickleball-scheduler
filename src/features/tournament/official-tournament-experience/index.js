@@ -44,3 +44,13 @@ export {
   listOfficialPairDrawUnits,
   resolveOfficialPairDrawMutationGuards,
 } from "./pairDrawProjection.js";
+export {
+  projectOfficialGroupDraw,
+  buildOfficialCreateGroupDrawPatch,
+  buildOfficialLockGroupDrawPatch,
+  buildOfficialPublishGroupDrawPatch,
+  buildOfficialReopenGroupDrawPatch,
+  buildOfficialRegenerateGroupDrawPatch,
+  buildOfficialPresentGroupDraw,
+  resolveOfficialGroupDrawDownstreamGuards,
+} from "./groupDrawProjection.js";
