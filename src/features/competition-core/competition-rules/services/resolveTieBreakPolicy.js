@@ -19,14 +19,13 @@ export function resolveTieBreakPolicy(profileOrRaw) {
   const criteria = profile.inGroupTieBreak.criteria.slice();
   /** @type {Array<{ type: string, enabled: boolean, order: number }>} */
   const core18TieBreakRules = [];
-  let order = 0;
   for (const criterion of criteria) {
     const mapped = mapInGroupCriterionToCore18(criterion);
     if (mapped) {
       core18TieBreakRules.push({
         type: mapped,
         enabled: true,
-        order: order++,
+        order: core18TieBreakRules.length,
       });
     }
   }
@@ -38,7 +37,7 @@ export function resolveTieBreakPolicy(profileOrRaw) {
     core18TieBreakRules.push({
       type: "MINI_TABLE",
       enabled: true,
-      order: order++,
+      order: core18TieBreakRules.length,
     });
   }
   return Object.freeze({

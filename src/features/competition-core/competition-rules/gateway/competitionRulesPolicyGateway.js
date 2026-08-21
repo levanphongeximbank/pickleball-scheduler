@@ -86,9 +86,8 @@ export function normalizeGatewayRequest(request = {}) {
 
 /**
  * Create the Adapter A policy gateway instance.
- * @param {{ now?: () => string }} [deps]
  */
-export function createCompetitionRulesPolicyGateway(deps = {}) {
+export function createCompetitionRulesPolicyGateway() {
   const api = canonicalCompetitionRulesContractApi;
 
   return Object.freeze({
