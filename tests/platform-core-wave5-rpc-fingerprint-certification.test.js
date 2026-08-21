@@ -239,7 +239,7 @@ test("live hash is never treated as source authority in docs", () => {
 test("APPLY aborts on UNCERTIFIED / owner / volatility / fingerprint drift", () => {
   assert.match(APPLY, /WAVE5_APPLY_ABORT_RPC_BODY_DRIFT/);
   assert.match(APPLY, /OWNER_REVIEW_REQUIRED/);
-  assert.match(APPLY, /predecessor_fp = 'UNCERTIFIED'/);
+  assert.match(APPLY, /fp\.hash IN \('UNCERTIFIED', 'OWNER_REVIEW_REQUIRED'\)/);
   assert.match(APPLY, /unknown\/untrusted SECURITY DEFINER owner|live_owner=%/);
   assert.match(APPLY, /overload_count=%/);
   assert.match(APPLY, /v_overload <> 1/);
@@ -331,7 +331,8 @@ test("pre-APPLY uses predecessor hash and post-APPLY uses target hash", () => {
   assert.match(CERT, /LIVE_HASH_IS_CANONICAL_AUTHORITY=NO/);
   assert.doesNotMatch(APPLY, /APPROVED_CANONICAL_MD5=cb9669f04a35e9b60242a5d3b18a5b27/);
   assert.doesNotMatch(APPLY, /APPROVED_CANONICAL_MD5=214cb6e88de6f2d9d0e55e1f33c6e582/);
-  assert.match(APPLY, /v_live_fp IS DISTINCT FROM v_guard\.predecessor_fp/);
+  assert.match(APPLY, /NOT \(v_live_fp = ANY \(v_guard\.predecessor_fps\)\)/);
+  assert.match(APPLY, /APPLY_RPC_UNKNOWN_NEWER_BODY_OVERWRITE=DENIED/);
   assert.match(APPLY, /'club_create'[\s\S]{0,800}'cb9669f04a35e9b60242a5d3b18a5b27'/);
   assert.match(APPLY, /'club_list_registry'[\s\S]{0,800}'214cb6e88de6f2d9d0e55e1f33c6e582'/);
   assert.match(APPLY, /'e847c5d23e51370fe4ef1360efbaa10a'/);

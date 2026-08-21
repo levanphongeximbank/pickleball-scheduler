@@ -202,6 +202,14 @@ export const WAVE5_EXISTING_RPC_TRANSITIONS = [
     predecessorAuthority: "CERTIFIED_HISTORICAL_SOURCE_MATCH",
     predecessorSource: "docs/v5/phase2d/PHASE_2D_TRANSFER_PRESIDENT_AUTHZ_GATE.sql",
     predecessorMd5: "24f9f7e47c2dc0a166c6385811f6c43d",
+    predecessorMd5Accepted: [
+      "24f9f7e47c2dc0a166c6385811f6c43d",
+      "14b3e8e88cc83b1824e3631d718b89e5",
+    ],
+    predecessorVariantNotes: {
+      "24f9f7e47c2dc0a166c6385811f6c43d": "CERTIFIED_HISTORICAL_SOURCE_MATCH_CRLF",
+      "14b3e8e88cc83b1824e3631d718b89e5": "CERTIFIED_DEPLOYMENT_ARTIFACT_EQUIVALENT_LF",
+    },
     targetSource: "docs/platform-core-wave5-club-context-closure/sql-design/02_APPLY_DESIGN.sql",
     targetMd5Lf: "61dd0458b9240d5407394f6f8d492bf0",
     lang: "sql",
@@ -235,12 +243,33 @@ export const WAVE5_EXISTING_RPC_TRANSITIONS = [
     predecessorAuthority: "CERTIFIED_HISTORICAL_SOURCE_MATCH",
     predecessorSource: "docs/v5/PHASE_42N_ATHLETE_MEMBERSHIP_BACKFILL.sql",
     predecessorMd5: "0b8ee11ef23090f8cd6e364ad2e6eb60",
+    predecessorMd5Accepted: [
+      "0b8ee11ef23090f8cd6e364ad2e6eb60",
+      "cd904d71c508e9ee1e4768396c515ab0",
+    ],
+    predecessorVariantNotes: {
+      "0b8ee11ef23090f8cd6e364ad2e6eb60": "CERTIFIED_HISTORICAL_SOURCE_MATCH",
+      "cd904d71c508e9ee1e4768396c515ab0":
+        "OWNER_ACCEPTED_SEMANTICALLY_EQUIVALENT_PREDECESSOR (v_resp jsonb vs json)",
+    },
     targetSource: "docs/platform-core-wave5-club-context-closure/sql-design/02_APPLY_DESIGN.sql",
     targetMd5Lf: "2ef9e0d87071bba93814ab20344539c1",
     lang: "plpgsql",
     vol: "v",
   },
 ];
+
+/** Return the exact accepted predecessor MD5 set for a transition row. */
+export function acceptedPredecessorMd5Set(transition) {
+  if (Array.isArray(transition.predecessorMd5Accepted) && transition.predecessorMd5Accepted.length) {
+    return [...transition.predecessorMd5Accepted];
+  }
+  return transition.predecessorMd5 ? [transition.predecessorMd5] : [];
+}
+
+export function isAcceptedPredecessorMd5(transition, liveMd5) {
+  return acceptedPredecessorMd5Set(transition).includes(liveMd5);
+}
 
 const LIVE = {
   phase42_club_canonical: "871ff5136397a42f5c5718179b65aed9",

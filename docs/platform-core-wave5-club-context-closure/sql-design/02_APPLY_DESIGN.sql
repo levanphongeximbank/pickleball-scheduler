@@ -509,9 +509,14 @@ BEGIN
   -- PRE_APPLY_GUARD=PREDECESSOR
   -- POST_APPLY_VERIFY=TARGET
   -- PREDECESSOR_AND_TARGET_FINGERPRINTS_DISTINCTLY_NAMED=YES
-  -- APPROVED_PREDECESSOR_PROSRC_MD5 is live-exact (see 08B).
+  -- APPROVED_PREDECESSOR_PROSRC_MD5_SET is live-exact (see 08B). Exact hashes only.
+  -- ENVIRONMENT_NAME_NOT_USED_TO_SELECT_HASH=YES
+  -- UNKNOWN_PREDECESSOR_HASH_ABORTS=YES
+  -- TARGET_HASH_NOT_USED_AS_PREDECESSOR=YES
   -- APPROVED_TARGET_PROSRC_MD5 is APPLY CREATE body (newline-canonical LF).
   -- club_create + club_list_registry: OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR.
+  -- phase42_can_transfer_president: Staging CRLF + Production LF PHASE_2D variants.
+  -- club_review_membership_request: Staging 42N + Owner-accepted jsonb declare variant.
   -- PRE_APPLY_GUARD_USES_PREDECESSOR=YES
   -- POST_APPLY_VERIFY_USES_TARGET=YES
   -- OWNER_ACCEPTANCE_DOES_NOT_DISABLE_DRIFT_GUARD=YES
@@ -533,45 +538,51 @@ BEGIN
     SELECT * FROM (VALUES
       ('public.phase42_club_canonical(text)', 'phase42_club_canonical',
        ARRAY['clubs', 'tenant_id'], 'plpgsql',
-       '871ff5136397a42f5c5718179b65aed9', 'postgres', 's',
+       ARRAY['871ff5136397a42f5c5718179b65aed9'], 'postgres', 's',
        'CERTIFIED_HISTORICAL_SOURCE_MATCH'),
       ('public.club_create(uuid,text,text,text,text,text)', 'club_create',
        ARRAY['phase42_idempotency', 'clubs', 'p_tenant_id'], 'plpgsql',
-       'cb9669f04a35e9b60242a5d3b18a5b27', 'postgres', 'v',
+       ARRAY['cb9669f04a35e9b60242a5d3b18a5b27'], 'postgres', 'v',
        'OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR'),
       ('public.club_list_registry(text,boolean)', 'club_list_registry',
        ARRAY['phase42_club_canonical', 'clubs'], 'plpgsql',
-       '214cb6e88de6f2d9d0e55e1f33c6e582', 'postgres', 'v',
+       ARRAY['214cb6e88de6f2d9d0e55e1f33c6e582'], 'postgres', 'v',
        'OWNER_ACCEPTED_CAPTURED_LIVE_PREDECESSOR'),
       ('public.club_list_members(text)', 'club_list_members',
        ARRAY['club_members'], 'plpgsql',
-       '3089518678635910041656a1ae30cacd', 'postgres', 'v',
+       ARRAY['3089518678635910041656a1ae30cacd'], 'postgres', 'v',
        'CERTIFIED_HISTORICAL_SOURCE_MATCH'),
       ('public.phase42_can_update_club(text)', 'phase42_can_update_club',
        ARRAY['clubs'], 'sql',
-       '24f9f7e47c2dc0a166c6385811f6c43d', 'postgres', 's',
+       ARRAY['24f9f7e47c2dc0a166c6385811f6c43d'], 'postgres', 's',
        'CERTIFIED_HISTORICAL_SOURCE_MATCH'),
       ('public.phase42_can_assign_club_owner(text)', 'phase42_can_assign_club_owner',
        ARRAY['clubs'], 'sql',
-       '509ea5949fa8389edd1c4827e1bf5779', 'postgres', 's',
+       ARRAY['509ea5949fa8389edd1c4827e1bf5779'], 'postgres', 's',
        'CERTIFIED_HISTORICAL_SOURCE_MATCH'),
       ('public.phase42_can_transfer_president(text)', 'phase42_can_transfer_president',
        ARRAY['clubs'], 'sql',
-       '24f9f7e47c2dc0a166c6385811f6c43d', 'postgres', 's',
+       ARRAY[
+         '24f9f7e47c2dc0a166c6385811f6c43d',
+         '14b3e8e88cc83b1824e3631d718b89e5'
+       ], 'postgres', 's',
        'CERTIFIED_HISTORICAL_SOURCE_MATCH'),
       ('public.club_add_member(uuid,text,uuid,text,integer)', 'club_add_member',
        ARRAY['phase42_can_review_membership', 'club_members', 'phase42_idempotency'], 'plpgsql',
-       '922df1b5d672f70150ae4010bb97bed0', 'postgres', 'v',
+       ARRAY['922df1b5d672f70150ae4010bb97bed0'], 'postgres', 'v',
        'CERTIFIED_HISTORICAL_SOURCE_MATCH'),
       ('public.club_restore_member(uuid,text,uuid,integer)', 'club_restore_member',
        ARRAY['phase42_can_review_membership', 'club_members'], 'plpgsql',
-       'd24dbfa3f21e674f31ad509c655a7ef6', 'postgres', 'v',
+       ARRAY['d24dbfa3f21e674f31ad509c655a7ef6'], 'postgres', 'v',
        'CERTIFIED_HISTORICAL_SOURCE_MATCH'),
       ('public.club_review_membership_request(uuid,uuid,text,text,integer)', 'club_review_membership_request',
        ARRAY['club_membership_requests_v42', 'VERSION_CONFLICT'], 'plpgsql',
-       '0b8ee11ef23090f8cd6e364ad2e6eb60', 'postgres', 'v',
+       ARRAY[
+         '0b8ee11ef23090f8cd6e364ad2e6eb60',
+         'cd904d71c508e9ee1e4768396c515ab0'
+       ], 'postgres', 'v',
        'CERTIFIED_HISTORICAL_SOURCE_MATCH')
-    ) AS t(sig, fname, markers, lang, predecessor_fp, certified_owner, certified_volatile, predecessor_gate)
+    ) AS t(sig, fname, markers, lang, predecessor_fps, certified_owner, certified_volatile, predecessor_gate)
   LOOP
     IF to_regprocedure(v_guard.sig) IS NULL THEN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT: RPC_SIGNATURE_DRIFT % missing', v_guard.sig;
@@ -607,9 +618,14 @@ BEGIN
           v_guard.fname, v_marker;
       END IF;
     END LOOP;
-    IF v_guard.predecessor_fp IS NULL
-       OR v_guard.predecessor_fp = 'UNCERTIFIED'
-       OR v_guard.predecessor_fp = 'OWNER_REVIEW_REQUIRED'
+    IF v_guard.predecessor_fps IS NULL
+       OR cardinality(v_guard.predecessor_fps) < 1
+       OR EXISTS (
+            SELECT 1
+            FROM unnest(v_guard.predecessor_fps) AS fp(hash)
+            WHERE fp.hash IS NULL
+               OR fp.hash IN ('UNCERTIFIED', 'OWNER_REVIEW_REQUIRED')
+          )
        OR v_guard.certified_owner IS NULL
        OR v_guard.certified_owner = 'UNCERTIFIED'
        OR v_guard.certified_volatile IS NULL
@@ -625,9 +641,9 @@ BEGIN
       RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED % live_provolatile=% certified=%',
         v_guard.fname, v_provolatile, v_guard.certified_volatile;
     END IF;
-    IF v_live_fp IS DISTINCT FROM v_guard.predecessor_fp THEN
-      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED % live_prosrc_md5=% APPROVED_PREDECESSOR_PROSRC_MD5=% LIVE_RPC_CHANGED_SINCE_OWNER_EVIDENCE=YES',
-        v_guard.fname, v_live_fp, v_guard.predecessor_fp;
+    IF v_live_fp IS NULL OR NOT (v_live_fp = ANY (v_guard.predecessor_fps)) THEN
+      RAISE EXCEPTION 'WAVE5_APPLY_ABORT_RPC_BODY_DRIFT: OWNER_REVIEW_REQUIRED % live_prosrc_md5=% APPROVED_PREDECESSOR_PROSRC_MD5_SET=% APPLY_RPC_UNKNOWN_NEWER_BODY_OVERWRITE=DENIED LIVE_RPC_CHANGED_SINCE_OWNER_EVIDENCE=YES',
+        v_guard.fname, v_live_fp, array_to_string(v_guard.predecessor_fps, ',');
     END IF;
     IF v_guard.predecessor_gate NOT IN (
          'CERTIFIED_HISTORICAL_SOURCE_MATCH',

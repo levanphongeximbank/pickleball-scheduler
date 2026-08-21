@@ -63,9 +63,9 @@ export function findInvalidTypedValuesAliases(sql) {
   return findings;
 }
 
-test("Wave5 package has exactly 18 SQL files", () => {
+test("Wave5 package has exactly 21 SQL files", () => {
   const files = listWave5SqlFiles();
-  assert.equal(files.length, 18);
+  assert.equal(files.length, 21);
 });
 
 test("VALUES alias regression: 07A / 02_APPLY / 03_VERIFY have no typed VALUES aliases", () => {
@@ -99,7 +99,7 @@ test("VALUES alias regression: known fixed alias shapes are names-only", () => {
   const apply = uncommented(readSql("sql-design/02_APPLY_DESIGN.sql"));
   assert.match(
     apply,
-    /\)\s+AS\s+t\(sig,\s*fname,\s*markers,\s*lang,\s*predecessor_fp,\s*certified_owner,\s*certified_volatile,\s*predecessor_gate\)/
+    /\)\s+AS\s+t\(sig,\s*fname,\s*markers,\s*lang,\s*predecessor_fps,\s*certified_owner,\s*certified_volatile,\s*predecessor_gate\)/
   );
   assert.match(apply, /\)\s+AS\s+t\(sig,\s*fname,\s*target_fp\)/);
   assert.doesNotMatch(apply, /AS\s+t\(sig\s+text,/);
