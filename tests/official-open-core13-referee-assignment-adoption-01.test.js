@@ -291,10 +291,16 @@ describe("Official CORE-13 assignment adoption", () => {
 
   it("RefereeAssignPanel + discovery use CORE-13 (no fuzzy product path)", () => {
     const panel = read("src/components/tournament/RefereeAssignPanel.jsx");
-    assert.match(panel, /createCompetitionRefereeAssignmentTrustedClient/);
+    assert.match(panel, /executeOfficialCore13RefereeAssignment/);
     assert.match(panel, /resolveCanonicalRefereeIdFromRoster/);
-    assert.match(panel, /OFFICIAL_OPEN/);
     assert.doesNotMatch(panel, /assignRefereeToIndividualMatch/);
+    assert.doesNotMatch(panel, /tournament\.clubId/);
+
+    const facade = read(
+      "src/features/tournament/official-tournament-experience/officialCore13AssignmentCommands.js"
+    );
+    assert.match(facade, /createCompetitionRefereeAssignmentTrustedClient/);
+    assert.match(facade, /OFFICIAL_OPEN/);
 
     const session = read("src/features/identity/services/refereeSessionService.js");
     assert.match(session, /listCanonicalRefereeAssignmentsForActor/);

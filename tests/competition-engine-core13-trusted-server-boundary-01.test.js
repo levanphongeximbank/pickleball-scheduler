@@ -263,7 +263,11 @@ test("F: product UI is not the persistence-adapter decision path", () => {
     assert.doesNotMatch(src, /createCompetitionRefereeAssignmentCommandService/);
   }
   const panel = read("src/components/tournament/RefereeAssignPanel.jsx");
-  assert.match(panel, /createCompetitionRefereeAssignmentTrustedClient/);
+  assert.match(panel, /executeOfficialCore13RefereeAssignment/);
+  const facade = read(
+    "src/features/tournament/official-tournament-experience/officialCore13AssignmentCommands.js"
+  );
+  assert.match(facade, /createCompetitionRefereeAssignmentTrustedClient/);
   const team = read("src/features/team-tournament/services/teamCore13AssignmentTransport.js");
   assert.match(team, /createCompetitionRefereeAssignmentTrustedClient/);
   assert.match(team, /competition-referee-assignment/);

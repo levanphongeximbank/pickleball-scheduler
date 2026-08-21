@@ -41,8 +41,7 @@ export function resolveCanonicalRefereeIdFromRoster(tournament, rosterOrCanonica
     if (!canonical) {
       return {
         ok: false,
-        error:
-          "Trọng tài chưa gắn canonicalUserId. Chọn tài khoản REFEREE từ danh bạ, không dùng tên hiển thị.",
+        error: "Trọng tài chưa có danh tính canonical để phân công.",
         code: "CANONICAL_REFEREE_ID_REQUIRED",
       };
     }

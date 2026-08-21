@@ -23,6 +23,13 @@ import {
   copyRefereeShareText,
 } from "../../tournament/engines/refereeEngine.js";
 
+/**
+ * Director referee dialog.
+ *
+ * Official / non-daily (`requireCanonicalIdentity`): fail-closed without
+ * canonicalUserId; does NOT write blob before parent CORE-13 ACK.
+ * Daily: legacy name/token path via assignRefereeToMatch.
+ */
 export default function RefereeAssignDialog({
   open,
   match,
@@ -31,6 +38,7 @@ export default function RefereeAssignDialog({
   onAssign,
   existingReferee,
   roster = [],
+  requireCanonicalIdentity = true,
 }) {
   const [name, setName] = useState("");
   const [selectedRosterEntry, setSelectedRosterEntry] = useState(null);
@@ -42,6 +50,9 @@ export default function RefereeAssignDialog({
   const [qrOpen, setQrOpen] = useState(false);
 
   const activeRoster = roster.filter((entry) => entry.active !== false);
+  const canonicalRoster = activeRoster.filter((entry) =>
+    Boolean(String(entry.canonicalUserId || entry.refereeUserId || "").trim())
+  );
 
   useEffect(() => {
     if (!open) {
@@ -55,12 +66,17 @@ export default function RefereeAssignDialog({
 
     const rosterItems = roster.filter((entry) => entry.active !== false);
 
-    if (existingReferee?.token) {
+    if (existingReferee?.token || existingReferee?.canonicalUserId) {
       setName(existingReferee.name || "");
       setRefereeName(existingReferee.name || "");
-      setUrl(buildRefereeUrl(existingReferee.token));
+      setUrl(existingReferee.token ? buildRefereeUrl(existingReferee.token) : "");
       setSelectedRosterEntry(
-        rosterItems.find((entry) => String(entry.id) === String(existingReferee.rosterId)) || null
+        rosterItems.find(
+          (entry) =>
+            String(entry.id) === String(existingReferee.rosterId) ||
+            String(entry.canonicalUserId || "") ===
+              String(existingReferee.canonicalUserId || "")
+        ) || null
       );
       return;
     }
@@ -72,15 +88,53 @@ export default function RefereeAssignDialog({
   }, [open, existingReferee, roster]);
 
   const resolvedName = selectedRosterEntry?.name || name.trim();
+  const canAssignCanonical = Boolean(
+    String(selectedRosterEntry?.canonicalUserId || selectedRosterEntry?.refereeUserId || "").trim()
+  );
 
   const handleAssign = async () => {
-    if (!match || !resolvedName) {
+    if (!match) {
       return;
     }
 
     setSaving(true);
     setError(null);
     setMessage(null);
+
+    if (requireCanonicalIdentity) {
+      if (!canAssignCanonical) {
+        setSaving(false);
+        setError("Trọng tài chưa có danh tính canonical để phân công.");
+        return;
+      }
+      // No blob write before CORE-13 ACK — parent owns Official integration path.
+      const result = await onAssign({
+        match,
+        rosterEntry: selectedRosterEntry,
+        action: "assign",
+        reason: "director-dialog-assign",
+      });
+      setSaving(false);
+      if (!result?.ok) {
+        setError(result?.error || "Không gán được trọng tài.");
+        return;
+      }
+      setRefereeName(selectedRosterEntry.name || "");
+      if (result.token) {
+        setUrl(buildRefereeUrl(result.token));
+      }
+      setMessage(
+        result.core13
+          ? "Đã phân công qua CORE-13. (Link QR legacy chỉ hiện khi có token tương thích.)"
+          : "Đã gán trọng tài."
+      );
+      return;
+    }
+
+    if (!resolvedName) {
+      setSaving(false);
+      return;
+    }
 
     const assigned = assignRefereeToMatch(match, resolvedName, {
       rosterId: selectedRosterEntry?.id || "",
@@ -117,6 +171,7 @@ export default function RefereeAssignDialog({
 
   const titleA = matchLabels?.entryALabel || match.entryALabel || match.teamALabel || "Đội A";
   const titleB = matchLabels?.entryBLabel || match.entryBLabel || match.teamBLabel || "Đội B";
+  const assignDisabled = saving || (requireCanonicalIdentity ? !canAssignCanonical : !resolvedName);
 
   return (
     <>
@@ -138,9 +193,14 @@ export default function RefereeAssignDialog({
 
           {!url && (
             <Stack spacing={2} sx={{ mt: 1 }}>
-              {activeRoster.length > 0 && (
+              {requireCanonicalIdentity && (
+                <Alert severity="info">
+                  Phân công Official yêu cầu canonicalUserId. Không dùng tên hiển thị làm identity.
+                </Alert>
+              )}
+              {(requireCanonicalIdentity ? canonicalRoster : activeRoster).length > 0 && (
                 <Autocomplete
-                  options={activeRoster}
+                  options={requireCanonicalIdentity ? canonicalRoster : activeRoster}
                   value={selectedRosterEntry}
                   onChange={(_, value) => {
                     setSelectedRosterEntry(value);
@@ -159,18 +219,20 @@ export default function RefereeAssignDialog({
                   )}
                 />
               )}
-              <TextField
-                fullWidth
-                label={activeRoster.length > 0 ? "Hoặc nhập tên khác" : "Tên trọng tài"}
-                value={name}
-                onChange={(event) => {
-                  setName(event.target.value);
-                  if (selectedRosterEntry && event.target.value !== selectedRosterEntry.name) {
-                    setSelectedRosterEntry(null);
-                  }
-                }}
-                placeholder="VD: Anh Tuấn"
-              />
+              {!requireCanonicalIdentity && (
+                <TextField
+                  fullWidth
+                  label={activeRoster.length > 0 ? "Hoặc nhập tên khác" : "Tên trọng tài"}
+                  value={name}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    if (selectedRosterEntry && event.target.value !== selectedRosterEntry.name) {
+                      setSelectedRosterEntry(null);
+                    }
+                  }}
+                  placeholder="VD: Anh Tuấn"
+                />
+              )}
             </Stack>
           )}
 
@@ -186,8 +248,8 @@ export default function RefereeAssignDialog({
         <DialogActions sx={{ px: 3, pb: 2, flexWrap: "wrap", gap: 1 }}>
           <Button onClick={onClose}>Đóng</Button>
           {!url && (
-            <Button variant="contained" onClick={handleAssign} disabled={saving || !resolvedName}>
-              Gán & tạo link
+            <Button variant="contained" onClick={handleAssign} disabled={assignDisabled}>
+              {requireCanonicalIdentity ? "Gán qua CORE-13" : "Gán & tạo link"}
             </Button>
           )}
           {url && (

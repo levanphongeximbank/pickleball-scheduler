@@ -66,3 +66,14 @@ export {
   buildOfficialAssignGroupSchedulePatch,
   buildOfficialPublishSchedulePatch,
 } from "./operationsProjection.js";
+export {
+  OFFICIAL_CORE13_ASSIGNMENT_ACTIONS,
+  executeOfficialCore13RefereeAssignment,
+  officialAssignReferee,
+  officialReplaceReferee,
+  officialUnassignReferee,
+  resolveOfficialCore13RefereeSubject,
+  resolveOfficialAssignmentTenantId,
+  resolveOfficialAssignmentMatchId,
+  MATCH_ID_TRANSLATION_REQUIRED,
+} from "./officialCore13AssignmentCommands.js";

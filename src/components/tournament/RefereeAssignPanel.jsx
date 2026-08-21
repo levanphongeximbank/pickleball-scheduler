@@ -23,35 +23,16 @@ import {
   buildIndividualRefereeAssignmentTable,
   listIndividualReferees,
 } from "../../features/individual-tournament/engines/refereeAssignEngine.js";
-import {
-  projectCore13AssignmentOntoTournament,
-  resolveCanonicalRefereeIdFromRoster,
-} from "../../features/individual-tournament/engines/core13AssignmentProjection.js";
+import { resolveCanonicalRefereeIdFromRoster } from "../../features/individual-tournament/engines/core13AssignmentProjection.js";
 import { buildRefereeUrl } from "../../tournament/engines/refereeEngine.js";
 import {
-  ASSIGNMENT_COMPETITION_MODE,
-  assertCanonicalRefereeId,
-  createCompetitionRefereeAssignmentTrustedClient,
-  resolveCompetitionAssignmentEdgeBaseUrl,
-} from "../../features/competition-engine/operations/referee/assignment/index.js";
-import { REFEREE_ROLE_CODE } from "../../features/competition-core/referee-assignment/index.js";
-import { getSupabaseAuthClient } from "../../auth/supabaseClient.js";
+  executeOfficialCore13RefereeAssignment,
+  OFFICIAL_CORE13_ASSIGNMENT_ACTIONS,
+} from "../../features/tournament/official-tournament-experience/officialCore13AssignmentCommands.js";
 
 function formatTime(iso) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("vi-VN");
-}
-
-function resolveCompetitionMode(tournament) {
-  const type = String(tournament?.type || tournament?.competitionType || "")
-    .toLowerCase();
-  if (type.includes("official") || type.includes("open")) {
-    return ASSIGNMENT_COMPETITION_MODE.OFFICIAL_OPEN;
-  }
-  if (type.includes("daily")) {
-    return ASSIGNMENT_COMPETITION_MODE.DAILY_PLAY;
-  }
-  return ASSIGNMENT_COMPETITION_MODE.INTERNAL;
 }
 
 function refereeSelectValue(ref) {
@@ -97,105 +78,52 @@ export default function RefereeAssignPanel({
     [referees]
   );
 
-  const api = useMemo(
-    () =>
-      createCompetitionRefereeAssignmentTrustedClient({
-        edgeBaseUrl: resolveCompetitionAssignmentEdgeBaseUrl(),
-        getAccessToken: async () => {
-          const client = getSupabaseAuthClient();
-          const { data } = (await client?.auth.getSession()) || {};
-          return data?.session?.access_token || null;
-        },
-      }),
-    []
-  );
-
-  const projectTrustedResult = (result, matchId, refereeId, rosterId, successText) => {
-    const nextTournament = projectCore13AssignmentOntoTournament(tournament, {
+  const runCommand = async (matchId, selectedId) => {
+    const action = selectedId
+      ? OFFICIAL_CORE13_ASSIGNMENT_ACTIONS.ASSIGN
+      : OFFICIAL_CORE13_ASSIGNMENT_ACTIONS.UNASSIGN;
+    const result = await executeOfficialCore13RefereeAssignment(tournament, {
+      action,
       matchId,
-      refereeId,
-      rosterId,
-      assignment: result?.assignment || null,
-      version: result?.version ?? null,
+      rosterOrCanonicalId: selectedId || "",
+      tenantId: tenantId || tournament.tenantId || "",
+      reason: selectedId ? "organizer-assign" : "organizer-unassign",
     });
+    if (!result.ok) {
+      throw new Error(result.error || result.code || "Phân công thất bại.");
+    }
+    if (result.noop) {
+      setMessage({ type: "success", text: "Không có phân công active để hủy." });
+      return;
+    }
     const assignResult = {
       ok: true,
-      tournament: nextTournament,
-      assignment: result?.assignment || null,
-      matchId,
-      refereeId,
+      tournament: result.tournament,
+      assignment: result.assignment || null,
+      matchId: result.matchId,
+      refereeId: result.refereeId || "",
       core13: true,
-      version: result?.version ?? null,
+      version: result.version ?? null,
+      action: result.action,
     };
-    onTournamentChange?.(nextTournament, { assignResult });
-    onAssignResult?.(assignResult, nextTournament);
-    setMessage({ type: "success", text: successText });
+    onTournamentChange?.(result.tournament, { assignResult });
+    onAssignResult?.(assignResult, result.tournament);
+    setMessage({
+      type: "success",
+      text:
+        result.action === OFFICIAL_CORE13_ASSIGNMENT_ACTIONS.UNASSIGN
+          ? "Đã hủy phân công."
+          : result.action === OFFICIAL_CORE13_ASSIGNMENT_ACTIONS.REPLACE
+            ? "Đã đổi trọng tài."
+            : "Đã phân công trọng tài.",
+    });
   };
 
   const handleAssign = async (matchId, selectedId) => {
     setBusy(true);
     setMessage(null);
     try {
-      const resolved = resolveCanonicalRefereeIdFromRoster(tournament, selectedId);
-      if (!resolved.ok) {
-        throw new Error(resolved.error || "Identity trọng tài không hợp lệ.");
-      }
-      const refereeId = resolved.refereeId;
-      const rosterId = resolved.rosterEntry?.id || "";
-
-      const base = {
-        tenantId: String(tenantId || tournament.tenantId || tournament.clubId || ""),
-        tournamentId: String(tournament.id || tournament.tournamentId || ""),
-        matchId: String(matchId),
-        roleCode: REFEREE_ROLE_CODE.PRIMARY,
-        competitionMode: resolveCompetitionMode(tournament),
-        refereeFeatureEnabled: true,
-      };
-      if (refereeId) {
-        assertCanonicalRefereeId(refereeId);
-      }
-      const versionRes = await api.getMatchAssignmentVersion(base);
-      if (versionRes?.ok === false) {
-        throw new Error(versionRes.error || versionRes.code || "Không đọc được phiên bản phân công.");
-      }
-      const version = Number(versionRes?.version ?? 0);
-      const activeRes = await api.getActiveAssignment(base);
-      const active = activeRes?.assignment || null;
-
-      let result;
-      if (!refereeId) {
-        result = await api.unassignReferee({
-          ...base,
-          expectedVersion: version,
-          idempotencyKey: `ui-unassign-${matchId}-${version}`,
-          reason: "organizer-unassign",
-        });
-        if (!result?.ok) throw new Error(result?.error || result?.code || "Hủy phân công thất bại.");
-        projectTrustedResult(result, matchId, "", "", "Đã hủy phân công.");
-        return;
-      }
-
-      if (active) {
-        result = await api.replaceReferee({
-          ...base,
-          newRefereeId: String(refereeId),
-          expectedVersion: version,
-          idempotencyKey: `ui-replace-${matchId}-${refereeId}-${version}`,
-          reason: "organizer-replace",
-        });
-        if (!result?.ok) throw new Error(result?.error || result?.code || "Đổi trọng tài thất bại.");
-        projectTrustedResult(result, matchId, refereeId, rosterId, "Đã đổi trọng tài.");
-      } else {
-        result = await api.assignReferee({
-          ...base,
-          refereeId: String(refereeId),
-          expectedVersion: version,
-          idempotencyKey: `ui-assign-${matchId}-${refereeId}-${version}`,
-          reason: "organizer-assign",
-        });
-        if (!result?.ok) throw new Error(result?.error || result?.code || "Phân công thất bại.");
-        projectTrustedResult(result, matchId, refereeId, rosterId, "Đã phân công trọng tài.");
-      }
+      await runCommand(matchId, selectedId);
     } catch (err) {
       setMessage({
         type: "error",
@@ -220,52 +148,19 @@ export default function RefereeAssignPanel({
           skipped += 1;
           continue;
         }
-        try {
-          const resolved = resolveCanonicalRefereeIdFromRoster(current, referee.id);
-          if (!resolved.ok || !resolved.refereeId) {
-            skipped += 1;
-            continue;
-          }
-          assertCanonicalRefereeId(resolved.refereeId);
-          const versionRes = await api.getMatchAssignmentVersion({
-            tenantId: String(tenantId || tournament.tenantId || tournament.clubId || ""),
-            tournamentId: String(tournament.id || tournament.tournamentId || ""),
-            matchId: String(row.matchId),
-            roleCode: REFEREE_ROLE_CODE.PRIMARY,
-            competitionMode: resolveCompetitionMode(tournament),
-            refereeFeatureEnabled: true,
-          });
-          if (versionRes?.ok === false) {
-            skipped += 1;
-            continue;
-          }
-          const version = Number(versionRes?.version ?? 0);
-          const result = await api.assignReferee({
-            tenantId: String(tenantId || tournament.tenantId || tournament.clubId || ""),
-            tournamentId: String(tournament.id || tournament.tournamentId || ""),
-            matchId: String(row.matchId),
-            refereeId: String(resolved.refereeId),
-            roleCode: REFEREE_ROLE_CODE.PRIMARY,
-            expectedVersion: version,
-            idempotencyKey: `ui-auto-${row.matchId}-${resolved.refereeId}-${version}`,
-            competitionMode: resolveCompetitionMode(tournament),
-            refereeFeatureEnabled: true,
-          });
-          if (!result?.ok) {
-            skipped += 1;
-            continue;
-          }
-          assigned += 1;
-          current = projectCore13AssignmentOntoTournament(current, {
-            matchId: row.matchId,
-            refereeId: resolved.refereeId,
-            rosterId: resolved.rosterEntry?.id || referee.id,
-            assignment: result.assignment || null,
-            version: result.version ?? version,
-          });
-        } catch {
+        const result = await executeOfficialCore13RefereeAssignment(current, {
+          action: OFFICIAL_CORE13_ASSIGNMENT_ACTIONS.ASSIGN,
+          matchId: row.matchId,
+          rosterOrCanonicalId: referee.canonicalUserId || referee.id,
+          tenantId: tenantId || tournament.tenantId || "",
+          reason: "organizer-auto-assign",
+        });
+        if (!result.ok) {
           skipped += 1;
+          continue;
         }
+        assigned += 1;
+        current = result.tournament;
       }
       onTournamentChange?.(current, {
         assignResult: { ok: true, tournament: current, core13: true, auto: true },
