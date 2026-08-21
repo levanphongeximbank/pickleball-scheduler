@@ -558,4 +558,9 @@ export const OFFICIAL_COMMAND_DELEGATION_MAP = Object.freeze({
   regenerateGroupDraw:
     "canRegenerateDraw / downstream guards → forceRedrawDraw? → buildOfficialCreateGroupDrawPatch",
   presentGroupDraw: "buildRandomDrawSteps(event.groups) presentation only",
+  createGroupMatches:
+    "buildGroupStageSchedule → event.matches (group membership preserved; nested group.matches cleared)",
+  assignGroupSchedule:
+    "scheduleOfficialGroupMatches → event.matches scheduledStart/End/courtId + settings.schedule",
+  publishSchedule: "publishSchedule → settings.schedule (no match regeneration)",
 });

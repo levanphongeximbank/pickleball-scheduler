@@ -1,4 +1,5 @@
-import { useSearchParams, useParams, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Link as RouterLink, useSearchParams, useParams, useNavigate } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import PublishIcon from "@mui/icons-material/CampaignOutlined";
 import {
@@ -18,9 +19,17 @@ import {
   useTheme,
 } from "@mui/material";
 
+import { useAuth } from "../../../../context/AuthContext.jsx";
 import { useClub } from "../../../../context/ClubContext.jsx";
+import PermissionGate from "../../../../components/auth/PermissionGate.jsx";
+import { PERMISSIONS } from "../../../../auth/permissions.js";
 import { isIndividualTournament } from "../../../../config/tournamentRoutes.js";
+import { loadCourtsForClub, loadPlayersForClub } from "../../../../domain/clubStorage.js";
 import { useCanonicalTournament } from "../../hooks/useCanonicalTournament.js";
+import {
+  isOfficialTournamentExperience,
+  resolveTournamentExperienceAdapter,
+} from "../experienceModeResolver.js";
 import TournamentExperienceWorkspace from "../components/TournamentExperienceWorkspace.jsx";
 import {
   BatchBError,
@@ -45,8 +54,8 @@ import ExperienceOperatorCard from "../visual/ExperienceOperatorCard.jsx";
 import ExperienceReadinessPanel from "../visual/ExperienceReadinessPanel.jsx";
 import ExperienceSectionTitle from "../visual/ExperienceSectionTitle.jsx";
 import ExperienceStatusChip from "../visual/ExperienceStatusChip.jsx";
-import { outlinedActionSx, TOURNAMENT_COLOR } from "../visual/tournamentExperienceTokens.js";
-import { individualOverviewPath } from "../routes.js";
+import { outlinedActionSx, primaryActionSx, TOURNAMENT_COLOR } from "../visual/tournamentExperienceTokens.js";
+import { individualGroupStagePath, individualOverviewPath } from "../routes.js";
 
 const TITLE = "Lịch thi đấu & Phân sân";
 const SUBTITLE = "Cụm sân → Sân vật lý → Phân bổ theo nội dung";
@@ -58,13 +67,20 @@ export default function IndividualSchedulePage() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isGrid = useMediaQuery(theme.breakpoints.up("md"));
-  const { activeClub, revision } = useClub();
-  const { tournament, loading, error } = useCanonicalTournament(activeClub, tournamentId, revision);
+  const { user } = useAuth();
+  const { activeClub, activeClubId, revision, refreshClubs } = useClub();
+  const { tournament, loading, error, update } = useCanonicalTournament(
+    activeClub,
+    tournamentId,
+    revision
+  );
   const selectedEventId = searchParams.get("eventId") || "";
   const stage = searchParams.get("stage") || "group";
   const groupId = searchParams.get("groupId") || "";
   const day = searchParams.get("day") || "";
   const courtFilter = searchParams.get("court") || "all";
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(null);
 
   if (loading) return <BatchBLoading testId={TEST_ID} title={TITLE} subtitle={SUBTITLE} message="Đang tải lịch thi đấu…" />;
   if (error) return <BatchBError testId={TEST_ID} title={TITLE} subtitle={SUBTITLE} error={error} />;
@@ -72,6 +88,12 @@ export default function IndividualSchedulePage() {
   if (!isIndividualTournament(tournament)) return <BatchBWrongFamily testId={TEST_ID} title={TITLE} subtitle={SUBTITLE} />;
 
   const model = deriveScheduleModel(tournament, { selectedEventId, stage, groupId, day });
+  const official = isOfficialTournamentExperience(tournament);
+  const officialAdapter = official
+    ? resolveTournamentExperienceAdapter(tournament, {
+        selectedEventId: model.eventId || selectedEventId,
+      })
+    : null;
   const setParam = (key, value) => {
     const next = new URLSearchParams(searchParams);
     if (value) next.set(key, value);
@@ -79,6 +101,63 @@ export default function IndividualSchedulePage() {
     setSearchParams(next);
   };
   const mobileMatches = model.cards.filter((match) => courtFilter === "all" || match.court === courtFilter);
+
+  const resolveCourts = () => {
+    const fromTournament = Array.isArray(tournament.courts) ? tournament.courts.filter(Boolean) : [];
+    if (fromTournament.length) return fromTournament;
+    return (loadCourtsForClub(activeClubId) || []).filter((court) => court?.active !== false);
+  };
+
+  const persistCommand = async (built, successText) => {
+    if (!built.ok) {
+      setMessage({ type: "error", text: built.error || "Thao tác thất bại." });
+      return false;
+    }
+    const result = await update(built.patch);
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.error || "Không lưu được." });
+      return false;
+    }
+    refreshClubs();
+    setMessage({ type: "success", text: successText });
+    return true;
+  };
+
+  const handleAssignSchedule = async () => {
+    if (!official || !officialAdapter) return;
+    setBusy(true);
+    setMessage(null);
+    const courts = resolveCourts();
+    const courtIds = courts.map((court) => court.id).filter(Boolean);
+    const window = tournament.courtSchedule || {};
+    const players = loadPlayersForClub(activeClubId) || [];
+    const built = officialAdapter.commands.assignGroupSchedule(tournament, {
+      selectedEventId: model.eventId || selectedEventId,
+      courts,
+      courtIds,
+      date: window.date,
+      startTime: window.startTime,
+      endTime: window.endTime,
+      players,
+      userId: user?.id,
+      actor: user ? { id: user.id, email: user.email } : null,
+    });
+    await persistCommand(built, `Đã gán giờ & sân cho ${built.mutationCount || 0} trận.`);
+    setBusy(false);
+  };
+
+  const handlePublishSchedule = async () => {
+    if (!official || !officialAdapter) return;
+    setBusy(true);
+    setMessage(null);
+    const built = officialAdapter.commands.publishSchedule(tournament, {
+      selectedEventId: model.eventId || selectedEventId,
+      userId: user?.id,
+      actor: user ? { id: user.id, email: user.email } : null,
+    });
+    await persistCommand(built, "Đã công bố lịch thi đấu.");
+    setBusy(false);
+  };
 
   return (
     <ExperienceBatchBFrame
@@ -91,11 +170,41 @@ export default function IndividualSchedulePage() {
           <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => navigate(individualOverviewPath(tournamentId))} sx={outlinedActionSx}>
             Tổng quan
           </Button>
-          <span title={model.publishHint}>
-            <Button variant="contained" size="small" startIcon={<PublishIcon />} disabled>
-              Công bố lịch
-            </Button>
-          </span>
+          {official ? (
+            <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
+              <span title={model.allocationHint}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  disabled={!model.assignScheduleEnabled || busy}
+                  onClick={handleAssignSchedule}
+                  sx={primaryActionSx}
+                  data-testid="official-schedule-assign"
+                >
+                  Gán giờ & sân
+                </Button>
+              </span>
+              <span title={model.publishHint}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<PublishIcon />}
+                  disabled={!model.publishScheduleEnabled || busy}
+                  onClick={handlePublishSchedule}
+                  sx={outlinedActionSx}
+                  data-testid="official-schedule-publish"
+                >
+                  Công bố lịch
+                </Button>
+              </span>
+            </PermissionGate>
+          ) : (
+            <span title={model.publishHint}>
+              <Button variant="contained" size="small" startIcon={<PublishIcon />} disabled>
+                Công bố lịch
+              </Button>
+            </span>
+          )}
         </Stack>
       }
     >
@@ -103,6 +212,32 @@ export default function IndividualSchedulePage() {
       <BatchBEventPicker events={model.events} selectedEventId={selectedEventId} onSelect={(id) => setParam("eventId", id)} />
       {model.emptyEvents ? <Alert severity="info" sx={{ mb: 1.25 }}>Chưa có nội dung trên hồ sơ.</Alert> : null}
       {model.needsEventChoice ? <Alert severity="info" sx={{ mb: 1.25 }}>Chọn nội dung để xem lịch.</Alert> : null}
+      {model.blocker ? (
+        <Alert
+          severity="warning"
+          sx={{ mb: 1.25 }}
+          data-testid="official-schedule-blocker"
+          action={
+            official && model.blocker.code === "MATCHES_MISSING" ? (
+              <Button
+                color="inherit"
+                size="small"
+                component={RouterLink}
+                to={individualGroupStagePath(tournamentId, model.eventId || selectedEventId)}
+              >
+                Vòng bảng
+              </Button>
+            ) : null
+          }
+        >
+          {model.blocker.error}
+        </Alert>
+      ) : null}
+      {message ? (
+        <Alert severity={message.type} sx={{ mb: 1.25 }} onClose={() => setMessage(null)}>
+          {message.text}
+        </Alert>
+      ) : null}
       <CompetitionContextHeader
         tournament={model.tournamentName}
         event={model.eventName}

@@ -56,3 +56,13 @@ export {
   listOfficialGroupDrawCompetitionUnits,
   projectOfficialGroupDrawUnitMetrics,
 } from "./groupDrawProjection.js";
+export {
+  projectOfficialGroupStage,
+  projectOfficialSchedule,
+  projectOfficialMatchCenter,
+  projectOfficialStandings,
+  projectOfficialMatchIdentity,
+  buildOfficialCreateGroupMatchesPatch,
+  buildOfficialAssignGroupSchedulePatch,
+  buildOfficialPublishSchedulePatch,
+} from "./operationsProjection.js";

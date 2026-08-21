@@ -2,6 +2,8 @@ import { MATCH_STATUS } from "../../../../models/tournament/constants.js";
 import { normalizeGroups } from "../../../../models/tournament/group.js";
 import { buildGroupStandingFromMatches } from "../../../../tournament/engines/rankingEngine.js";
 import { eventDisplayName, resolveBatchBEvent } from "../batchB/eventScope.js";
+import { isOfficialOpenFamily } from "../deriveOverview.js";
+import { projectOfficialStandings } from "../../official-tournament-experience/operationsProjection.js";
 import {
   eventMatches,
   isKnockoutMatch,
@@ -20,7 +22,86 @@ function qualificationForRow(rank, qualifiersPerGroup) {
   return { qualState: "undetermined", qualLabel: "Chưa xác định" };
 }
 
-export function deriveStandingsModel(tournament, { selectedEventId, tab = "group", groupId = "" } = {}) {
+export function deriveStandingsModel(tournament, options = {}) {
+  const base = deriveStandingsModelBase(tournament, options);
+  if (!isOfficialOpenFamily(tournament) && !tournament?.officialMode) {
+    return base;
+  }
+  const projection = projectOfficialStandings(tournament, {
+    selectedEventId: options.selectedEventId,
+  });
+  if (!projection.ok) {
+    return {
+      ...base,
+      official: true,
+      blocker: { code: projection.code, error: projection.error },
+      formulaAuthority: projection.formulaAuthority,
+    };
+  }
+
+  const groupId = options.groupId || base.selectedGroupId;
+  const pack =
+    (projection.standings || []).find((row) => {
+      if (!groupId) return true;
+      const group = (projection.event?.groups || []).find((item) => String(item.id) === String(groupId));
+      return group && (row.group === group.label || row.group === group.name);
+    }) || projection.standings[0];
+
+  const qualifiedIds = new Set((pack?.qualified || []).map((row) => String(row.entryId || row.id)));
+  const standings = (pack?.standing || []).map((row, index) => ({
+    rank: index + 1,
+    pair: row.name,
+    played: row.played,
+    won: row.won,
+    lost: row.lost,
+    points: row.matchPoints,
+    diff: row.scoreDiff,
+    qualState: pack?.qualificationTieUnresolved
+      ? "undetermined"
+      : qualifiedIds.has(String(row.entryId || row.id))
+        ? "qualified"
+        : "undetermined",
+    qualLabel: pack?.qualificationTieUnresolved
+      ? "Hòa chỉ số — chưa chốt suất"
+      : qualifiedIds.has(String(row.entryId || row.id))
+        ? "Đã giành quyền đi tiếp"
+        : "Chưa xác định",
+  }));
+
+  return {
+    ...base,
+    standings: standings.length ? standings : base.standings,
+    official: true,
+    formulaAuthority: "officialStandingsEngine",
+    qualificationAuthority: "officialQualificationReady",
+    qualificationReady: projection.qualification?.ready === true,
+    qualificationError: projection.qualification?.error || null,
+    resultCountingPolicy: projection.resultCountingPolicy,
+    onlyAcceptedActiveViaCore17: false,
+    hasQualConfig: true,
+    blocker: projection.blocker || (base.needsEventChoice ? { code: "EVENT_REQUIRED", error: "Chọn nội dung." } : null),
+    notReady: !projection.qualification?.ready,
+    readinessItems: [
+      {
+        label: "Công thức Official standings",
+        ready: true,
+        note: "win=2 / loss=1 / forfeit=0",
+      },
+      {
+        label: "Xét suất (officialQualificationReady)",
+        ready: projection.qualification?.ready === true,
+        note: projection.qualification?.error || "Sẵn sàng",
+      },
+      {
+        label: "CORE-17 accepted-only (RPC path)",
+        ready: false,
+        note: "Blob path đếm completed/forfeit trên event.matches — không invent filter CORE-17 tại UI",
+      },
+    ],
+  };
+}
+
+function deriveStandingsModelBase(tournament, { selectedEventId, tab = "group", groupId = "" } = {}) {
   const scope = resolveBatchBEvent(tournament, selectedEventId);
   const event = scope.event;
   const entries = resolveEntries(event);

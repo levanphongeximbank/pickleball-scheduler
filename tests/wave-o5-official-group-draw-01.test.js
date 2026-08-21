@@ -301,11 +301,11 @@ describe("wave-o5-official-group-draw-01", () => {
     const adapter = resolveTournamentExperienceAdapter(withFormedPairs(officialBase()), {
       selectedEventId: "ev-a",
     });
-    assert.equal(adapter.wave, "O5");
+    assert.equal(adapter.wave, "O6");
     assert.equal(typeof adapter.commands.createGroupDraw, "function");
     assert.equal(typeof adapter.commands.lockGroupDraw, "function");
     assert.equal(typeof adapter.commands.publishGroupDraw, "function");
-    assert.equal(adapter.commands.publishSchedule, null);
+    assert.equal(typeof adapter.commands.publishSchedule, "function");
     assert.equal(adapter.commands.scoreMatch, null);
 
     const page = readFileSync(

@@ -1,4 +1,5 @@
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useState } from "react";
+import { Link as RouterLink, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import {
@@ -19,9 +20,17 @@ import {
   useTheme,
 } from "@mui/material";
 
+import { useAuth } from "../../../../context/AuthContext.jsx";
 import { useClub } from "../../../../context/ClubContext.jsx";
+import PermissionGate from "../../../../components/auth/PermissionGate.jsx";
+import { PERMISSIONS } from "../../../../auth/permissions.js";
 import { directorPath, isIndividualTournament } from "../../../../config/tournamentRoutes.js";
+import { loadPlayersForClub } from "../../../../domain/clubStorage.js";
 import { useCanonicalTournament } from "../../hooks/useCanonicalTournament.js";
+import {
+  isOfficialTournamentExperience,
+  resolveTournamentExperienceAdapter,
+} from "../experienceModeResolver.js";
 import TournamentExperienceWorkspace from "../components/TournamentExperienceWorkspace.jsx";
 import { deriveGroupStageModel } from "../batchC/deriveGroupStage.js";
 import {
@@ -37,8 +46,11 @@ import {
 import {
   individualGroupDrawPath,
   individualGroupStagePath,
+  individualMatchesPath,
   individualOverviewPath,
   individualPairDrawPath,
+  individualSchedulePath,
+  individualStandingsPath,
 } from "../routes.js";
 import CenterKpiCard from "../visual/CenterKpiCard.jsx";
 import CenterRightRailCard from "../visual/CenterRightRailCard.jsx";
@@ -46,7 +58,7 @@ import ExperienceChipRow from "../visual/ExperienceChipRow.jsx";
 import ExperienceMobileRecordCard from "../visual/ExperienceMobileRecordCard.jsx";
 import ExperienceReadinessPanel from "../visual/ExperienceReadinessPanel.jsx";
 import ExperienceStatusChip from "../visual/ExperienceStatusChip.jsx";
-import { outlinedActionSx, TOURNAMENT_COLOR } from "../visual/tournamentExperienceTokens.js";
+import { outlinedActionSx, primaryActionSx, TOURNAMENT_COLOR } from "../visual/tournamentExperienceTokens.js";
 
 const TITLE = "Vòng bảng";
 const SUBTITLE = "Bảng xếp hạng và trận đấu";
@@ -65,10 +77,17 @@ export default function IndividualGroupStagePage() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isTable = useMediaQuery(theme.breakpoints.up("md"));
-  const { activeClub, revision } = useClub();
-  const { tournament, loading, error } = useCanonicalTournament(activeClub, tournamentId, revision);
+  const { user } = useAuth();
+  const { activeClub, activeClubId, revision, refreshClubs } = useClub();
+  const { tournament, loading, error, update } = useCanonicalTournament(
+    activeClub,
+    tournamentId,
+    revision
+  );
   const selectedEventId = searchParams.get("eventId") || "";
   const selectedGroupId = searchParams.get("groupId") || "";
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(null);
 
   if (loading) return <BatchBLoading testId={TEST_ID} title={TITLE} subtitle={SUBTITLE} message="Đang tải vòng bảng…" />;
   if (error) return <BatchBError testId={TEST_ID} title={TITLE} subtitle={SUBTITLE} error={error} />;
@@ -78,6 +97,12 @@ export default function IndividualGroupStagePage() {
   }
 
   const model = deriveGroupStageModel(tournament, { selectedEventId, selectedGroupId });
+  const official = isOfficialTournamentExperience(tournament);
+  const officialAdapter = official
+    ? resolveTournamentExperienceAdapter(tournament, {
+        selectedEventId: model.eventId || selectedEventId,
+      })
+    : null;
   const setParam = (key, value) => {
     const next = new URLSearchParams(searchParams);
     if (value) next.set(key, value);
@@ -87,6 +112,45 @@ export default function IndividualGroupStagePage() {
   const eventId = model.eventId;
   const contextLine = [model.tournamentName, model.eventName].filter(Boolean).join(" • ");
   const needsGroupChoice = model.groups.length > 1 && !model.selectedGroupId;
+
+  const persistCommand = async (built, successText) => {
+    if (!built.ok) {
+      setMessage({ type: "error", text: built.error || "Thao tác thất bại." });
+      return false;
+    }
+    const result = await update(built.patch);
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.error || "Không lưu được." });
+      return false;
+    }
+    refreshClubs();
+    setMessage({ type: "success", text: successText });
+    return true;
+  };
+
+  const handleCreateMatches = async (regenerate = false) => {
+    if (!official || !officialAdapter) return;
+    setBusy(true);
+    setMessage(null);
+    const players = loadPlayersForClub(activeClubId) || [];
+    const command = regenerate
+      ? officialAdapter.commands.regenerateGroupMatches
+      : officialAdapter.commands.createGroupMatches;
+    const built = command(tournament, {
+      selectedEventId: model.eventId || selectedEventId,
+      players,
+      userId: user?.id,
+      actor: user ? { id: user.id, email: user.email } : null,
+      regenerate,
+    });
+    await persistCommand(
+      built,
+      regenerate
+        ? `Đã tạo lại ${built.matchCount || 0} trận vòng bảng.`
+        : `Đã tạo ${built.matchCount || 0} trận vòng bảng.`
+    );
+    setBusy(false);
+  };
 
   return (
     <ExperienceBatchBFrame
@@ -104,6 +168,36 @@ export default function IndividualGroupStagePage() {
               Chốt BXH
             </Button>
           </span>
+          {official ? (
+            <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
+              <span title={model.createMatchesHint}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  disabled={!model.createMatchesEnabled || busy}
+                  onClick={() => handleCreateMatches(false)}
+                  sx={primaryActionSx}
+                  data-testid="official-group-matches-create"
+                >
+                  Tạo trận vòng bảng
+                </Button>
+              </span>
+              {model.regenerateMatchesEnabled ? (
+                <span title="Tạo lại trận khi chưa có kết quả">
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    disabled={busy}
+                    onClick={() => handleCreateMatches(true)}
+                    sx={outlinedActionSx}
+                    data-testid="official-group-matches-regenerate"
+                  >
+                    Tạo lại trận
+                  </Button>
+                </span>
+              ) : null}
+            </PermissionGate>
+          ) : null}
           <Button size="small" variant="contained" onClick={() => navigate(directorPath(tournamentId))}>
             Kết quả & BXH
           </Button>
@@ -115,11 +209,40 @@ export default function IndividualGroupStagePage() {
           { id: "pair-draw", label: "Ghép cặp / đội", to: individualPairDrawPath(tournamentId, eventId), current: false },
           { id: "group-draw", label: "Chia bảng", to: individualGroupDrawPath(tournamentId, eventId), current: false },
           { id: "groups", label: "Vòng bảng", to: individualGroupStagePath(tournamentId, eventId), current: true },
+          { id: "schedule", label: "Lịch", to: individualSchedulePath(tournamentId, eventId), current: false },
+          { id: "matches", label: "Trận", to: individualMatchesPath(tournamentId, eventId), current: false },
+          { id: "standings", label: "BXH", to: individualStandingsPath(tournamentId, eventId), current: false },
         ]}
       />
       <BatchBEventPicker events={model.events} selectedEventId={selectedEventId} onSelect={(id) => setParam("eventId", id)} />
       {model.emptyEvents ? <Alert severity="info" sx={{ mb: 1.25 }}>Chưa có nội dung trên hồ sơ.</Alert> : null}
       {model.needsEventChoice ? <Alert severity="info" sx={{ mb: 1.25 }}>Chọn nội dung để xem vòng bảng.</Alert> : null}
+      {model.blocker ? (
+        <Alert
+          severity="warning"
+          sx={{ mb: 1.25 }}
+          data-testid="official-group-stage-blocker"
+          action={
+            official ? (
+              <Button
+                color="inherit"
+                size="small"
+                component={RouterLink}
+                to={individualGroupDrawPath(tournamentId, eventId)}
+              >
+                Chia bảng
+              </Button>
+            ) : null
+          }
+        >
+          {model.blocker.error}
+        </Alert>
+      ) : null}
+      {message ? (
+        <Alert severity={message.type} sx={{ mb: 1.25 }} onClose={() => setMessage(null)}>
+          {message.text}
+        </Alert>
+      ) : null}
       <ExperienceEventContextCard
         eyebrow="VÒNG BẢNG"
         tournamentName={model.tournamentName}

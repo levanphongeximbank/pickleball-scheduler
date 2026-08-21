@@ -1843,34 +1843,43 @@ export default function OfficialTournamentSetup() {
       alerts={
         <>
           <Alert severity="info" sx={{ mb: 2 }}>
-            Wave O5 — Canonical:{" "}
+            Wave O6 — Canonical:{" "}
             <Button
               component={RouterLink}
-              to={`/tournament/${encodeURIComponent(tournamentId)}/pairs`}
+              to={`/tournament/${encodeURIComponent(tournamentId)}/groups`}
               size="small"
               sx={{ textTransform: "none", p: 0, minWidth: 0, verticalAlign: "baseline" }}
             >
-              /pairs
+              /groups
             </Button>
             {" · "}
             <Button
               component={RouterLink}
-              to={`/tournament/${encodeURIComponent(tournamentId)}/pair-draw`}
+              to={`/tournament/${encodeURIComponent(tournamentId)}/schedule`}
               size="small"
               sx={{ textTransform: "none", p: 0, minWidth: 0, verticalAlign: "baseline" }}
             >
-              /pair-draw
+              /schedule
             </Button>
             {" · "}
             <Button
               component={RouterLink}
-              to={`/tournament/${encodeURIComponent(tournamentId)}/group-draw`}
+              to={`/tournament/${encodeURIComponent(tournamentId)}/matches`}
               size="small"
               sx={{ textTransform: "none", p: 0, minWidth: 0, verticalAlign: "baseline" }}
             >
-              /group-draw
+              /matches
             </Button>
-            . Setup legacy giữ Schedule / Match chưa adopt.
+            {" · "}
+            <Button
+              component={RouterLink}
+              to={`/tournament/${encodeURIComponent(tournamentId)}/standings`}
+              size="small"
+              sx={{ textTransform: "none", p: 0, minWidth: 0, verticalAlign: "baseline" }}
+            >
+              /standings
+            </Button>
+            . Setup legacy giữ Director / KO.
           </Alert>
           {broadcastFeatureEnabled && broadcast.lastVodUpload ? (
             <BroadcastVodResultAlert

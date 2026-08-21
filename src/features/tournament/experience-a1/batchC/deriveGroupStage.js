@@ -4,6 +4,9 @@ import { normalizeGroups } from "../../../../models/tournament/group.js";
 import { normalizeMatches } from "../../../../models/tournament/match.js";
 import { buildGroupStandingFromMatches } from "../../../../tournament/engines/rankingEngine.js";
 import { eventDisplayName, resolveBatchBEvent } from "../batchB/eventScope.js";
+import { isOfficialOpenFamily } from "../deriveOverview.js";
+import { projectOfficialGroupStage } from "../../official-tournament-experience/operationsProjection.js";
+import { listOfficialGroupDrawCompetitionUnits } from "../../official-tournament-experience/groupDrawProjection.js";
 
 function matchUiStatus(match) {
   if (match.status === MATCH_STATUS.PLAYING) return { key: "live", label: "ĐANG THI ĐẤU" };
@@ -25,7 +28,7 @@ function entryName(entries, id) {
   return found?.name || "Chưa xác định";
 }
 
-export function deriveGroupStageModel(tournament, { selectedEventId, selectedGroupId } = {}) {
+function deriveGroupStageModelBase(tournament, { selectedEventId, selectedGroupId, preferEventMatches = false } = {}) {
   const scope = resolveBatchBEvent(tournament, selectedEventId);
   const event = scope.event;
   const entries = event ? normalizeEntries(event.entries) : [];
@@ -36,14 +39,16 @@ export function deriveGroupStageModel(tournament, { selectedEventId, selectedGro
     (groups.length === 1 ? groups[0] : null);
 
   const nestedMatches = selected ? normalizeMatches(selected.matches || []) : [];
-  const matches = nestedMatches.length ? nestedMatches : eventMatches;
+  // Official SSOT is event.matches after O6 create; prefer it when present.
+  const useEvent =
+    preferEventMatches || eventMatches.length > 0 || nestedMatches.length === 0;
+  const matches = useEvent ? eventMatches : nestedMatches;
   const groupMatches = selected
-    ? nestedMatches.length
-      ? nestedMatches
-      : matches.filter(
-          (match) =>
-            String(match.groupId) === String(selected.id) || String(match.group) === String(selected.label)
-        )
+    ? matches.filter(
+        (match) =>
+          String(match.groupId) === String(selected.id) ||
+          String(match.group) === String(selected.label)
+      )
     : [];
   const played = groupMatches.filter(
     (match) => match.status === MATCH_STATUS.COMPLETED || match.status === MATCH_STATUS.FORFEIT
@@ -91,14 +96,18 @@ export function deriveGroupStageModel(tournament, { selectedEventId, selectedGro
       statusLabel: ui.label,
       score: scoreLabel(match),
       court: match.courtId != null ? `Sân ${match.courtId}` : "Chưa gán sân",
-      time: match.startedAt || "—",
+      time: match.scheduledStart || match.startedAt || "—",
       referee: match.referee?.name || "—",
       group: selected?.label || selected?.name || "",
       stage: "Vòng bảng",
     };
   });
 
-  const courts = [...new Set(groupMatches.map((match) => match.courtId).filter((id) => id != null && String(id).trim()))];
+  const courts = [
+    ...new Set(
+      groupMatches.map((match) => match.courtId).filter((id) => id != null && String(id).trim())
+    ),
+  ];
 
   return {
     tournamentName: String(tournament?.name || "Giải đấu"),
@@ -111,7 +120,7 @@ export function deriveGroupStageModel(tournament, { selectedEventId, selectedGro
     selectedGroupId: selected?.id || "",
     selectedGroupLabel: selected?.label || selected?.name || "",
     kpis: {
-      pairs: selected ? (selected.entryIds?.length || standingPack.standing.length) : 0,
+      pairs: selected ? selected.entryIds?.length || standingPack.standing.length : 0,
       played,
       remaining,
       qualified: "—",
@@ -131,7 +140,7 @@ export function deriveGroupStageModel(tournament, { selectedEventId, selectedGro
     nextMatch: nextMatch
       ? {
           id: nextMatch.id,
-          time: nextMatch.startedAt || "—",
+          time: nextMatch.scheduledStart || nextMatch.startedAt || "—",
           a: entryName(entries, nextMatch.entryAId),
           b: entryName(entries, nextMatch.entryBId),
           court: nextMatch.courtId != null ? `Sân ${nextMatch.courtId}` : "Chưa gán sân",
@@ -141,5 +150,63 @@ export function deriveGroupStageModel(tournament, { selectedEventId, selectedGro
     courts: courts.map((id) => `Sân ${id}`),
     lockHint: "Chốt bảng xếp hạng nội dung chưa có trên hệ thống này.",
     scoringHint: "Màn này chỉ đọc tỷ số. Ghi điểm thuộc luồng trọng tài / điều hành hiện có.",
+    official: false,
+    createMatchesEnabled: false,
+    regenerateMatchesEnabled: false,
+  };
+}
+
+export function deriveGroupStageModel(tournament, options = {}) {
+  const official = isOfficialOpenFamily(tournament) || Boolean(tournament?.officialMode);
+  if (!official) {
+    return deriveGroupStageModelBase(tournament, options);
+  }
+
+  const projection = projectOfficialGroupStage(tournament, {
+    selectedEventId: options.selectedEventId,
+  });
+  const units = listOfficialGroupDrawCompetitionUnits(tournament, {
+    selectedEventId: options.selectedEventId,
+  });
+  const unitEntries = units.ok ? units.units : [];
+  const patched = {
+    ...tournament,
+    events: (tournament.events || []).map((event) => {
+      if (projection.eventId && String(event.id) !== String(projection.eventId)) return event;
+      if (!options.selectedEventId && (tournament.events || []).length > 1) return event;
+      return {
+        ...event,
+        entries: unitEntries.length ? unitEntries : event.entries,
+      };
+    }),
+  };
+  const base = deriveGroupStageModelBase(patched, {
+    ...options,
+    preferEventMatches: true,
+  });
+
+  return {
+    ...base,
+    official: true,
+    createMatchesEnabled: projection.createMatchesEnabled === true,
+    regenerateMatchesEnabled: projection.regenerateMatchesEnabled === true,
+    matchCounts: projection.matchCounts || null,
+    nestedHazard: projection.nestedHazard === true,
+    blocker:
+      projection.blocker ||
+      (base.needsEventChoice ? { code: "EVENT_REQUIRED", error: "Chọn nội dung." } : null),
+    scoringHint:
+      "Ghi điểm / CORE-16–17: Director hoặc trọng tài. Màn này không ghi điểm cục bộ.",
+    createMatchesHint: projection.createMatchesEnabled
+      ? "Tạo trận vòng bảng (buildGroupStageSchedule) — không đổi membership bảng."
+      : projection.matches?.length
+        ? "Đã có trận trên event.matches."
+        : projection.blocker?.error || "Chưa sẵn sàng tạo trận.",
+    kpis: {
+      ...base.kpis,
+      pairs: unitEntries.length || base.kpis.pairs,
+      played: projection.matchCounts?.completed ?? base.kpis.played,
+      remaining: projection.matchCounts?.pending ?? base.kpis.remaining,
+    },
   };
 }

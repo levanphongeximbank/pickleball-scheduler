@@ -5,6 +5,9 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useClub } from "../../../../context/ClubContext.jsx";
 import { isIndividualTournament } from "../../../../config/tournamentRoutes.js";
 import { useCanonicalTournament } from "../../hooks/useCanonicalTournament.js";
+import {
+  isOfficialTournamentExperience,
+} from "../experienceModeResolver.js";
 import TournamentExperienceWorkspace from "../components/TournamentExperienceWorkspace.jsx";
 import {
   BatchBError,
@@ -49,6 +52,7 @@ export default function IndividualStandingsPage() {
   if (!isIndividualTournament(tournament)) return <BatchBWrongFamily testId={TEST_ID} title={TITLE} subtitle={SUBTITLE} />;
 
   const model = deriveStandingsModel(tournament, { selectedEventId, tab, groupId });
+  const official = isOfficialTournamentExperience(tournament);
   const setParam = (key, value) => {
     const next = new URLSearchParams(searchParams);
     if (value) next.set(key, value);
@@ -79,6 +83,23 @@ export default function IndividualStandingsPage() {
       <BatchBEventPicker events={model.events} selectedEventId={selectedEventId} onSelect={(id) => setParam("eventId", id)} />
       {model.emptyEvents ? <Alert severity="info" sx={{ mb: 1.25 }}>Chưa có nội dung trên hồ sơ.</Alert> : null}
       {model.needsEventChoice ? <Alert severity="info" sx={{ mb: 1.25 }}>Chọn nội dung để xem kết quả.</Alert> : null}
+      {official && model.blocker ? (
+        <Alert severity="warning" sx={{ mb: 1.25 }} data-testid="official-standings-blocker">
+          {model.blocker.error}
+        </Alert>
+      ) : null}
+      {official && model.formulaAuthority ? (
+        <Alert severity="info" sx={{ mb: 1.25 }} data-testid="official-standings-formula">
+          Công thức: {model.formulaAuthority}
+          {model.qualificationAuthority ? ` · Xét suất: ${model.qualificationAuthority}` : ""}
+          {model.qualificationError
+            ? ` — ${model.qualificationError}`
+            : model.qualificationReady
+              ? " — sẵn sàng xét suất"
+              : " — chưa sẵn sàng xét suất"}
+          . Không khóa BXH trên màn này.
+        </Alert>
+      ) : null}
       <CompetitionContextHeader
         tournament={model.tournamentName}
         event={model.eventName}

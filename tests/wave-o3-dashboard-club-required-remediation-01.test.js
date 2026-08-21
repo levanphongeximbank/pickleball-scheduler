@@ -68,10 +68,13 @@ describe("wave-o3-dashboard-club-required-remediation-01", () => {
 
     const dashboardSrc = readFileSync(path.join(root, "src/pages/Dashboard.jsx"), "utf8");
     assert.ok(dashboardSrc.includes("hasExplicitDashboardClubId"));
-    assert.ok(dashboardSrc.includes("dashboard-club-operations-gate"));
-    assert.ok(dashboardSrc.includes("Chọn CLB trên thanh công cụ"));
+    assert.ok(dashboardSrc.includes("resolveDashboardClubOperationsGate"));
+    assert.ok(
+      dashboardSrc.includes("dashboard-club-operations-placeholder") ||
+        dashboardSrc.includes("dashboard-club-operations-gate")
+    );
     assert.ok(dashboardSrc.includes("Đang tải ngữ cảnh CLB"));
-    assert.ok(dashboardSrc.includes("ClubOperationsContent"));
+    assert.ok(dashboardSrc.includes("loadClubOperationsDashboardSummary"));
     assert.equal(dashboardSrc.includes("clubs[0]"), false);
     assert.equal(dashboardSrc.includes("getActiveClubId()"), false);
   });

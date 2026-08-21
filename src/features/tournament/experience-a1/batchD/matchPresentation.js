@@ -10,7 +10,15 @@ export function entryName(entries, id) {
 }
 
 export function resolveEntries(event) {
-  return event ? normalizeEntries(event.entries) : [];
+  if (!event) return [];
+  const draw = Array.isArray(event.drawEntries) ? event.drawEntries : [];
+  const pairDraw = draw.filter(
+    (entry) => Array.isArray(entry?.playerIds) && entry.playerIds.filter(Boolean).length >= 2
+  );
+  if (pairDraw.length > 0) {
+    return normalizeEntries(pairDraw);
+  }
+  return normalizeEntries(event.entries);
 }
 
 export function eventMatches(event) {
