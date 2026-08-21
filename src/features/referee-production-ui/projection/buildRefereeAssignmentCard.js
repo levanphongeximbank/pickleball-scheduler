@@ -15,9 +15,9 @@ import {
   formatLocalScheduledTime,
   formatMatchStatusLabel,
   formatParticipantDisplayName,
-  isRawTechnicalId,
 } from "./formatRefereeUiLabels.js";
 import { resolveAssignmentHomeBucket } from "./buildRefereeHomeSummary.js";
+import { resolveRefereeSideDisplay } from "./resolveRefereeSideDisplay.js";
 
 const LIVE_MATCH_STATUSES = new Set([
   MATCH_STATUS.IN_PROGRESS,
@@ -40,36 +40,20 @@ function pickMatchStatus(...candidates) {
   return live || normalized[0];
 }
 
-function resolveNameToken(token, names) {
-  if (token == null) return null;
-  const id = String(token).trim();
-  if (!id) return null;
-  const row = names?.[id];
-  if (row && typeof row === "object") {
-    return row.displayName || row.name || null;
-  }
-  if (typeof row === "string" && row.trim()) return row.trim();
-  return null;
-}
-
-function firstName(side, names) {
-  if (!side) return "Chưa có tên";
-  if (side.displayName) {
-    return formatParticipantDisplayName(side.displayName);
-  }
-  if (side.teamName) {
-    return formatParticipantDisplayName(side.teamName);
-  }
-  const ids = Array.isArray(side?.participantIds) ? side.participantIds : [];
-  const mapped = ids
-    .map((id) => resolveNameToken(id, names) || (isRawTechnicalId(id) ? null : id))
-    .filter(Boolean);
-  if (mapped.length) return mapped.join(" / ");
-  const teamName = resolveNameToken(side.teamId, names);
-  if (teamName) return formatParticipantDisplayName(teamName);
-  const entryName = resolveNameToken(side.entryId, names);
-  if (entryName) return formatParticipantDisplayName(entryName);
-  return "Chưa có tên";
+function cardSideFields(side, names) {
+  const resolved = resolveRefereeSideDisplay(side, names);
+  const memberLine = resolved.memberLine;
+  const entryLabel = resolved.entryLabel;
+  const primary =
+    memberLine ||
+    entryLabel ||
+    formatParticipantDisplayName(side?.displayName || side?.teamName);
+  return {
+    primary,
+    entryLabel,
+    memberLine,
+    members: resolved.members,
+  };
 }
 
 /**
@@ -148,6 +132,8 @@ export function buildRefereeAssignmentCard(input) {
     action: action.action,
     acceptedOfficialResult: result.acceptedOfficialResult,
   });
+  const sideAFields = cardSideFields(sides[0], names);
+  const sideBFields = cardSideFields(sides[1], names);
 
   return Object.freeze({
     matchId: String(assignment.matchId || matchContext.matchId || "").trim(),
@@ -166,8 +152,14 @@ export function buildRefereeAssignmentCard(input) {
     courtLabel,
     scheduledTime: formatCompactScheduledClock(scheduledRaw) || formatLocalScheduledTime(scheduledRaw),
     scheduledTimeRaw: scheduledRaw,
-    participantA: firstName(sides[0], names),
-    participantB: firstName(sides[1], names),
+    participantA: sideAFields.primary,
+    participantB: sideBFields.primary,
+    participantAEntryLabel: sideAFields.entryLabel,
+    participantBEntryLabel: sideBFields.entryLabel,
+    participantAMemberLine: sideAFields.memberLine,
+    participantBMemberLine: sideBFields.memberLine,
+    participantAMembers: Object.freeze(sideAFields.members || []),
+    participantBMembers: Object.freeze(sideBFields.members || []),
     assignmentStatus,
     assignmentStatusLabel: formatAssignmentStatusLabel(assignmentStatus),
     matchStatus,

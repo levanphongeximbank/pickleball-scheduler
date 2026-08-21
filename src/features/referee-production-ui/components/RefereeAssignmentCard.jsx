@@ -48,11 +48,29 @@ export default function RefereeAssignmentCard({ card }) {
 
       <div className="rp-card-vs rp-card-vs-horizontal" data-testid="participants">
         <div className="rp-card-side" data-testid="participant-a">
-          {card.participantA}
+          {card.participantAEntryLabel &&
+          card.participantAMemberLine &&
+          card.participantAEntryLabel !== card.participantAMemberLine ? (
+            <span className="rp-card-entry-label" data-testid="participant-a-entry">
+              {card.participantAEntryLabel}
+            </span>
+          ) : null}
+          <span className="rp-card-member-line" data-testid="participant-a-members">
+            {card.participantAMemberLine || card.participantA}
+          </span>
         </div>
         <div className="rp-card-vs-label">VS</div>
         <div className="rp-card-side" data-testid="participant-b">
-          {card.participantB}
+          {card.participantBEntryLabel &&
+          card.participantBMemberLine &&
+          card.participantBEntryLabel !== card.participantBMemberLine ? (
+            <span className="rp-card-entry-label" data-testid="participant-b-entry">
+              {card.participantBEntryLabel}
+            </span>
+          ) : null}
+          <span className="rp-card-member-line" data-testid="participant-b-members">
+            {card.participantBMemberLine || card.participantB}
+          </span>
         </div>
       </div>
 

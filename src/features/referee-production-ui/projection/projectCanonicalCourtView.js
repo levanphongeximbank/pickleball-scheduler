@@ -7,6 +7,7 @@ import { COURT_ORIENTATION, COURT_SLOT } from "../constants.js";
 import { projectDreamBreakerRotation } from "./projectDreamBreakerRotation.js";
 import { formatCanonicalScoreLine } from "./formatScoringPolicyLabel.js";
 import { resolveSideChangeRequiredAfterScoring } from "../../competition-engine/integration/referee/deriveCanonicalCourtAfterScoring.js";
+import { resolveAthleteDisplayName } from "./resolveRefereeSideDisplay.js";
 
 function nameOf(id, names, fallback) {
   if (!id) return fallback || null;
@@ -32,12 +33,15 @@ function sideLabel(side, names) {
 }
 
 function playersForSide(side, names, activeOnlyId) {
+  const entryId = String(side?.entryId || side?.teamId || "").trim() || null;
   const ids = Array.isArray(side?.participantIds) ? side.participantIds.map(String) : [];
-  const source = activeOnlyId ? [activeOnlyId] : ids;
-  return source.filter(Boolean).map((playerId) =>
+  const source = (activeOnlyId ? [activeOnlyId] : ids).filter(
+    (playerId) => playerId && playerId !== entryId
+  );
+  return source.map((playerId) =>
     Object.freeze({
       playerId,
-      displayName: nameOf(playerId, names, "VĐV"),
+      displayName: resolveAthleteDisplayName(playerId, names, side) || playerId,
       permanentPlayerNumber: null,
     })
   );
@@ -107,14 +111,14 @@ export function projectCanonicalCourtView(input = {}) {
   const orderedA = Array.isArray(storedPositions.sideA)
     ? storedPositions.sideA.map((id) => playersA.find((p) => p.playerId === id) || {
         playerId: id,
-        displayName: nameOf(id, names, id),
+        displayName: resolveAthleteDisplayName(id, names, sideA) || id,
         permanentPlayerNumber: null,
       })
     : playersA;
   const orderedB = Array.isArray(storedPositions.sideB)
     ? storedPositions.sideB.map((id) => playersB.find((p) => p.playerId === id) || {
         playerId: id,
-        displayName: nameOf(id, names, id),
+        displayName: resolveAthleteDisplayName(id, names, sideB) || id,
         permanentPlayerNumber: null,
       })
     : playersB;

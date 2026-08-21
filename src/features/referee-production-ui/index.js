@@ -33,6 +33,7 @@ export { deriveCourtPresentation } from "./projection/deriveCourtPresentation.js
 export { deriveOptimisticSubmitPointView } from "./projection/deriveOptimisticSubmitPointView.js";
 export { buildRefereeAssignmentCard } from "./projection/buildRefereeAssignmentCard.js";
 export { buildRefereeMatchView } from "./projection/buildRefereeMatchView.js";
+export { resolveRefereeSideDisplay } from "./projection/resolveRefereeSideDisplay.js";
 
 export { createCanonicalRefereeApplicationClient } from "./application/createCanonicalRefereeApplicationClient.js";
 export { createBrowserRefereeApplicationClient } from "./application/createBrowserRefereeApplicationClient.js";
@@ -43,6 +44,7 @@ export {
   detectCompetitionModeHint,
   normalizeCanonicalTournamentMatchesFromPayload,
   normalizeIndividualTournamentMatch,
+  harvestParticipantNamesFromPayload,
 } from "./application/resolveCanonicalRefereeModeState.js";
 export {
   assertRefereeUiSecurity,

@@ -17,6 +17,7 @@ import {
   formatParticipantDisplayName,
 } from "./formatRefereeUiLabels.js";
 import { resolveAuthoritativeMatchLifecycle } from "./resolveAuthoritativeMatchLifecycle.js";
+import { resolveRefereeSideDisplay } from "./resolveRefereeSideDisplay.js";
 
 function allowed(projection, action) {
   return (projection?.allowedActions || []).some((row) => row.action === action);
@@ -46,17 +47,7 @@ function readCompletedGames(scoreProjection) {
 }
 
 function playerNamesForSide(side, names) {
-  const ids = Array.isArray(side?.participantIds) ? side.participantIds : [];
-  return ids
-    .map((id) => {
-      const row = names?.[id];
-      if (row && typeof row === "object") {
-        return formatParticipantDisplayName(row.displayName || row.name || null);
-      }
-      if (typeof row === "string") return formatParticipantDisplayName(row);
-      return null;
-    })
-    .filter(Boolean);
+  return resolveRefereeSideDisplay(side, names).memberNames;
 }
 
 /**
@@ -158,8 +149,14 @@ export function buildRefereeMatchView(input) {
   const sides = Array.isArray(input.participants?.sides) ? input.participants.sides : [];
   const sideA = sides[0] || null;
   const sideB = sides[1] || null;
-  const leftPlayers = (courtProjection.sides?.left?.activePlayers || []).map((p) => p.displayName);
-  const rightPlayers = (courtProjection.sides?.right?.activePlayers || []).map((p) => p.displayName);
+  const resolvedA = resolveRefereeSideDisplay(sideA, names);
+  const resolvedB = resolveRefereeSideDisplay(sideB, names);
+  const leftPlayers = (courtProjection.sides?.left?.activePlayers || [])
+    .map((p) => p.displayName)
+    .filter(Boolean);
+  const rightPlayers = (courtProjection.sides?.right?.activePlayers || [])
+    .map((p) => p.displayName)
+    .filter(Boolean);
   const fallbackA = playerNamesForSide(sideA, names);
   const fallbackB = playerNamesForSide(sideB, names);
   const scoringSideAName =
@@ -171,9 +168,11 @@ export function buildRefereeMatchView(input) {
       ? courtProjection.sides?.left?.participant?.displayName
       : courtProjection.sides?.right?.participant?.displayName;
   const sideAName =
+    resolvedA.entryLabel ||
     scoringSideAName ||
     formatParticipantDisplayName(sideA?.displayName || sideA?.teamName);
   const sideBName =
+    resolvedB.entryLabel ||
     scoringSideBName ||
     formatParticipantDisplayName(sideB?.displayName || sideB?.teamName);
 
@@ -268,7 +267,10 @@ export function buildRefereeMatchView(input) {
 
   const participantDisplay = Object.freeze({
     sideA: Object.freeze({
+      entryId: resolvedA.entryId,
+      entryLabel: resolvedA.entryLabel,
       label: sideAName,
+      members: resolvedA.members,
       playerNames: Object.freeze(
         courtProjection.sides?.left?.scoringSide === "SIDE_A"
           ? leftPlayers.length
@@ -280,7 +282,10 @@ export function buildRefereeMatchView(input) {
       ),
     }),
     sideB: Object.freeze({
+      entryId: resolvedB.entryId,
+      entryLabel: resolvedB.entryLabel,
       label: sideBName,
+      members: resolvedB.members,
       playerNames: Object.freeze(
         courtProjection.sides?.left?.scoringSide === "SIDE_B"
           ? leftPlayers.length

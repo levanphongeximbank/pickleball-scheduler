@@ -1,19 +1,20 @@
 import { COURT_SLOT } from "../constants.js";
 
-function shortName(displayName) {
+function shortName(displayName, playerId) {
   const raw = String(displayName || "").trim();
-  if (!raw) return "VĐV";
-  // Hide technical ids on the court markers.
-  if (
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(raw) ||
-    /^(c4\d{2}a101-|team-|sub-|p-)/i.test(raw)
-  ) {
-    return "VĐV";
+  const id = String(playerId || "").trim();
+  const uuidRe =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const technicalRe = /^(c4\d{2}a101-|team-|sub-|entry-|p-)/i;
+  if (raw && !uuidRe.test(raw) && !technicalRe.test(raw)) {
+    if (raw.length <= 14) return raw;
+    const parts = raw.split(/\s+/);
+    if (parts.length >= 2) return `${parts[0]} ${parts[parts.length - 1]}`.slice(0, 14);
+    return raw.slice(0, 14);
   }
-  if (raw.length <= 14) return raw;
-  const parts = raw.split(/\s+/);
-  if (parts.length >= 2) return `${parts[0]} ${parts[parts.length - 1]}`.slice(0, 14);
-  return raw.slice(0, 14);
+  const source = uuidRe.test(raw) ? raw : uuidRe.test(id) ? id : raw || id;
+  if (uuidRe.test(source)) return source.slice(-8);
+  return source || "Chưa có tên";
 }
 
 function Marker({ player, slot }) {
@@ -44,7 +45,7 @@ function Marker({ player, slot }) {
             ★
           </span>
         ) : null}
-        <p className="rp-marker-name">{shortName(player.displayName)}</p>
+        <p className="rp-marker-name">{shortName(player.displayName, player.playerId)}</p>
       </article>
     </div>
   );

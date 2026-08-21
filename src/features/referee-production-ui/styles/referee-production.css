@@ -292,6 +292,18 @@
   line-height: 1.2;
 }
 
+.rp-card-entry-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--rp-muted);
+  margin-bottom: 1px;
+}
+
+.rp-card-member-line {
+  display: block;
+}
+
 .rp-card-vs-label {
   color: #78909c;
   font-size: 0.68rem;

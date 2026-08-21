@@ -401,47 +401,67 @@ async function loadCourtDisplayLabels(client, courtIds, tenantId) {
   return labels;
 }
 
+function ingestNameRecord(names, id, value) {
+  const key = trim(id);
+  if (!key) return;
+  if (typeof value === "string") {
+    const label = trim(value);
+    if (label) names[key] = label;
+    return;
+  }
+  const row = asObject(value);
+  if (!row) return;
+  const label = trim(row.displayName || row.name || row.fullName || row.full_name);
+  if (label) names[key] = label;
+}
+
+/**
+ * Harvest a player directory that may be an object map or an array of {id, name}.
+ * Never invents names.
+ */
+function harvestPlayerDirectory(names, source) {
+  if (Array.isArray(source)) {
+    for (const row of source) {
+      if (!asObject(row)) continue;
+      ingestNameRecord(names, row.id || row.playerId || row.athleteId, row);
+    }
+    return;
+  }
+  const map = asObject(source);
+  if (!map) return;
+  for (const [id, value] of Object.entries(map)) {
+    ingestNameRecord(names, id, value);
+  }
+}
+
 /**
  * Harvest entry / player display names already present on durable payload.
  * Does not invent names — only copies proven labels keyed by canonical ids.
+ *
+ * Entry/unit labels are keyed by entryId only.
+ * Athlete names come from player directories / member records — never from the parent entry label.
  */
-function harvestParticipantNamesFromPayload(payload) {
+export function harvestParticipantNamesFromPayload(payload) {
   const names = {};
   const root = asObject(payload) || {};
-  const fromMap = asObject(root.participantNames);
-  if (fromMap) {
-    for (const [id, value] of Object.entries(fromMap)) {
-      const key = trim(id);
-      if (!key) continue;
-      if (typeof value === "string" && trim(value)) names[key] = trim(value);
-      else if (asObject(value)) {
-        const label = trim(value.displayName || value.name);
-        if (label) names[key] = label;
-      }
-    }
-  }
+  harvestPlayerDirectory(names, root.participantNames);
+  harvestPlayerDirectory(names, root.players);
+  harvestPlayerDirectory(names, root.playerDirectory);
+  harvestPlayerDirectory(names, root.athletes);
+
   for (const event of asArray(root.events)) {
-    for (const entry of asArray(event?.entries)) {
+    if (!asObject(event)) continue;
+    harvestPlayerDirectory(names, event.players);
+    harvestPlayerDirectory(names, event.playerDirectory);
+    for (const entry of asArray(event.entries)) {
       if (!asObject(entry)) continue;
       const entryId = trim(entry.id);
       const entryName = trim(entry.name || entry.displayName);
       if (entryId && entryName) names[entryId] = entryName;
-      for (const playerId of asArray(entry.playerIds)) {
-        const pid = trim(playerId);
-        if (pid && entryName && !names[pid]) names[pid] = entryName;
-      }
-    }
-  }
-  const players = asObject(root.players) || asObject(root.playerDirectory);
-  if (players) {
-    for (const [id, value] of Object.entries(players)) {
-      const key = trim(id);
-      if (!key) continue;
-      if (typeof value === "string" && trim(value)) names[key] = trim(value);
-      else if (asObject(value)) {
-        const label = trim(value.displayName || value.name);
-        if (label) names[key] = label;
-      }
+      harvestPlayerDirectory(names, entry.members);
+      harvestPlayerDirectory(names, entry.players);
+      harvestPlayerDirectory(names, entry.playerNames);
+      // Do NOT copy entryName onto entry.playerIds — that collapses athletes into the unit label.
     }
   }
   return names;

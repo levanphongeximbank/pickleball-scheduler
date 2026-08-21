@@ -213,9 +213,11 @@ function LineupSetupPanel({
       <div className="rp-lineup-sides">
         <div className="rp-lineup-side" data-testid="lineup-side-a">
           <strong>{labelA}</strong>
-          <ol>
+          <ol data-testid="lineup-side-a-players">
             {sideA.map((id) => (
-              <li key={id}>{names[id] || id}</li>
+              <li key={id} data-testid={`lineup-player-${id}`} data-participant-id={id}>
+                {names[id] || id}
+              </li>
             ))}
           </ol>
           {sideA.length >= 2 ? (
@@ -232,9 +234,11 @@ function LineupSetupPanel({
         </div>
         <div className="rp-lineup-side" data-testid="lineup-side-b">
           <strong>{labelB}</strong>
-          <ol>
+          <ol data-testid="lineup-side-b-players">
             {sideB.map((id) => (
-              <li key={id}>{names[id] || id}</li>
+              <li key={id} data-testid={`lineup-player-${id}`} data-participant-id={id}>
+                {names[id] || id}
+              </li>
             ))}
           </ol>
           {sideB.length >= 2 ? (
@@ -255,7 +259,7 @@ function LineupSetupPanel({
         <legend>Người giao bóng đầu tiên</legend>
         <div className="rp-lineup-servers" data-testid="lineup-server-options">
           {allPlayers.map((p) => (
-            <label key={p.id} className="rp-lineup-option">
+            <label key={p.id} className="rp-lineup-option" data-testid={`lineup-server-${p.id}`}>
               <input
                 type="radio"
                 name="opening-server"
@@ -263,6 +267,7 @@ function LineupSetupPanel({
                 checked={serverPlayerId === p.id}
                 onChange={() => setServerPlayerId(p.id)}
                 disabled={pending}
+                data-participant-id={p.id}
               />
               <span>
                 {p.name}
@@ -587,9 +592,15 @@ export default function RefereeMatchScreen({
             <div className="rp-score-team-name" data-testid="team-name-a">
               {leftTeam}
             </div>
-            <div className="rp-score-label" data-testid="participant-names-a">
-              {leftPlayersLine || leftTeam}
-            </div>
+            {leftPlayersLine && leftPlayersLine !== leftTeam ? (
+              <div className="rp-score-label" data-testid="participant-names-a">
+                {leftPlayersLine}
+              </div>
+            ) : (
+              <div className="rp-score-label" data-testid="participant-names-a">
+                {leftPlayersLine || leftTeam}
+              </div>
+            )}
           </div>
           <div className="rp-score-center">
             <span
@@ -622,9 +633,15 @@ export default function RefereeMatchScreen({
             <div className="rp-score-team-name" data-testid="team-name-b">
               {rightTeam}
             </div>
-            <div className="rp-score-label" data-testid="participant-names-b">
-              {rightPlayersLine || rightTeam}
-            </div>
+            {rightPlayersLine && rightPlayersLine !== rightTeam ? (
+              <div className="rp-score-label" data-testid="participant-names-b">
+                {rightPlayersLine}
+              </div>
+            ) : (
+              <div className="rp-score-label" data-testid="participant-names-b">
+                {rightPlayersLine || rightTeam}
+              </div>
+            )}
           </div>
         </div>
       </section>
