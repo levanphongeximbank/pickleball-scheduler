@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { Link as RouterLink } from "react-router-dom";
 
 import {
-  Alert,
   Box,
   Button,
   Card,
@@ -28,7 +27,9 @@ import { useCanonicalTournamentList } from "../features/tournament/hooks/useCano
 import CourtOperationsPanel from "../components/courtManagement/CourtOperationsPanel.jsx";
 import {
   DashboardAnalyticsView,
+  DASHBOARD_CLUB_CONTEXT_STATE,
   resolveDashboardAccess,
+  resolveDashboardClubOperationsGate,
 } from "../features/dashboard-analytics/index.js";
 import {
   buildDashboardSummary,
@@ -57,44 +58,28 @@ function StatCard({ label, value, hint }) {
   );
 }
 
-/**
- * Gate only — never call club-scoped storage here.
- * Club-scoped queries live in ClubOperationsContent after explicit clubId is known.
- */
 function ClubOperationsSection() {
-  const { activeClub, activeClubId, revision, clubReadReady } = useClub();
+  const { activeClub, activeClubId, revision, activeClubReady } = useClub();
   const { activeSeason, activeLeague } = useSeasonLeague();
 
-  if (!hasExplicitDashboardClubId(activeClubId)) {
-    const loading = clubReadReady === false;
-    return (
-      <Alert
-        severity={loading ? "info" : "warning"}
-        data-testid="dashboard-club-operations-gate"
-        data-state={loading ? "loading" : "club-required"}
-      >
-        {loading
-          ? "Đang tải ngữ cảnh CLB…"
-          : "Chọn CLB trên thanh công cụ để xem vận hành CLB."}
-      </Alert>
-    );
-  }
+  const operationallyReady =
+    hasExplicitDashboardClubId(activeClubId) &&
+    Boolean(activeClubReady) &&
+    activeClub?.id === activeClubId;
 
-  return (
-    <ClubOperationsContent
-      clubId={String(activeClubId).trim()}
-      activeClub={activeClub}
-      revision={revision}
-      activeSeason={activeSeason}
-      activeLeague={activeLeague}
-    />
-  );
-}
-
-function ClubOperationsContent({ clubId, activeClub, revision, activeSeason, activeLeague }) {
   const summary = useMemo(() => {
+    if (!operationallyReady) {
+      return buildDashboardSummary({
+        sessions: [],
+        players: [],
+        courts: [],
+        rounds: [],
+        seasonId: null,
+        leagueId: null,
+      });
+    }
     const loaded = loadClubOperationsDashboardSummary({
-      clubId,
+      clubId: String(activeClubId).trim(),
       seasonId: activeSeason?.id || null,
       leagueId: activeLeague?.id || null,
       loadAIData,
@@ -106,23 +91,45 @@ function ClubOperationsContent({ clubId, activeClub, revision, activeSeason, act
       return buildDashboardSummary({});
     }
     return loaded.summary;
-  }, [clubId, revision, activeSeason?.id, activeLeague?.id]);
+  }, [
+    operationallyReady,
+    activeClubId,
+    revision,
+    activeSeason?.id,
+    activeLeague?.id,
+  ]);
 
-  const { tournaments = [] } = useCanonicalTournamentList(activeClub, revision);
+  const { tournaments = [] } = useCanonicalTournamentList(
+    operationallyReady ? activeClub : null,
+    revision
+  );
 
   const seasonStandings = useMemo(() => {
-    if (!activeLeague?.id) {
+    if (!operationallyReady || !activeLeague?.id) {
       return [];
     }
-    return getLeagueStandingsBoard(clubId, activeLeague.id);
-  }, [clubId, activeLeague?.id, revision]);
+    return getLeagueStandingsBoard(activeClubId, activeLeague.id);
+  }, [operationallyReady, activeClubId, activeLeague?.id, revision]);
 
   const leagueRounds = useMemo(() => {
-    return listLeagueRounds(clubId, {
+    if (!operationallyReady) {
+      return [];
+    }
+    return listLeagueRounds(activeClubId, {
       seasonId: activeSeason?.id || null,
       leagueId: activeLeague?.id || null,
     });
-  }, [clubId, activeSeason?.id, activeLeague?.id, revision]);
+  }, [
+    operationallyReady,
+    activeClubId,
+    activeSeason?.id,
+    activeLeague?.id,
+    revision,
+  ]);
+
+  if (!operationallyReady) {
+    return null;
+  }
 
   return (
     <Box data-testid="dashboard-club-operations">
@@ -159,7 +166,7 @@ function ClubOperationsContent({ clubId, activeClub, revision, activeSeason, act
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12 }}>
-          <CourtOperationsPanel clubId={clubId} revision={revision} />
+          <CourtOperationsPanel clubId={activeClubId} revision={revision} />
         </Grid>
       </Grid>
 
@@ -302,9 +309,53 @@ function ClubOperationsContent({ clubId, activeClub, revision, activeSeason, act
   );
 }
 
+function ClubOperationsContextPlaceholder({ state, reason }) {
+  const isLoading = state === DASHBOARD_CLUB_CONTEXT_STATE.CLUB_CONTEXT_LOADING;
+  const isError = state === DASHBOARD_CLUB_CONTEXT_STATE.CLUB_CONTEXT_ERROR;
+
+  let title = "Chưa chọn CLB";
+  let description =
+    "Phần vận hành CLB cần ngữ cảnh CLB hợp lệ. Chọn CLB trên thanh ngữ cảnh để tiếp tục.";
+  if (isLoading) {
+    title = "Đang tải ngữ cảnh CLB";
+    description = "Dashboard vẫn hiển thị; phần vận hành CLB sẽ mở khi CLB sẵn sàng.";
+  } else if (isError) {
+    title = "Không tải được ngữ cảnh CLB";
+    description =
+      "Không thể xác định CLB vận hành. Thử lại hoặc chọn CLB khác — không đồng nghĩa dữ liệu trống.";
+  } else if (reason === "active_club_not_ready") {
+    title = "CLB chưa sẵn sàng";
+    description = "Đã có gợi ý CLB nhưng ngữ cảnh chuẩn hóa chưa sẵn sàng để vận hành.";
+  }
+
+  return (
+    <Box data-testid="dashboard-club-operations-placeholder" role="status" sx={{ py: 1 }}>
+      <Typography variant="h5" fontWeight="bold" sx={{ mb: 1 }}>
+        Vận hành CLB
+      </Typography>
+      <Typography color="text.secondary" sx={{ mb: 1 }}>
+        {title}
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        {description}
+      </Typography>
+      <Button component={RouterLink} to="/club" variant="outlined" sx={{ mt: 2 }}>
+        Chọn CLB
+      </Button>
+    </Box>
+  );
+}
+
 export default function Dashboard() {
-  const { user, can } = useAuth();
-  const { activeClubId, activeClub } = useClub();
+  const { user, can, authLoading, isAuthenticated } = useAuth();
+  const {
+    activeClubId,
+    activeClub,
+    activeClubReady,
+    clubReadReady,
+    clubReadState,
+    canonicalClubRead,
+  } = useClub();
 
   const scopeVenueId =
     activeClub?.venueId || activeClub?.tenantId || user?.venueId || user?.tenantId || null;
@@ -317,21 +368,58 @@ export default function Dashboard() {
     [activeClubId, scopeVenueId]
   );
 
-  const showClubOperations = useMemo(() => {
-    const access = resolveDashboardAccess(user, can, scope);
-    return access.sections?.clubOperations !== false;
-  }, [user, can, scope]);
+  const access = useMemo(
+    () => resolveDashboardAccess(user, can, scope),
+    [user, can, scope]
+  );
+
+  const clubOperationsGate = useMemo(
+    () =>
+      resolveDashboardClubOperationsGate({
+        authLoading,
+        isAuthenticated,
+        canonicalClubRead,
+        clubReadState,
+        clubReadReady,
+        activeClubReady,
+        activeClubId,
+        activeClub,
+        permissionAllowsClubOperations: access.sections?.clubOperations !== false,
+      }),
+    [
+      authLoading,
+      isAuthenticated,
+      canonicalClubRead,
+      clubReadState,
+      clubReadReady,
+      activeClubReady,
+      activeClubId,
+      activeClub,
+      access.sections?.clubOperations,
+    ]
+  );
 
   return (
-    <Box>
+    <Box data-testid="dashboard-root">
       <DashboardAnalyticsView />
 
-      {showClubOperations && (
+      {clubOperationsGate.mountClubOperations && (
         <>
           <Divider sx={{ my: 4 }} />
           <ClubOperationsSection />
         </>
       )}
+
+      {!clubOperationsGate.mountClubOperations &&
+        clubOperationsGate.showClubOperationsPlaceholder && (
+          <>
+            <Divider sx={{ my: 4 }} />
+            <ClubOperationsContextPlaceholder
+              state={clubOperationsGate.state}
+              reason={clubOperationsGate.reason}
+            />
+          </>
+        )}
     </Box>
   );
 }

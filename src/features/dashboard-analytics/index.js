@@ -2,6 +2,10 @@ export { default as DashboardAnalyticsView } from "./components/DashboardAnalyti
 export { useDashboardAnalytics } from "./hooks/useDashboardAnalytics.js";
 export { resolveDashboardAccess } from "./services/dashboardScope.js";
 export {
+  DASHBOARD_CLUB_CONTEXT_STATE,
+  resolveDashboardClubOperationsGate,
+} from "./services/dashboardClubOperationsGate.js";
+export {
   getDashboardAnalytics,
   getDashboardSummary,
   getRevenueAnalytics,
