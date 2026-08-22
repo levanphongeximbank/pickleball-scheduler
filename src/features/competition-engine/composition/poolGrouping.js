@@ -16,6 +16,10 @@ import { resolvePoolCount } from "../formats/poolKnockoutFormat.js";
 import {
   E2E02_GROUPING_STRATEGY,
 } from "./constants.js";
+import {
+  resolveAuthoritativeSeedMapFromCore07,
+  selectCore07SeedingProjectionForStage,
+} from "./core07SeedingProjection.js";
 import { E2E02_ERROR_CODE, failE2E02 } from "./errors.js";
 import { deepFreeze, isNonEmptyString } from "./fingerprint.js";
 import { normalizeCompetitionUnitParticipants } from "./entryIdentity.js";
@@ -27,6 +31,7 @@ import { applyGroupStageBypassPopulation } from "./groupStageBypassPopulation.js
  *   format: import("../../formats/poolKnockoutFormat.js").PoolKnockoutFormatDefinition,
  *   competitionId: string,
  *   divisionId?: string,
+ *   categoryId?: string|null,
  *   deterministicSeed: string,
  *   competitionRulesProfile?: object,
  *   knockoutAdmissionPlan?: object|null,
@@ -34,6 +39,9 @@ import { applyGroupStageBypassPopulation } from "./groupStageBypassPopulation.js
  *   applyGroupStageBypass?: boolean,
  *   requireCanonicalEntryId?: boolean,
  *   competitionUnitKind?: string|null,
+ *   groupStageSeedingProjection?: object|null,
+ *   authoritativeSeedingProjection?: object|null,
+ *   knockoutSeedingProjection?: object|null,
  * }} input
  */
 export function composePoolGrouping(input) {
@@ -89,15 +97,59 @@ export function composePoolGrouping(input) {
     });
   }
 
-  // Legacy pool path still needs seedNumbers for CORE-08 ordering; assign
-  // by input order only when seed absent (not admission-source driven).
-  normalized = normalized.map((p, index) => ({
-    ...p,
-    seedNumber:
-      Number.isFinite(Number(p.seedNumber)) && Number(p.seedNumber) >= 1
-        ? Number(p.seedNumber)
-        : index + 1,
-  }));
+  const strategy = input.format.poolStage.groupingStrategy;
+  const poolStageId = "stage-pool";
+
+  if (applyBypass) {
+    // Admission-aware: SNAKE/SEEDED/SERPENTINE require proven CORE-07 group seeding
+    // when group participants remain after bypass. Do NOT synthesize index+1.
+    // Do NOT silently remap to CORE-08 OPEN_* modes.
+    if (normalized.length > 0) {
+      const groupProjection = selectCore07SeedingProjectionForStage(
+        input,
+        "GROUP",
+        poolStageId
+      );
+      if (!groupProjection) {
+        failE2E02(
+          E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+          "admission-aware seed-ordered grouping requires compatible CORE-07 groupStageSeedingProjection / authoritativeSeedingProjection — fail closed (E2E02 OPEN grouping not available)",
+          {
+            groupingStrategy: strategy,
+            SEED_ORDERED_GROUPING_WITHOUT_AUTHORITY: "FAIL_CLOSED",
+            E2E02_OPEN_GROUPING_EXTENSION: "DEFERRED",
+            GROUPING_POLICY_EXECUTION_GAP: true,
+            CE_GROUP_SEED_ALLOCATION: false,
+          }
+        );
+      }
+      const seedMap = resolveAuthoritativeSeedMapFromCore07(
+        groupProjection,
+        normalized.map((p) => p.entryId),
+        {
+          competitionId,
+          divisionId: input.divisionId ?? null,
+          categoryId: input.categoryId ?? null,
+          stageId: poolStageId,
+          competitionUnitKind: input.competitionUnitKind,
+          role: "GROUP",
+        }
+      );
+      normalized = normalized.map((p) => ({
+        ...p,
+        seedNumber: seedMap[p.entryId],
+      }));
+    }
+  } else {
+    // Legacy non-admission path: historical index fallback for missing seedNumber.
+    normalized = normalized.map((p, index) => ({
+      ...p,
+      seedNumber:
+        Number.isFinite(Number(p.seedNumber)) && Number(p.seedNumber) >= 1
+          ? Number(p.seedNumber)
+          : index + 1,
+    }));
+  }
 
   const min = input.format.participantCountPolicy.minParticipants;
   const max = input.format.participantCountPolicy.maxParticipants;
@@ -135,8 +187,6 @@ export function composePoolGrouping(input) {
       eligible: true,
     })
   );
-
-  const strategy = input.format.poolStage.groupingStrategy;
   /** @type {{ placements: object[], decisionTrace: string[] }} */
   let assignment;
   const options = {

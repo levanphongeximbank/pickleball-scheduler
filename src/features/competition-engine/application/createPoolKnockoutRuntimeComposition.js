@@ -38,7 +38,9 @@ import {
  *   knockoutAdmissionPlan?: object|null,
  *   competitionPopulationEntryIds?: string[],
  *   competitionUnitKind?: string|null,
- *   authoritativeSeedsByEntryId?: Record<string, number>,
+ *   groupStageSeedingProjection?: object|null,
+ *   knockoutSeedingProjection?: object|null,
+ *   authoritativeSeedingProjection?: object|null,
  * }} input
  */
 export function createPoolKnockoutRuntimeComposition(input) {
@@ -137,7 +139,9 @@ export function createPoolKnockoutRuntimeComposition(input) {
     knockoutAdmissionPlan: input.knockoutAdmissionPlan,
     competitionPopulationEntryIds: input.competitionPopulationEntryIds,
     competitionUnitKind: input.competitionUnitKind,
-    authoritativeSeedsByEntryId: input.authoritativeSeedsByEntryId,
+    groupStageSeedingProjection: input.groupStageSeedingProjection,
+    knockoutSeedingProjection: input.knockoutSeedingProjection,
+    authoritativeSeedingProjection: input.authoritativeSeedingProjection,
   });
 
   return deepFreeze({

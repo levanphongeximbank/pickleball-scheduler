@@ -49,6 +49,11 @@ export {
   normalizeCompetitionUnitParticipants,
 } from "./entryIdentity.js";
 export { applyGroupStageBypassPopulation } from "./groupStageBypassPopulation.js";
+export {
+  resolveAuthoritativeSeedMapFromCore07,
+  selectCore07SeedingProjectionForStage,
+  resolveCore07AuthoritativeProjection,
+} from "./core07SeedingProjection.js";
 
 export { buildGroupDrawSnapshotFromPools } from "./adapters/drawSnapshotFromGroups.js";
 export { buildKnockoutDrawSnapshotFromQualifiers } from "./adapters/drawSnapshotFromQualifiers.js";

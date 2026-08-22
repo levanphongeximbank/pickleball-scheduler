@@ -140,15 +140,15 @@ export const COMPETITION_RULES_CAPABILITY_MATRIX = Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
     execution: CAPABILITY_STATE.SUPPORTED,
     executionCondition:
-      "Admission-aware composeIndividualPoolKnockout / createPoolKnockoutRuntimeComposition consumes bypass via applyGroupStageBypassPopulation before group allocation",
+      "Admission-aware composeIndividualPoolKnockout / createPoolKnockoutRuntimeComposition consumes bypass via applyGroupStageBypassPopulation before group allocation. Seed-ordered E2E02 grouping (SNAKE|SEEDED|SERPENTINE) additionally requires compatible CORE-07 groupStageSeedingProjection / competition-wide authoritativeSeedingProjection — no CE index+1 seed fabrication; E2E02 OPEN grouping deferred.",
     evidence:
-      "Shared CE pool stage wires groupStageBypass from deriveKnockoutAdmissionPlan",
+      "Shared CE pool stage wires groupStageBypass from deriveKnockoutAdmissionPlan; CORE-07 projection consumed for admission-aware group seed order",
   }),
   [COMPETITION_RULES_CAPABILITY_ID.DIRECT_KNOCKOUT_ENTRY]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
     execution: CAPABILITY_STATE.PARTIAL,
     executionCondition:
-      "SUPPORTED only on shared group-stage pool→KO path when effectiveTargetStage == bracketWideEntryRound. Later-stage DIRECT = DEFERRED. No-group DIRECT / base remainingSlots path = DEFERRED (fail closed). SEEDING ≠ DIRECT.",
+      "SUPPORTED only on shared group-stage pool→KO path when effectiveTargetStage == bracketWideEntryRound, proven entryId, resolved DIRECT identities, and valid group allocation authority (CORE-07 group seeding for current E2E02 strategies). Later-stage DIRECT = DEFERRED. No-group DIRECT / base remainingSlots path = DEFERRED (fail closed). SEEDING ≠ DIRECT.",
     supportedRuntimePaths: Object.freeze([
       "composeIndividualPoolKnockout admission-aware → composeKnockoutAdmission → composeKnockoutStage",
       "createPoolKnockoutRuntimeComposition pass-through of competitionRulesProfile / knockoutAdmissionPlan",
@@ -159,7 +159,7 @@ export const COMPETITION_RULES_CAPABILITY_MATRIX = Object.freeze({
       "Fake bye / phantom winner simulation of later-stage admission",
     ]),
     evidence:
-      "First-playable DIRECT composed on shared CE admission path only; later-stage and no-group deferred; CE does not assign seeds (CORE-07 authoritative or CORE-08 OPEN draw)",
+      "First-playable DIRECT composed on shared CE admission path only; later-stage and no-group deferred; CE does not assign seeds (CORE-07 authoritative projection or CORE-08 OPEN knockout draw)",
   }),
   [COMPETITION_RULES_CAPABILITY_ID.KNOCKOUT_BYE]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,

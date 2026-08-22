@@ -14,7 +14,6 @@ import {
   deriveKnockoutAdmissionPlan,
 } from "../src/features/competition-core/competition-rules/index.js";
 import {
-  assignSourceNeutralKnockoutSeeds,
   composeIndividualPoolKnockout,
   composeKnockoutAdmission,
   isE2E02CompositionError,
@@ -281,26 +280,6 @@ test("vertical slice: unknown standings / DIRECT outside population fail closed"
       isE2E02CompositionError(err) &&
       /outside canonical competition population/i.test(err.message)
   );
-});
-
-test("admissionSource does not create seed priority", () => {
-  const setA = [
-    { entryId: "x", admissionSource: ADMISSION_SOURCE.DIRECT },
-    { entryId: "y", admissionSource: ADMISSION_SOURCE.GROUP_DIRECT },
-    { entryId: "z", admissionSource: ADMISSION_SOURCE.WILDCARD },
-  ];
-  const setB = [
-    { entryId: "x", admissionSource: ADMISSION_SOURCE.WILDCARD },
-    { entryId: "y", admissionSource: ADMISSION_SOURCE.DIRECT },
-    { entryId: "z", admissionSource: ADMISSION_SOURCE.GROUP_DIRECT },
-  ];
-  const seedsA = Object.fromEntries(
-    assignSourceNeutralKnockoutSeeds(setA).map((r) => [r.entryId, r.seedNumber])
-  );
-  const seedsB = Object.fromEntries(
-    assignSourceNeutralKnockoutSeeds(setB).map((r) => [r.entryId, r.seedNumber])
-  );
-  assert.deepEqual(seedsA, seedsB);
 });
 
 test("no-group DIRECT execution fails closed honestly", () => {

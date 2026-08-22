@@ -85,7 +85,9 @@ function setsEqual(a, b) {
  *   knockoutAdmissionPlan?: object|null,
  *   competitionPopulationEntryIds?: string[],
  *   competitionUnitKind?: string|null,
- *   authoritativeSeedsByEntryId?: Record<string, number>,
+ *   groupStageSeedingProjection?: object|null,
+ *   knockoutSeedingProjection?: object|null,
+ *   authoritativeSeedingProjection?: object|null,
  * }} input
  */
 export function composeIndividualPoolKnockout(input) {
@@ -203,6 +205,15 @@ export function composeIndividualPoolKnockout(input) {
     applyGroupStageBypass: admissionAware,
     requireCanonicalEntryId: admissionAware,
     competitionUnitKind: input.competitionUnitKind,
+    groupStageSeedingProjection: admissionAware
+      ? input.groupStageSeedingProjection
+      : undefined,
+    knockoutSeedingProjection: admissionAware
+      ? input.knockoutSeedingProjection
+      : undefined,
+    authoritativeSeedingProjection: admissionAware
+      ? input.authoritativeSeedingProjection
+      : undefined,
   });
 
   const poolStageComplete = input.poolStageComplete !== false;
@@ -254,7 +265,13 @@ export function composeIndividualPoolKnockout(input) {
         competitionPopulationEntryIds: canonicalPopulation,
         deterministicSeed: input.deterministicSeed,
         knockoutRequired: true,
-        authoritativeSeedsByEntryId: input.authoritativeSeedsByEntryId,
+        competitionId,
+        divisionId: input.divisionId,
+        categoryId: input.categoryId,
+        competitionUnitKind: input.competitionUnitKind,
+        knockoutSeedingProjection: input.knockoutSeedingProjection,
+        authoritativeSeedingProjection: input.authoritativeSeedingProjection,
+        groupStageSeedingProjection: input.groupStageSeedingProjection,
       });
 
       knockoutStage = composeKnockoutStage({

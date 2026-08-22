@@ -416,7 +416,9 @@ export function createOrganizerOperationsFacade(deps = {}) {
         knockoutAdmissionPlan: command.knockoutAdmissionPlan,
         competitionPopulationEntryIds: command.competitionPopulationEntryIds,
         competitionUnitKind: command.competitionUnitKind,
-        authoritativeSeedsByEntryId: command.authoritativeSeedsByEntryId,
+        groupStageSeedingProjection: command.groupStageSeedingProjection,
+        knockoutSeedingProjection: command.knockoutSeedingProjection,
+        authoritativeSeedingProjection: command.authoritativeSeedingProjection,
       });
     } catch (err) {
       if (isOrganizerOperationsError(err)) throw err;
@@ -1050,7 +1052,9 @@ export function createOrganizerOperationsFacade(deps = {}) {
         knockoutAdmissionPlan: command.knockoutAdmissionPlan,
         competitionPopulationEntryIds: command.competitionPopulationEntryIds,
         competitionUnitKind: command.competitionUnitKind,
-        authoritativeSeedsByEntryId: command.authoritativeSeedsByEntryId,
+        groupStageSeedingProjection: command.groupStageSeedingProjection,
+        knockoutSeedingProjection: command.knockoutSeedingProjection,
+        authoritativeSeedingProjection: command.authoritativeSeedingProjection,
       });
     } catch (err) {
       const code = /** @type {{ code?: string }} */ (err)?.code;

@@ -31,6 +31,9 @@ import { computeDeterministicFingerprint, deepFreeze } from "./fingerprint.js";
  *   applyGroupStageBypass?: boolean,
  *   requireCanonicalEntryId?: boolean,
  *   competitionUnitKind?: string|null,
+ *   groupStageSeedingProjection?: object|null,
+ *   authoritativeSeedingProjection?: object|null,
+ *   knockoutSeedingProjection?: object|null,
  * }} input
  */
 export function composePoolStage(input) {
@@ -44,6 +47,7 @@ export function composePoolStage(input) {
     format: input.format,
     competitionId: input.competitionId,
     divisionId: input.divisionId,
+    categoryId: input.categoryId,
     deterministicSeed: input.deterministicSeed,
     competitionRulesProfile: input.competitionRulesProfile,
     knockoutAdmissionPlan: input.knockoutAdmissionPlan,
@@ -51,6 +55,9 @@ export function composePoolStage(input) {
     applyGroupStageBypass: input.applyGroupStageBypass,
     requireCanonicalEntryId: input.requireCanonicalEntryId,
     competitionUnitKind: input.competitionUnitKind,
+    groupStageSeedingProjection: input.groupStageSeedingProjection,
+    authoritativeSeedingProjection: input.authoritativeSeedingProjection,
+    knockoutSeedingProjection: input.knockoutSeedingProjection,
   });
 
   const divisionId = String(input.divisionId || "div-1").trim();

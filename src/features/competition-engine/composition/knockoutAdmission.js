@@ -4,10 +4,12 @@
  * Consumes canonical admission plan + standings + DIRECT/GROUP_DIRECT/WILDCARD
  * selections. Does NOT own ranking (CORE-18), seeding (CORE-07), or bracket/draw (CORE-08/09).
  *
- * Seeding:
- *   - consume authoritativeSeedsByEntryId when fully supplied (SEEDED draw)
- *   - otherwise OPEN deterministic CORE-08 draw (no CE seed fabrication)
- *   - partial authoritative seed sets fail closed
+ * Seeding (canonical admission path):
+ *   - consume proven CORE-07 projection via projectAuthoritativeSeedingResult /
+ *     mapAuthoritativeProjectionToDrawSeedRanking (SEEDED draw)
+ *   - no projection → OPEN deterministic CORE-08 draw (no CE seed fabrication)
+ *   - partial / invalid projection coverage → fail closed (no silent OPEN fallback)
+ *   - naked authoritativeSeedsByEntryId is rejected on this path
  */
 
 import {
@@ -17,6 +19,10 @@ import {
   resolveWildcardRankingPolicy,
 } from "../../competition-core/competition-rules/index.js";
 import { rankCrossGroupWildcardCandidates } from "../../competition-core/standings/index.js";
+import {
+  resolveAuthoritativeSeedMapFromCore07,
+  selectCore07SeedingProjectionForStage,
+} from "./core07SeedingProjection.js";
 import { E2E02_ERROR_CODE, failE2E02 } from "./errors.js";
 import { deepFreeze } from "./fingerprint.js";
 
@@ -108,7 +114,13 @@ function buildPopulationSet(ids) {
  *   knockoutRequired?: boolean,
  *   deterministicSeed?: string,
  *   directQualifiersPerGroup?: number,
- *   authoritativeSeedsByEntryId?: Record<string, number>,
+ *   competitionId?: string,
+ *   divisionId?: string|null,
+ *   categoryId?: string|null,
+ *   competitionUnitKind?: string|null,
+ *   knockoutSeedingProjection?: object|null,
+ *   authoritativeSeedingProjection?: object|null,
+ *   groupStageSeedingProjection?: object|null,
  * }} input
  */
 export function composeKnockoutAdmission(input) {
@@ -304,25 +316,54 @@ export function composeKnockoutAdmission(input) {
     rankedWildcards = ranking.ranked;
   }
 
-  const authSeeds =
-    input.authoritativeSeedsByEntryId &&
+  if (
+    input.authoritativeSeedsByEntryId != null &&
     typeof input.authoritativeSeedsByEntryId === "object"
-      ? input.authoritativeSeedsByEntryId
-      : {};
+  ) {
+    failE2E02(
+      E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+      "naked authoritativeSeedsByEntryId is not accepted on canonical admission path — supply CORE-07 authoritativeSeedingProjection / knockoutSeedingProjection",
+      {
+        RAW_AUTHORITATIVE_SEED_MAP_ACCEPTED_ON_CANONICAL_PATH: false,
+      }
+    );
+  }
+
+  const competitionId = String(
+    input.competitionId || plan.competitionId || ""
+  ).trim();
+  if (!competitionId) {
+    failE2E02(
+      E2E02_ERROR_CODE.MISSING_COMPETITION_IDENTITY,
+      "competitionId required for CORE-07 seeding scope validation on admission path",
+      {}
+    );
+  }
+
+  const knockoutStageId = "stage-knockout";
+  const knockoutProjectionInput = selectCore07SeedingProjectionForStage(
+    input,
+    "KNOCKOUT",
+    knockoutStageId
+  );
+
+  /** @type {Record<string, number>} */
+  let authSeeds = {};
+  let usedCore07Projection = false;
+
+  if (knockoutProjectionInput) {
+    // Seeds resolved after admission field is known (coverage of admitted only).
+    usedCore07Projection = true;
+  }
 
   const precedence = resolveAdmissionSourcePrecedence({
     directEntrants: directEntrants.map((e) => {
       const entryId = e.entryId;
-      const auth = authSeeds[entryId];
-      const explicit =
-        Number.isFinite(Number(auth)) && Number(auth) >= 1
-          ? Number(auth)
-          : null;
       return {
         entryId,
         effectiveTargetStage: e.effectiveTargetStage || e.targetStage || null,
-        seedNumber: explicit,
-        authoritativeSeed: explicit != null,
+        seedNumber: null,
+        authoritativeSeed: false,
       };
     }),
     directKnockoutEntrySlots: Number(plan.directKnockoutEntrySlots) || 0,
@@ -379,31 +420,45 @@ export function composeKnockoutAdmission(input) {
   };
 
   for (const d of precedence.direct) {
-    const auth = authSeeds[d.entryId];
-    const hasAuth = Number.isFinite(Number(auth)) && Number(auth) >= 1;
     pushUnique({
       ...d,
-      authoritativeSeed: hasAuth,
-      seedNumber: hasAuth ? Number(auth) : null,
+      authoritativeSeed: false,
+      seedNumber: null,
     });
   }
   for (const g of precedence.groupDirect) {
-    const auth = authSeeds[g.entryId];
-    const hasAuth = Number.isFinite(Number(auth)) && Number(auth) >= 1;
     pushUnique({
       ...g,
-      authoritativeSeed: hasAuth,
-      seedNumber: hasAuth ? Number(auth) : null,
+      authoritativeSeed: false,
+      seedNumber: null,
     });
   }
   for (const w of precedence.wildcard) {
-    const auth = authSeeds[w.entryId];
-    const hasAuth = Number.isFinite(Number(auth)) && Number(auth) >= 1;
     pushUnique({
       ...w,
-      authoritativeSeed: hasAuth,
-      seedNumber: hasAuth ? Number(auth) : null,
+      authoritativeSeed: false,
+      seedNumber: null,
     });
+  }
+
+  if (usedCore07Projection) {
+    authSeeds = resolveAuthoritativeSeedMapFromCore07(
+      knockoutProjectionInput,
+      admitted.map((a) => a.entryId),
+      {
+        competitionId,
+        divisionId: input.divisionId ?? plan.divisionId ?? null,
+        categoryId: input.categoryId ?? plan.categoryId ?? null,
+        stageId: knockoutStageId,
+        competitionUnitKind: input.competitionUnitKind,
+        role: "KNOCKOUT",
+      }
+    );
+    for (const row of admitted) {
+      const seedNumber = authSeeds[row.entryId];
+      row.authoritativeSeed = true;
+      row.seedNumber = seedNumber;
+    }
   }
 
   const actualDirect = admitted.filter(
@@ -508,7 +563,10 @@ export function composeKnockoutAdmission(input) {
     seeding: Object.freeze({
       admissionSourceAffectsSeeding: false,
       ceAssignsSeeds: false,
-      authority: "CORE-07 when authoritative; otherwise CORE-08 OPEN draw",
+      authority: usedCore07Projection
+        ? "CORE-07 authoritative projection → CORE-08 SEEDED draw"
+        : "CORE-08 OPEN draw (no authoritative CORE-07 projection)",
+      core07ProjectionConsumed: usedCore07Projection,
       drawPlacementMode,
     }),
     distinctions: Object.freeze({
