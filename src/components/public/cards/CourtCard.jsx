@@ -31,7 +31,6 @@ export default function CourtCard({ court }) {
           <Stack
             direction="row"
             spacing={0.5}
-            alignItems="center"
             sx={{
               position: "absolute",
               top: 12,
@@ -40,6 +39,7 @@ export default function CourtCard({ court }) {
               px: 1,
               py: 0.25,
               borderRadius: 1,
+              alignItems: "center",
             }}
           >
             <StarIcon sx={{ fontSize: 14, color: PUBLIC_COLORS.lime }} />
@@ -55,14 +55,14 @@ export default function CourtCard({ court }) {
           {court.name}
         </Typography>
         <Stack spacing={0.75}>
-          <Stack direction="row" spacing={0.75} alignItems="flex-start">
+          <Stack direction="row" spacing={0.75} sx={{ alignItems: "flex-start" }}>
             <LocationOnOutlinedIcon sx={{ fontSize: 16, color: PUBLIC_COLORS.textMuted, mt: 0.2 }} />
             <Typography variant="body2" color={PUBLIC_COLORS.textMuted} sx={{ lineHeight: 1.4 }}>
               {court.address}
             </Typography>
           </Stack>
           {typeof court.courtCount === "number" ? (
-            <Stack direction="row" spacing={0.75} alignItems="center">
+            <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
               <SportsTennisIcon sx={{ fontSize: 16, color: PUBLIC_COLORS.lime }} />
               <Typography variant="body2" color={PUBLIC_COLORS.textMuted}>
                 {court.courtCount} sân

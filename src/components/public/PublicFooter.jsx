@@ -58,7 +58,7 @@ export default function PublicFooter() {
       <Box sx={publicContainerSx}>
         <Grid container spacing={4}>
           <Grid size={{ xs: 12, md: 4 }}>
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+            <Stack direction="row" spacing={1} sx={{ mb: 2, alignItems: "center" }}>
               <SportsTennisIcon sx={{ color: PUBLIC_COLORS.lime }} />
               <Typography variant="h6" fontWeight={800} color={PUBLIC_COLORS.text}>
                 PICK_VN

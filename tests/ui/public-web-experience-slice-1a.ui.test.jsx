@@ -70,6 +70,46 @@ describe("Slice 1A public integrity UI", () => {
     expect(links.some((el) => el.getAttribute("href") === "/public/tournaments")).toBe(true);
   });
 
+  it("PublicHeader does not leak alignItems onto DOM", () => {
+    const { container } = wrap(<PublicHeader />);
+    expect(container.querySelector("[alignItems]")).toBeNull();
+    expect(container.querySelector("[alignitems]")).toBeNull();
+  });
+
+  it("mobile drawer does not leak PaperProps onto DOM", async () => {
+    const user = userEvent.setup();
+    const { container, baseElement } = wrap(<PublicHeader />);
+    await user.click(screen.getByLabelText("Mở menu"));
+    expect(container.querySelector("[PaperProps]")).toBeNull();
+    expect(baseElement.querySelector("[PaperProps]")).toBeNull();
+    expect(baseElement.querySelector("[paperprops]")).toBeNull();
+  });
+
+  it("mobile menu opens and closes; focus returns to trigger", async () => {
+    const user = userEvent.setup();
+    wrap(<PublicHeader />);
+    const trigger = screen.getByLabelText("Mở menu");
+    await user.click(trigger);
+    expect(screen.getByTestId("public-mobile-nav-panel")).toBeInTheDocument();
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+    await user.keyboard("{Escape}");
+    await vi.waitFor(() => {
+      expect(trigger).toHaveAttribute("aria-expanded", "false");
+    });
+    await vi.waitFor(() => {
+      expect(trigger).toHaveFocus();
+    });
+  });
+
+  it("Register CTA remains /login for guests", () => {
+    wrap(<PublicHeader />);
+    expect(screen.getByRole("link", { name: "Đăng ký miễn phí" })).toHaveAttribute(
+      "href",
+      "/login"
+    );
+  });
+
   it("footer Ban tổ chức giải href is /login", () => {
     wrap(<PublicFooter />);
     const link = screen.getByRole("link", { name: "Ban tổ chức giải" });

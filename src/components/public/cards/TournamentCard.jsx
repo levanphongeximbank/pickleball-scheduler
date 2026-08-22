@@ -66,19 +66,19 @@ export default function TournamentCard({ tournament, variant = "dark" }) {
         </Typography>
 
         <Stack spacing={0.75} sx={{ mb: 2, flex: 1 }}>
-          <Stack direction="row" spacing={0.75} alignItems="center">
+          <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
             <LocationOnOutlinedIcon sx={{ fontSize: 16, color: PUBLIC_COLORS.lime }} />
             <Typography variant="body2" color={PUBLIC_COLORS.textMuted}>
               {tournament.location}
             </Typography>
           </Stack>
-          <Stack direction="row" spacing={0.75} alignItems="center">
+          <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
             <CalendarMonthOutlinedIcon sx={{ fontSize: 16, color: PUBLIC_COLORS.textMuted }} />
             <Typography variant="body2" color={PUBLIC_COLORS.textMuted}>
               {tournament.date}
             </Typography>
           </Stack>
-          <Stack direction="row" spacing={0.75} alignItems="center">
+          <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
             <GroupsOutlinedIcon sx={{ fontSize: 16, color: PUBLIC_COLORS.textMuted }} />
             <Typography variant="body2" color={PUBLIC_COLORS.textMuted}>
               {tournament.participants} {tournament.participantLabel}

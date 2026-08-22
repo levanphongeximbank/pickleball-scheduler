@@ -29,6 +29,19 @@ test("Slice 1A: PublicHeader desktop/mobile Giải đấu → /public/tournament
   assert.ok(header.includes("Drawer"));
 });
 
+test("Slice 1A: PublicHeader does not leak alignItems / PaperProps to DOM (MUI v9)", () => {
+  const header = readSrc("src/components/public/PublicHeader.jsx");
+  // Stack no longer accepts alignItems as a top-level prop — must live in sx.
+  assert.equal(/\balignItems=/.test(header), false);
+  assert.ok(header.includes('alignItems: "center"'));
+  // Drawer PaperProps removed in MUI v9 — use sx .MuiDrawer-paper (repo pattern).
+  assert.equal(header.includes("PaperProps"), false);
+  assert.ok(header.includes('"& .MuiDrawer-paper"') || header.includes("'& .MuiDrawer-paper'"));
+  // Register CTA guest target unchanged.
+  assert.ok(header.includes('to={isAuthenticated ? "/tournament/create" : "/login"}'));
+  assert.ok(header.includes("Đăng ký miễn phí"));
+});
+
 test("Slice 1A: PublicFooter Ban tổ chức giải → /login", () => {
   const footer = readSrc("src/components/public/PublicFooter.jsx");
   assert.ok(footer.includes('label: "Ban tổ chức giải", path: "/login"'));

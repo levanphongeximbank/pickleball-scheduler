@@ -238,9 +238,9 @@ export function PublicUnavailableState({
       aria-live="polite"
       data-testid="public-unavailable-state"
       spacing={1.25}
-      alignItems="center"
       sx={{
         ...rootSx,
+        alignItems: "center",
         border: `1px solid ${PUBLIC_COLORS.border}`,
         borderRadius: 2,
         bgcolor: "rgba(255,255,255,0.03)",
