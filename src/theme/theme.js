@@ -86,12 +86,22 @@ const theme = createTheme({
       },
     },
     MuiButton: {
+      defaultProps: {
+        /**
+         * MUI Button loading API (v6+/v9) — no @mui/lab LoadingButton dependency.
+         * Call sites: <Button loading={isPending}>…</Button>
+         */
+        disableElevation: true,
+      },
       styleOverrides: {
         root: {
           borderRadius: SHAPE.borderRadius,
           boxShadow: "none",
           "&:hover": { boxShadow: "none" },
           "&:focus-visible": focusVisibleOutline,
+          "&.Mui-disabled": {
+            color: COLOR.disabled.text,
+          },
         },
         contained: {
           "&:hover": {
@@ -100,8 +110,35 @@ const theme = createTheme({
         },
         containedPrimary: {
           backgroundColor: PALETTE.primary.main,
+          color: PALETTE.primary.contrastText,
           "&:hover": {
             backgroundColor: PALETTE.primary.dark,
+          },
+        },
+        /** DESTRUCTIVE — semantic error/red; never primary blue */
+        containedError: {
+          backgroundColor: PALETTE.error.main,
+          color: "#FFFFFF",
+          "&:hover": {
+            backgroundColor: PALETTE.error.dark,
+            boxShadow: "0 2px 8px rgba(220, 38, 38, 0.25)",
+          },
+        },
+        outlinedError: {
+          borderColor: PALETTE.error.main,
+          color: PALETTE.error.main,
+          "&:hover": {
+            borderColor: PALETTE.error.dark,
+            backgroundColor: COLOR.error.light,
+          },
+        },
+        /** SUCCESS — completion actions only; not generic primary */
+        containedSuccess: {
+          backgroundColor: PALETTE.success.main,
+          color: PALETTE.success.contrastText,
+          "&:hover": {
+            backgroundColor: PALETTE.success.dark,
+            boxShadow: "0 2px 8px rgba(16, 185, 129, 0.25)",
           },
         },
       },
@@ -110,6 +147,9 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           "&:focus-visible": focusVisibleOutline,
+          "&.Mui-disabled": {
+            color: COLOR.disabled.text,
+          },
         },
       },
     },
@@ -151,6 +191,26 @@ const theme = createTheme({
         size: "small",
       },
     },
+    MuiFormHelperText: {
+      styleOverrides: {
+        root: {
+          fontSize: TYPOGRAPHY.caption.size,
+          lineHeight: TYPOGRAPHY.caption.lineHeight,
+          marginLeft: 0,
+          marginRight: 0,
+          "&.Mui-error": {
+            color: PALETTE.error.main,
+          },
+        },
+      },
+    },
+    MuiFormLabel: {
+      styleOverrides: {
+        asterisk: {
+          color: PALETTE.error.main,
+        },
+      },
+    },
     MuiOutlinedInput: {
       styleOverrides: {
         root: {
@@ -160,6 +220,12 @@ const theme = createTheme({
           },
           "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
             borderColor: PALETTE.primary.main,
+          },
+          "&.Mui-error .MuiOutlinedInput-notchedOutline": {
+            borderColor: PALETTE.error.main,
+          },
+          "&.Mui-disabled": {
+            backgroundColor: COLOR.disabled.bg,
           },
         },
       },
