@@ -12,7 +12,6 @@
 -- AMBIGUOUS_NAMED_DB_SESSION=FAIL_CLOSED
 -- CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql
 -- Barrier timestamp is quiesce_visible_at (Q1B post-commit seal), not q1_committed_at.
-  assert.match(readPkg("07B_DRAIN_VERIFY.sql"), /CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql/);
 -- Direct Club DML from application roles must remain impossible (PRECHECK evidence).
 
 DO $$
