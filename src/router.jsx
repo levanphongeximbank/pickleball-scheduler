@@ -264,6 +264,18 @@ const IndividualAwardsExperiencePage = lazy(() =>
 const IndividualCompleteTournamentPage = lazy(() =>
   import("./features/tournament/experience-a1/pages/IndividualCompleteTournamentPage.jsx")
 );
+const TeamOverviewPage = lazy(() =>
+  import("./features/tournament/experience-a1/team/TeamOverviewPage.jsx")
+);
+const TeamSettingsPage = lazy(() =>
+  import("./features/tournament/experience-a1/team/TeamSettingsPage.jsx")
+);
+const TeamParticipantsPage = lazy(() =>
+  import("./features/tournament/experience-a1/team/TeamParticipantsPage.jsx")
+);
+const TournamentsPluralScheduleRoute = lazy(() =>
+  import("./features/tournament/experience-a1/team/TournamentsPluralScheduleRoute.jsx")
+);
 const IndividualPublicExperiencePage = lazy(() =>
   import("./features/tournament/experience-a1/pages/IndividualPublicExperiencePage.jsx")
 );
@@ -823,11 +835,14 @@ export default function Router() {
             />
 
             <Route path="/tournaments" element={<MyTournamentsHubPage />} />
+            <Route path="/tournaments/:tournamentId/overview" element={<TeamOverviewPage />} />
+            <Route path="/tournaments/:tournamentId/settings" element={<TeamSettingsPage />} />
+            <Route path="/tournaments/:tournamentId/participants" element={<TeamParticipantsPage />} />
             <Route path="/tournaments/:tournamentId" element={<TournamentDashboardPage />} />
             <Route path="/tournaments/:tournamentId/engine" element={<TournamentEnginePage />} />
             <Route path="/tournaments/:tournamentId/seed" element={<TournamentEnginePage />} />
             <Route path="/tournaments/:tournamentId/draw" element={<TournamentEnginePage />} />
-            <Route path="/tournaments/:tournamentId/schedule" element={<TournamentEnginePage />} />
+            <Route path="/tournaments/:tournamentId/schedule" element={<TournamentsPluralScheduleRoute />} />
             <Route path="/tournaments/:tournamentId/courts" element={<TournamentEnginePage />} />
             <Route path="/tournaments/:tournamentId/ranking" element={<TournamentEnginePage />} />
             <Route path="/tournaments/:tournamentId/logs" element={<TournamentEnginePage />} />

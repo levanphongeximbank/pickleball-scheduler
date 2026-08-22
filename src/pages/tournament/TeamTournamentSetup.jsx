@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { Link as RouterLink, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link as RouterLink, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import {
   Alert,
@@ -94,6 +94,7 @@ import CaptainAccessToggle from "../../components/tournament/team/CaptainAccessT
 import { computeTeamTournamentWorkflow } from "../../components/tournament/team/teamTournamentWorkflow.js";
 import { MATCHUP_STATUS } from "../../features/team-tournament/constants.js";
 import { TEAM_TAB_QUERY, teamTournamentDashboardPath } from "../../config/tournamentRoutes.js";
+import { resolveSafeTeamLegacyRedirect } from "../../features/tournament/experience-a1/team/teamExperienceRoutes.js";
 import { logTeamRosterHydrationTransition } from "../../features/team-tournament/engines/teamRosterHydrationDiagnostics.js";
 import TournamentVprPanel from "../../features/vpr-ranking/components/TournamentVprPanel.jsx";
 import {
@@ -158,6 +159,32 @@ function useTeamTournamentAccess({ tournament, activeClubId }) {
 }
 
 export default function TeamTournamentSetup() {
+  const { tournamentId } = useParams();
+  const [searchParams] = useSearchParams();
+
+  // Wave T3: safe legacy tab → canonical Experience redirect (no loop; adopted only).
+  // Bypass: ?experience=legacy keeps TeamTournamentSetup for full operational surfaces
+  // (lineup / Dreambreaker / disciplines) that are not yet canonical.
+  const forceLegacyShell = String(searchParams.get("experience") || "").trim() === "legacy";
+  const legacyTab = String(searchParams.get("tab") || "").trim();
+  const compatRedirect = forceLegacyShell
+    ? null
+    : resolveSafeTeamLegacyRedirect({
+        tournamentId,
+        tab: legacyTab || TEAM_TAB_QUERY.teams,
+      });
+  if (compatRedirect) {
+    const club = String(searchParams.get("club") || "").trim();
+    const to = club
+      ? `${compatRedirect}${compatRedirect.includes("?") ? "&" : "?"}club=${encodeURIComponent(club)}`
+      : compatRedirect;
+    return <Navigate to={to} replace />;
+  }
+
+  return <TeamTournamentSetupInner />;
+}
+
+function TeamTournamentSetupInner() {
   const { tournamentId } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();

@@ -388,14 +388,14 @@ test("organizer actions follow lifecycle", () => {
   assert.equal(organizerAction({ status: "completed" }).id, "view_results");
 });
 
-test("routes: draft opens setup; visible opens dashboard", () => {
+test("routes: Team open path is status-agnostic canonical overview", () => {
   assert.equal(
     resolveTeamTournamentOpenPath({ id: "abc", status: "draft" }),
-    "/tournament/team/abc?tab=teams"
+    "/tournaments/abc/overview"
   );
   assert.equal(
     resolveTeamTournamentOpenPath({ id: "abc", status: "active" }),
-    "/tournaments/abc"
+    "/tournaments/abc/overview"
   );
   assert.equal(teamTournamentDashboardPath("abc"), "/tournaments/abc");
 });

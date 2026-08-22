@@ -24,6 +24,7 @@ import {
 } from "../features/club/navigation/clubNavMatrix.js";
 import {
   isMyTournamentsHubPath,
+  isTeamTournamentExperiencePath,
   isTournamentDashboardPath,
   isTournamentEnginePath,
 } from "./tournamentEngineRouteAccess.js";
@@ -94,11 +95,16 @@ export function getRouteAccessPermissions(pathname) {
   // Plural tournament routes:
   // - exact `/tournaments` = authenticated My Tournaments hub (no TOURNAMENT_UPDATE)
   // - exact `/tournaments/:id` = authenticated Dashboard shell (no TOURNAMENT_UPDATE)
+  // - `/tournaments/:id/overview` = Team Experience shell (Wave T1; same auth as dashboard)
   // - Engine tabs = TOURNAMENT_UPDATE
   // - any other `/tournaments/:id/...` = fail-closed organizer UPDATE
   {
     const pathOnly = String(pathname).split("?")[0];
-    if (isMyTournamentsHubPath(pathOnly) || isTournamentDashboardPath(pathOnly)) {
+    if (
+      isMyTournamentsHubPath(pathOnly) ||
+      isTournamentDashboardPath(pathOnly) ||
+      isTeamTournamentExperiencePath(pathOnly)
+    ) {
       return [];
     }
     if (isTournamentEnginePath(pathOnly)) {

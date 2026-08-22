@@ -101,7 +101,7 @@ export default function IndividualOverviewPage() {
 
   if (!isIndividualTournament(tournament)) {
     const fallback = isTeamTournament(tournament)
-      ? `/tournaments/${encodeURIComponent(tournament.id)}`
+      ? `/tournaments/${encodeURIComponent(tournament.id)}/overview`
       : tournament.mode === TOURNAMENT_MODE.DAILY_PLAY
         ? `/tournament/daily/${encodeURIComponent(tournament.id)}`
         : "/tournament";

@@ -79,13 +79,22 @@ export function teamTournamentDashboardPath(tournamentId) {
   return id ? `/tournaments/${id}` : TOURNAMENT_ROUTES.list;
 }
 
+/** Canonical Team Overview entry (Wave T1) — status-agnostic. */
+export function teamTournamentOverviewPath(tournamentId) {
+  const id = String(tournamentId || "").trim();
+  return id ? `/tournaments/${id}/overview` : TOURNAMENT_ROUTES.list;
+}
+
+/**
+ * Open Team Tournament into canonical Experience Overview.
+ * Legacy `/tournament/team/:id` remains available as compatibility fallback;
+ * operational dashboard remains at `/tournaments/:id`.
+ * No DRAFT → legacy / ACTIVE → dashboard status split.
+ */
 export function resolveTeamTournamentOpenPath(tournament) {
   const id = String(tournament?.teamDomainId || tournament?.id || "").trim();
   if (!id) return TOURNAMENT_ROUTES.list;
-  if (String(tournament?.status || "") === TOURNAMENT_STATUS.DRAFT) {
-    return teamTournamentPath(id, TEAM_TAB_QUERY.teams);
-  }
-  return teamTournamentDashboardPath(id);
+  return teamTournamentOverviewPath(id);
 }
 
 export function engineTabPath(tournamentId, tab = "setup") {
