@@ -32,7 +32,14 @@ export const COMPETITION_RULES_CAPABILITY_ID = Object.freeze({
   IN_GROUP_TIEBREAK: "IN_GROUP_TIEBREAK",
   CROSS_GROUP_WILDCARD_RANKING: "CROSS_GROUP_WILDCARD_RANKING",
   KNOCKOUT: "KNOCKOUT",
+  /** Competition unit excluded from group-stage participation (≠ direct entry ≠ bye). */
+  GROUP_STAGE_BYPASS: "GROUP_STAGE_BYPASS",
+  /** Admitted knockout slot without group standings qualification (≠ seeding ≠ bye). */
+  DIRECT_KNOCKOUT_ENTRY: "DIRECT_KNOCKOUT_ENTRY",
+  /** Admitted knockout unit skips one round via bracket BYE allocation (≠ direct entry). */
+  KNOCKOUT_BYE: "KNOCKOUT_BYE",
   WALKOVER_POLICY: "WALKOVER_POLICY",
+
   CHECK_IN_POLICY: "CHECK_IN_POLICY",
   SCHEDULE_CONSTRAINTS: "SCHEDULE_CONSTRAINTS",
   COURT_REQUIREMENT: "COURT_REQUIREMENT",
@@ -123,6 +130,39 @@ export const COMPETITION_RULES_CAPABILITY_MATRIX = Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
     execution: CAPABILITY_STATE.SUPPORTED,
     evidence: "CE knockout + CORE match-generation / Team knockout engines",
+  }),
+  [COMPETITION_RULES_CAPABILITY_ID.GROUP_STAGE_BYPASS]: Object.freeze({
+    policy: CAPABILITY_STATE.SUPPORTED,
+    execution: CAPABILITY_STATE.PARTIAL,
+    executionCondition:
+      "Policy derives group-stage vs bypass populations; canonical group-allocation composition must consume admission plan before execution is SUPPORTED",
+    evidence:
+      "Rules knockoutAdmission.groupStageBypass models exemption; CE/CORE group draw does not yet consume bypass plan — PARTIAL",
+  }),
+  [COMPETITION_RULES_CAPABILITY_ID.DIRECT_KNOCKOUT_ENTRY]: Object.freeze({
+    policy: CAPABILITY_STATE.SUPPORTED,
+    execution: CAPABILITY_STATE.DEFERRED,
+    executionCondition:
+      "CE qualification currently consumes pool-derived qualifiers only; canonical direct-entry composition into knockout draw is not proven",
+    evidence:
+      "Policy models directKnockoutEntry slots/source/targetStage/entryId; CE buildKnockoutDrawSnapshotFromQualifiers has no direct-entry admission path — DEFERRED",
+  }),
+  [COMPETITION_RULES_CAPABILITY_ID.KNOCKOUT_BYE]: Object.freeze({
+    policy: CAPABILITY_STATE.SUPPORTED,
+    execution: CAPABILITY_STATE.SUPPORTED,
+    executionCondition:
+      "Single-elimination power-of-two first-round BYEs with BYE_POLICY TOP_SEEDS | BOTTOM_SEEDS | EXPLICIT_PLACEMENTS via CORE-08 calculateByeCount/assignBracketSlots + CORE-09 isBye placements + CE buildKnockoutDrawSnapshotFromQualifiers. Arbitrary mid-bracket / non-first-round BYE configurations are not certified.",
+    supportedRuntimePaths: Object.freeze([
+      "CORE-08 calculateByeCount / assignBracketSlots / selectByeSlots",
+      "CORE-09 BYE_POLICY + materializeSingleEliminationMatches isBye / isByeMatch",
+      "CE buildKnockoutDrawSnapshotFromQualifiers (EXPLICIT_PLACEMENTS default)",
+    ]),
+    unsupportedOrHintOnlyPaths: Object.freeze([
+      "Arbitrary-stage BYE insertion after bracket creation",
+      "Fake bye winners / phantom results (DENY — CORE-17 remains result authority)",
+    ]),
+    evidence:
+      "Shared knockout BYE execution proven for standard SE power-of-two first-round padding — not a new bye engine",
   }),
   [COMPETITION_RULES_CAPABILITY_ID.WALKOVER_POLICY]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,

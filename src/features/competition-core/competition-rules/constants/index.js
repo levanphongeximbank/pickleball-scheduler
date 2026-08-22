@@ -23,6 +23,9 @@ export {
   ROUND_ROBIN_POLICY,
   KNOCKOUT_ENTRY_ROUND,
   KNOCKOUT_PAIRING_POLICY,
+  DIRECT_KNOCKOUT_ENTRY_SOURCE,
+  KNOCKOUT_BYE_ALLOCATION_SHAPE,
+  BYE_POLICY,
   IN_GROUP_TIEBREAK_CRITERION,
   CROSS_GROUP_RANKING_CRITERION,
   WITHDRAWAL_HANDLING,
@@ -35,6 +38,9 @@ export {
   bestOfGamesToMatchSeries,
   mapInGroupCriterionToCore18,
   deriveKnockoutEntryRound,
+  KNOCKOUT_ENTRY_ROUND_ORDER,
+  knockoutEntryRoundRank,
+  isDirectEntryTargetStageCompatible,
 } from "./enums.js";
 
 export {
