@@ -55,45 +55,58 @@ function normalizeEntries(entries) {
   for (const raw of entries) {
     if (raw == null) continue;
     if (typeof raw === "string") {
-      const participantId = raw.trim();
-      if (!participantId) continue;
-      if (seen.has(participantId)) {
+      const entryId = raw.trim();
+      if (!entryId) continue;
+      if (seen.has(entryId)) {
         failOrganizer(
           ORGANIZER_ERROR_CODE.DUPLICATE_PARTICIPANT,
-          `Duplicate participant: ${participantId}`,
-          { participantId }
+          `Duplicate participant: ${entryId}`,
+          { participantId: entryId, entryId }
         );
       }
-      seen.add(participantId);
+      seen.add(entryId);
       out.push(
         Object.freeze({
-          participantId,
+          entryId,
+          participantId: entryId,
           status: ENTRY_OPS_STATUS.ELIGIBLE,
         })
       );
       continue;
     }
     if (typeof raw !== "object") continue;
-    const participantId = String(
-      /** @type {{ participantId?: unknown, id?: unknown }} */ (raw).participantId ||
+    const entryId = String(
+      /** @type {{ entryId?: unknown, participantId?: unknown, id?: unknown }} */ (raw)
+        .entryId ||
+        /** @type {{ participantId?: unknown }} */ (raw).participantId ||
         /** @type {{ id?: unknown }} */ (raw).id ||
         ""
     ).trim();
-    if (!participantId) {
+    if (!entryId) {
       failOrganizer(
         ORGANIZER_ERROR_CODE.INVALID_INPUT,
-        "participantId is required on each entry",
+        "entryId is required on each entry (participantId alias only when equal)",
         {}
       );
     }
-    if (seen.has(participantId)) {
+    const alias = String(
+      /** @type {{ participantId?: unknown }} */ (raw).participantId || ""
+    ).trim();
+    if (alias && alias !== entryId) {
       failOrganizer(
-        ORGANIZER_ERROR_CODE.DUPLICATE_PARTICIPANT,
-        `Duplicate participant: ${participantId}`,
-        { participantId }
+        ORGANIZER_ERROR_CODE.INVALID_INPUT,
+        "participantId alias must equal canonical entryId",
+        { entryId, participantId: alias }
       );
     }
-    seen.add(participantId);
+    if (seen.has(entryId)) {
+      failOrganizer(
+        ORGANIZER_ERROR_CODE.DUPLICATE_PARTICIPANT,
+        `Duplicate participant: ${entryId}`,
+        { participantId: entryId, entryId }
+      );
+    }
+    seen.add(entryId);
     const statusRaw = String(
       /** @type {{ status?: unknown }} */ (raw).status || ENTRY_OPS_STATUS.ELIGIBLE
     )
@@ -102,7 +115,13 @@ function normalizeEntries(entries) {
     const status = Object.values(ENTRY_OPS_STATUS).includes(statusRaw)
       ? statusRaw
       : ENTRY_OPS_STATUS.INVALID;
-    out.push(Object.freeze({ participantId, status }));
+    out.push(
+      Object.freeze({
+        entryId,
+        participantId: entryId,
+        status,
+      })
+    );
   }
   return out;
 }

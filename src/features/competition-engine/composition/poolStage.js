@@ -18,13 +18,17 @@ import { computeDeterministicFingerprint, deepFreeze } from "./fingerprint.js";
 
 /**
  * @param {{
- *   participants: Array<{ participantId: string, seedNumber?: number }|string>,
+ *   participants: Array<{ entryId?: string, participantId?: string, seedNumber?: number }|string>,
  *   format: object,
  *   competitionId: string,
  *   tenantId: string,
  *   divisionId?: string,
  *   categoryId?: string|null,
  *   deterministicSeed: string,
+ *   competitionRulesProfile?: object,
+ *   knockoutAdmissionPlan?: object|null,
+ *   groupStageBypassEntryIds?: string[],
+ *   applyGroupStageBypass?: boolean,
  * }} input
  */
 export function composePoolStage(input) {
@@ -39,6 +43,10 @@ export function composePoolStage(input) {
     competitionId: input.competitionId,
     divisionId: input.divisionId,
     deterministicSeed: input.deterministicSeed,
+    competitionRulesProfile: input.competitionRulesProfile,
+    knockoutAdmissionPlan: input.knockoutAdmissionPlan,
+    groupStageBypassEntryIds: input.groupStageBypassEntryIds,
+    applyGroupStageBypass: input.applyGroupStageBypass,
   });
 
   const divisionId = String(input.divisionId || "div-1").trim();

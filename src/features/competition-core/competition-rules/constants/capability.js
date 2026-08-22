@@ -112,9 +112,11 @@ export const COMPETITION_RULES_CAPABILITY_MATRIX = Object.freeze({
   }),
   [COMPETITION_RULES_CAPABILITY_ID.QUALIFICATION_WILDCARD]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
-    execution: CAPABILITY_STATE.PARTIAL,
+    execution: CAPABILITY_STATE.SUPPORTED,
+    executionCondition:
+      "Wildcard entrants composed via CE composeKnockoutAdmission after CORE-18 cross-group ranking; DIRECT/GROUP_DIRECT precedence excludes reserved entrants from the wildcard pool",
     evidence:
-      "Policy derives DIRECT/WILDCARD slots; CE qualification is TOP_N/GLOBAL_TOP_N — wildcard ranking execution compose pending Adapter B",
+      "Policy slot math + CE composeKnockoutAdmission WILDCARD selection + CORE-18 rankCrossGroupWildcardCandidates",
   }),
   [COMPETITION_RULES_CAPABILITY_ID.IN_GROUP_TIEBREAK]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
@@ -123,8 +125,11 @@ export const COMPETITION_RULES_CAPABILITY_MATRIX = Object.freeze({
   }),
   [COMPETITION_RULES_CAPABILITY_ID.CROSS_GROUP_WILDCARD_RANKING]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
-    execution: CAPABILITY_STATE.DEFERRED,
-    evidence: "Normalized criteria modeled; no dedicated cross-group wildcard execution SSOT yet",
+    execution: CAPABILITY_STATE.SUPPORTED,
+    executionCondition:
+      "Normalized criteria from Competition Rules; ranking executed by CORE-18 rankCrossGroupWildcardCandidates (deterministic DRAW_LOTS)",
+    evidence:
+      "CORE-18 crossGroupWildcardRanking.js ranks candidates; CE composes selected WILDCARD entrants only",
   }),
   [COMPETITION_RULES_CAPABILITY_ID.KNOCKOUT]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
@@ -133,25 +138,33 @@ export const COMPETITION_RULES_CAPABILITY_MATRIX = Object.freeze({
   }),
   [COMPETITION_RULES_CAPABILITY_ID.GROUP_STAGE_BYPASS]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
-    execution: CAPABILITY_STATE.PARTIAL,
+    execution: CAPABILITY_STATE.SUPPORTED,
     executionCondition:
-      "Policy derives group-stage vs bypass populations; canonical group-allocation composition must consume admission plan before execution is SUPPORTED",
+      "groupStageParticipantEntryIds = competitionPopulation − explicit bypass; bypass-only without DIRECT route fails closed when knockout participation is required",
     evidence:
-      "Rules knockoutAdmission.groupStageBypass models exemption; CE/CORE group draw does not yet consume bypass plan — PARTIAL",
+      "CE applyGroupStageBypassPopulation + composeKnockoutAdmission consume deriveKnockoutAdmissionPlan bypass populations",
   }),
   [COMPETITION_RULES_CAPABILITY_ID.DIRECT_KNOCKOUT_ENTRY]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
-    execution: CAPABILITY_STATE.DEFERRED,
+    execution: CAPABILITY_STATE.PARTIAL,
     executionCondition:
-      "CE qualification currently consumes pool-derived qualifiers only; canonical direct-entry composition into knockout draw is not proven",
+      "SUPPORTED only when effectiveTargetStage == bracketWideEntryRound (first-playable stage). Later-stage DIRECT remains DEFERRED — fail closed; no BYE/phantom simulation.",
+    supportedRuntimePaths: Object.freeze([
+      "CE composeKnockoutAdmission first-playable DIRECT",
+      "Rules assertFirstPlayableDirectEntryExecution",
+    ]),
+    unsupportedOrHintOnlyPaths: Object.freeze([
+      "Later-stage DIRECT (targetStage after bracketWideEntryRound)",
+      "Fake bye / phantom winner simulation of later-stage admission",
+    ]),
     evidence:
-      "Policy models directKnockoutEntry slots/source/targetStage/entryId; CE buildKnockoutDrawSnapshotFromQualifiers has no direct-entry admission path — DEFERRED",
+      "First-round DIRECT composed into knockout via shared admission boundary; later-stage deferred",
   }),
   [COMPETITION_RULES_CAPABILITY_ID.KNOCKOUT_BYE]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
     execution: CAPABILITY_STATE.SUPPORTED,
     executionCondition:
-      "Single-elimination power-of-two first-round BYEs with BYE_POLICY TOP_SEEDS | BOTTOM_SEEDS | EXPLICIT_PLACEMENTS via CORE-08 calculateByeCount/assignBracketSlots + CORE-09 isBye placements + CE buildKnockoutDrawSnapshotFromQualifiers. Arbitrary mid-bracket / non-first-round BYE configurations are not certified.",
+      "Single-elimination power-of-two first-round BYEs with BYE_POLICY TOP_SEEDS | BOTTOM_SEEDS | EXPLICIT_PLACEMENTS via CORE-08 calculateByeCount/assignBracketSlots + CORE-09 isBye placements + CE buildKnockoutDrawSnapshotFromQualifiers. Arbitrary mid-bracket / non-first-round BYE configurations are not certified. DIRECT ≠ BYE.",
     supportedRuntimePaths: Object.freeze([
       "CORE-08 calculateByeCount / assignBracketSlots / selectByeSlots",
       "CORE-09 BYE_POLICY + materializeSingleEliminationMatches isBye / isByeMatch",
@@ -160,9 +173,10 @@ export const COMPETITION_RULES_CAPABILITY_MATRIX = Object.freeze({
     unsupportedOrHintOnlyPaths: Object.freeze([
       "Arbitrary-stage BYE insertion after bracket creation",
       "Fake bye winners / phantom results (DENY — CORE-17 remains result authority)",
+      "Using BYE to simulate later-stage DIRECT_KNOCKOUT_ENTRY",
     ]),
     evidence:
-      "Shared knockout BYE execution proven for standard SE power-of-two first-round padding — not a new bye engine",
+      "Shared knockout BYE execution proven for standard SE power-of-two first-round padding — not a new bye engine; distinct from DIRECT",
   }),
   [COMPETITION_RULES_CAPABILITY_ID.WALKOVER_POLICY]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,

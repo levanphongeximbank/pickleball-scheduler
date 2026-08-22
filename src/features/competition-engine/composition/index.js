@@ -39,6 +39,15 @@ export { composePoolStage } from "./poolStage.js";
 export { composeQualificationAdvancement } from "./qualification.js";
 export { composeKnockoutStage } from "./knockoutStage.js";
 export { composeIndividualPoolKnockout } from "./composePoolKnockout.js";
+export {
+  composeKnockoutAdmission,
+  adaptAdmittedToKnockoutQualifiers,
+} from "./knockoutAdmission.js";
+export {
+  normalizeCompetitionUnitIdentity,
+  normalizeCompetitionUnitParticipants,
+} from "./entryIdentity.js";
+export { applyGroupStageBypassPopulation } from "./groupStageBypassPopulation.js";
 
 export { buildGroupDrawSnapshotFromPools } from "./adapters/drawSnapshotFromGroups.js";
 export { buildKnockoutDrawSnapshotFromQualifiers } from "./adapters/drawSnapshotFromQualifiers.js";

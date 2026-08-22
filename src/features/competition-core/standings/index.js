@@ -86,6 +86,11 @@ export {
 } from "./drawLot.js";
 
 export {
+  computeCrossGroupWildcardMetrics,
+  rankCrossGroupWildcardCandidates,
+} from "./crossGroupWildcardRanking.js";
+
+export {
   compareRowsByTieBreakRule,
   unsupportedTieBreakIssue,
 } from "./tieBreakCompare.js";

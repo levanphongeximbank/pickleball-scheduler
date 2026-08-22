@@ -61,7 +61,6 @@ export function resolveWildcardRankingPolicy(profileOrRaw, options = {}) {
   const allowed = new Set(Object.values(CROSS_GROUP_RANKING_CRITERION));
   const unknown = criteria.filter((c) => !allowed.has(c));
   const policyOk = unknown.length === 0;
-  // Policy remain representable even when execution is deferred.
   const base = Object.freeze({
     ok: policyOk,
     criteria: Object.freeze(criteria),
@@ -70,21 +69,31 @@ export function resolveWildcardRankingPolicy(profileOrRaw, options = {}) {
     unknown: Object.freeze(unknown),
     policyOwner: "competition-core.competition-rules",
     policyRepresentable: policyOk,
-    executionAvailable: false,
+    executionAvailable: true,
     executionOwner: "CORE-18",
-    executionState: "DEFERRED",
+    executionState: "SUPPORTED",
+    executionApi: "rankCrossGroupWildcardCandidates",
     note:
-      "Normalized metrics required for unequal groups; absolute wins must not be the sole cross-group comparator. Authoritative ranking execution deferred until CORE-18 composition exists.",
+      "Normalized metrics required for unequal groups; absolute wins must not be the sole cross-group comparator. Authoritative ranking execution = CORE-18 rankCrossGroupWildcardCandidates.",
   });
 
   if (options.requestAuthoritativeRanking === true) {
+    if (!policyOk) {
+      return Object.freeze({
+        ...base,
+        ok: false,
+        code: COMPETITION_RULES_ERROR_CODE.INVALID_WILDCARD_RANKING,
+        message: "Invalid cross-group wildcard ranking criteria",
+        failClosed: true,
+      });
+    }
     return Object.freeze({
       ...base,
-      ok: false,
-      code: COMPETITION_RULES_ERROR_CODE.CAPABILITY_EXECUTION_UNAVAILABLE,
+      ok: true,
+      authoritativeRankingAvailable: true,
+      failClosed: false,
       message:
-        "Authoritative cross-group wildcard ranking execution is unavailable (DEFERRED); fail-closed",
-      failClosed: true,
+        "Use CORE-18 rankCrossGroupWildcardCandidates with this policy projection",
     });
   }
 

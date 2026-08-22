@@ -18,14 +18,20 @@ import {
 } from "./constants.js";
 import { E2E02_ERROR_CODE, failE2E02 } from "./errors.js";
 import { deepFreeze, isNonEmptyString } from "./fingerprint.js";
+import { normalizeCompetitionUnitParticipants } from "./entryIdentity.js";
+import { applyGroupStageBypassPopulation } from "./groupStageBypassPopulation.js";
 
 /**
  * @param {{
- *   participants: Array<{ participantId: string, seedNumber?: number }|string>,
+ *   participants: Array<{ entryId?: string, participantId?: string, seedNumber?: number }|string>,
  *   format: import("../../formats/poolKnockoutFormat.js").PoolKnockoutFormatDefinition,
  *   competitionId: string,
  *   divisionId?: string,
  *   deterministicSeed: string,
+ *   competitionRulesProfile?: object,
+ *   knockoutAdmissionPlan?: object|null,
+ *   groupStageBypassEntryIds?: string[],
+ *   applyGroupStageBypass?: boolean,
  * }} input
  */
 export function composePoolGrouping(input) {
@@ -45,42 +51,33 @@ export function composePoolGrouping(input) {
     );
   }
 
-  const rawParticipants = Array.isArray(input.participants)
-    ? input.participants
-    : [];
-  /** @type {{ participantId: string, seedNumber: number }[]} */
-  const normalized = [];
-  const seen = new Set();
+  const applyBypass =
+    input.applyGroupStageBypass === true ||
+    input.knockoutAdmissionPlan != null ||
+    input.competitionRulesProfile != null ||
+    (Array.isArray(input.groupStageBypassEntryIds) &&
+      input.groupStageBypassEntryIds.length > 0);
 
-  rawParticipants.forEach((p, index) => {
-    const participantId =
-      typeof p === "string"
-        ? p.trim()
-        : String(p?.participantId || "").trim();
-    if (!participantId) {
-      failE2E02(
-        E2E02_ERROR_CODE.INVALID_CONFIGURATION,
-        "participantId required",
-        { index }
-      );
-    }
-    if (seen.has(participantId)) {
-      failE2E02(
-        E2E02_ERROR_CODE.DUPLICATE_PARTICIPANT,
-        "duplicate participant rejected",
-        { participantId }
-      );
-    }
-    seen.add(participantId);
-    const seedNumber =
-      typeof p === "object" &&
-      p != null &&
-      Number.isFinite(Number(p.seedNumber)) &&
-      Number(p.seedNumber) >= 1
-        ? Number(p.seedNumber)
-        : index + 1;
-    normalized.push({ participantId, seedNumber });
-  });
+  /** @type {{ entryId: string, participantId: string, seedNumber: number }[]} */
+  let normalized;
+  /** @type {object|null} */
+  let bypassPopulation = null;
+
+  if (applyBypass) {
+    bypassPopulation = applyGroupStageBypassPopulation({
+      participants: input.participants,
+      competitionRulesProfile: input.competitionRulesProfile,
+      knockoutAdmissionPlan: input.knockoutAdmissionPlan,
+      groupStageBypassEntryIds: input.groupStageBypassEntryIds,
+    });
+    normalized = bypassPopulation.groupStageParticipants.map((p) => ({
+      entryId: p.entryId,
+      participantId: p.participantId,
+      seedNumber: p.seedNumber,
+    }));
+  } else {
+    normalized = normalizeCompetitionUnitParticipants(input.participants || []);
+  }
 
   const min = input.format.participantCountPolicy.minParticipants;
   const max = input.format.participantCountPolicy.maxParticipants;
@@ -108,8 +105,8 @@ export function composePoolGrouping(input) {
 
   const candidates = normalized.map((p) =>
     createDrawCandidate({
-      candidateId: p.participantId,
-      candidateReference: p.participantId,
+      candidateId: p.entryId,
+      candidateReference: p.entryId,
       candidateType: CANDIDATE_TYPE.PARTICIPANT,
       seedNumber: p.seedNumber,
       competitionId,
@@ -148,7 +145,7 @@ export function composePoolGrouping(input) {
     assignment.placements
   );
 
-  /** @type {{ groupId: string, groupNumber: number, participantIds: string[] }[]} */
+  /** @type {{ groupId: string, groupNumber: number, participantIds: string[], entryIds: string[] }[]} */
   const groups = groupsWithPlacements.map((g) => {
     const groupNumber = Number(g.groupNumber);
     const groupId = `pool-${groupNumber}`;
@@ -158,7 +155,7 @@ export function composePoolGrouping(input) {
         (a, b) =>
           Number(a.positionNumber || 0) - Number(b.positionNumber || 0)
       );
-    const participantIds = memberPlacements.map((p) => {
+    const entryIds = memberPlacements.map((p) => {
       const ref =
         p.metadata?.candidateReference ||
         String(p.candidateIdentityKey || "")
@@ -166,7 +163,12 @@ export function composePoolGrouping(input) {
           .pop();
       return String(ref);
     });
-    return { groupId, groupNumber, participantIds };
+    return {
+      groupId,
+      groupNumber,
+      participantIds: entryIds,
+      entryIds,
+    };
   });
 
   for (const group of groups) {
@@ -195,5 +197,16 @@ export function composePoolGrouping(input) {
     groups,
     decisionTrace: Object.freeze([...(assignment.decisionTrace || [])]),
     participantCount: normalized.length,
+    canonicalIdentity: "entryId",
+    groupStageBypass: bypassPopulation
+      ? Object.freeze({
+          applied: true,
+          groupStageBypassEntryIds: bypassPopulation.groupStageBypassEntryIds,
+          competitionPopulationEntryIds:
+            bypassPopulation.competitionPopulationEntryIds,
+          groupStageParticipantEntryIds:
+            bypassPopulation.groupStageParticipantEntryIds,
+        })
+      : Object.freeze({ applied: false }),
   });
 }
