@@ -34,6 +34,14 @@ import {
  *   runtimePorts?: object,
  *   runtimePortDeps?: object,
  *   requireRuntimePorts?: boolean,
+ *   competitionRulesProfile?: object,
+ *   knockoutAdmissionPlan?: object|null,
+ *   competitionPopulationEntryIds?: string[],
+ *   competitionUnitKind?: string|null,
+ *   competitionVersionId?: string|null,
+ *   groupStageSeedingProjection?: object|null,
+ *   knockoutSeedingProjection?: object|null,
+ *   authoritativeSeedingProjection?: object|null,
  * }} input
  */
 export function createPoolKnockoutRuntimeComposition(input) {
@@ -128,6 +136,14 @@ export function createPoolKnockoutRuntimeComposition(input) {
     includeKnockout: input.includeKnockout,
     templateVersion: instantiated.templateVersion,
     formatVersion: instantiated.formatVersion,
+    competitionRulesProfile: input.competitionRulesProfile,
+    knockoutAdmissionPlan: input.knockoutAdmissionPlan,
+    competitionPopulationEntryIds: input.competitionPopulationEntryIds,
+    competitionUnitKind: input.competitionUnitKind,
+    competitionVersionId: input.competitionVersionId,
+    groupStageSeedingProjection: input.groupStageSeedingProjection,
+    knockoutSeedingProjection: input.knockoutSeedingProjection,
+    authoritativeSeedingProjection: input.authoritativeSeedingProjection,
   });
 
   return deepFreeze({

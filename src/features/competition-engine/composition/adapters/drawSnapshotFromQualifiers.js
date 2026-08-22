@@ -1,6 +1,11 @@
 /**
  * Map qualified participants → CORE-09 DrawSnapshot (single elimination).
  * Uses CORE-08 bracket slot + bye helpers for placement math.
+ *
+ * placementMode:
+ *   LEGACY_SEEDED (default) — prior E2E-02 behavior (seed fallback by index)
+ *   SEEDED — require authoritative seedNumber; CORE-08 closed seeded placement
+ *   OPEN — no synthetic seeds; CORE-08 open + deterministicSeed draw ordering
  */
 
 import {
@@ -21,16 +26,23 @@ import {
 import { E2E02_ERROR_CODE, failE2E02 } from "../errors.js";
 import { computeDeterministicFingerprint } from "../fingerprint.js";
 
+export const KNOCKOUT_QUALIFIER_PLACEMENT_MODE = Object.freeze({
+  LEGACY_SEEDED: "LEGACY_SEEDED",
+  SEEDED: "SEEDED",
+  OPEN: "OPEN",
+});
+
 /**
  * @param {{
  *   competitionId: string,
  *   divisionId: string,
  *   categoryId?: string|null,
  *   stageId?: string,
- *   qualifiers: Array<{ participantId: string, seedNumber: number }>,
+ *   qualifiers: Array<{ participantId: string, entryId?: string, seedNumber?: number|null }>,
  *   bracketSizePolicy?: string,
  *   byePolicy?: string,
  *   deterministicSeed: string,
+ *   placementMode?: string,
  * }} input
  */
 export function buildKnockoutDrawSnapshotFromQualifiers(input) {
@@ -45,6 +57,9 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
   const bracketSizePolicy =
     input.bracketSizePolicy || BRACKET_SIZE_POLICY.POWER_OF_TWO;
   const byePolicy = input.byePolicy || BYE_POLICY.EXPLICIT_PLACEMENTS;
+  const placementMode =
+    input.placementMode || KNOCKOUT_QUALIFIER_PLACEMENT_MODE.LEGACY_SEEDED;
+  const openDraw = placementMode === KNOCKOUT_QUALIFIER_PLACEMENT_MODE.OPEN;
 
   if (qualifiers.length < 2) {
     failE2E02(
@@ -56,7 +71,7 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
 
   const seen = new Set();
   for (const q of qualifiers) {
-    const id = String(q.participantId || "").trim();
+    const id = String(q.participantId || q.entryId || "").trim();
     if (!id) {
       failE2E02(
         E2E02_ERROR_CODE.INVALID_CONFIGURATION,
@@ -72,6 +87,18 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
       );
     }
     seen.add(id);
+    if (placementMode === KNOCKOUT_QUALIFIER_PLACEMENT_MODE.SEEDED) {
+      if (
+        !Number.isFinite(Number(q.seedNumber)) ||
+        Number(q.seedNumber) < 1
+      ) {
+        failE2E02(
+          E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+          "SEEDED placement requires authoritative seedNumber on every qualifier",
+          { participantId: id }
+        );
+      }
+    }
   }
 
   const dims = computeSingleEliminationBracket(
@@ -100,21 +127,27 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
     contextId: `${divisionId}:${stageId}`,
   });
 
-  const candidates = qualifiers.map((q, index) =>
-    createDrawCandidate({
-      candidateId: String(q.participantId),
-      candidateReference: String(q.participantId),
+  const candidates = qualifiers.map((q, index) => {
+    const id = String(q.participantId || q.entryId);
+    const seedNumber =
+      placementMode === KNOCKOUT_QUALIFIER_PLACEMENT_MODE.SEEDED
+        ? Number(q.seedNumber)
+        : placementMode === KNOCKOUT_QUALIFIER_PLACEMENT_MODE.OPEN
+          ? null
+          : Number.isFinite(Number(q.seedNumber)) && Number(q.seedNumber) >= 1
+            ? Number(q.seedNumber)
+            : index + 1;
+    return createDrawCandidate({
+      candidateId: id,
+      candidateReference: id,
       candidateType: CANDIDATE_TYPE.PARTICIPANT,
-      seedNumber:
-        Number.isFinite(Number(q.seedNumber)) && Number(q.seedNumber) >= 1
-          ? Number(q.seedNumber)
-          : index + 1,
+      seedNumber,
       competitionId,
       contextId: `${divisionId}:${stageId}`,
       drawIdentityKey,
       eligible: true,
-    })
-  );
+    });
+  });
 
   const bracketResult = assignBracketSlots(candidates, {
     drawIdentityKey,
@@ -122,7 +155,7 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
     contextId: `${divisionId}:${stageId}`,
     bracketSize: dims.bracketSize,
     bracketId: "ko-main",
-    open: false,
+    open: openDraw,
     deterministicSeed: input.deterministicSeed,
   });
 
@@ -147,7 +180,8 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
         position: slot,
         bracketId: "ko-main",
         isBye: false,
-        seedRef: placement.seedNumber != null ? `seed-${placement.seedNumber}` : null,
+        seedRef:
+          placement.seedNumber != null ? `seed-${placement.seedNumber}` : null,
       })
     );
   }
@@ -167,7 +201,6 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
     );
   }
 
-  // Fail-closed: every slot 1..B must be occupied for EXPLICIT_PLACEMENTS.
   if (byePolicy === BYE_POLICY.EXPLICIT_PLACEMENTS) {
     for (let pos = 1; pos <= dims.bracketSize; pos += 1) {
       if (!occupied.has(pos)) {
@@ -190,6 +223,7 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
       divisionId,
       stageId,
       qualifiers,
+      placementMode,
       bracketSize: dims.bracketSize,
       byeCount: dims.byeCount,
       deterministicSeed: input.deterministicSeed,
@@ -210,17 +244,24 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
       groupPlacements: [],
       bracketPlacements: [{ bracketId: "ko-main", order: 1 }],
       participantPlacements,
-      // Byes are carried as participantPlacements with isBye=true (CORE-09 SE contract).
       byePlacements: [],
-      seedReferences: qualifiers.map((q) => ({
-        participantId: q.participantId,
-        seedNumber: q.seedNumber,
-      })),
+      seedReferences: qualifiers
+        .filter(
+          (q) =>
+            Number.isFinite(Number(q.seedNumber)) && Number(q.seedNumber) >= 1
+        )
+        .map((q) => ({
+          participantId: q.participantId || q.entryId,
+          seedNumber: Number(q.seedNumber),
+        })),
       deterministicOrderingMetadata: {
         seed: String(input.deterministicSeed || ""),
+        placementMode,
+        open: openDraw,
       },
     }),
     bracketSize: dims.bracketSize,
     byeCount: dims.byeCount,
+    placementMode,
   };
 }

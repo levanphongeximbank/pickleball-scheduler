@@ -7,6 +7,10 @@ export {
   assertKnockoutAdmissionDistinctions,
 } from "./resolveKnockoutAdmissionPolicy.js";
 export {
+  resolveAdmissionSourcePrecedence,
+} from "./resolveAdmissionSourcePrecedence.js";
+export { assertFirstPlayableDirectEntryExecution } from "./assertDirectEntryExecutionSupport.js";
+export {
   resolveTieBreakPolicy,
   resolveWildcardRankingPolicy,
 } from "./resolveTieBreakPolicy.js";

@@ -366,6 +366,9 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
     totalKnockoutSlots: qualificationPlan.totalKnockoutSlots,
     directKnockoutEntrySlots: qualificationPlan.directKnockoutEntrySlots,
     groupDirectQualifierSlots: qualificationPlan.groupDirectQualifierSlots,
+    directQualifiersPerGroup: qualificationPlan.directQualifiersPerGroup,
+    groupCount: qualificationPlan.groupCount,
+    groupStageEnabled: qualificationPlan.groupStageEnabled === true,
     wildcardSlots: qualificationPlan.wildcardSlots,
     remainingSlots: qualificationPlan.remainingSlots,
     requiresCrossGroupWildcardRanking:
@@ -401,7 +404,15 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
         0,
         admission.directKnockoutEntry.count - directEntrants.length
       ),
+      /**
+       * Full later-stage DIRECT remains deferred.
+       * First-playable (effectiveTargetStage == bracketWideEntryRound) is
+       * composed by CE composeKnockoutAdmission.
+       */
       executionDeferred: true,
+      firstPlayableExecutionSupported: true,
+      laterStageExecutionDeferred: true,
+      executionCondition: "effectiveTargetStage == bracketWideEntryRound",
     }),
     bye: Object.freeze({
       byePolicy: admission.bye.byePolicy,

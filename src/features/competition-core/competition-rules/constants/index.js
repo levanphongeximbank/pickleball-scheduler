@@ -51,6 +51,12 @@ export {
 } from "./capability.js";
 
 export {
+  ADMISSION_SOURCE,
+  ADMISSION_SOURCE_PRECEDENCE,
+  ADMISSION_SOURCE_SEMANTICS,
+} from "./admissionSource.js";
+
+export {
   LIFECYCLE_MILESTONE,
   LIFECYCLE_MILESTONE_ORDER,
   lifecycleMilestoneRank,
