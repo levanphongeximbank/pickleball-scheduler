@@ -35,7 +35,7 @@ const FOOTER_COLUMNS = [
   {
     title: "Dành cho",
     links: [
-      { label: "Ban tổ chức giải", path: "/tournaments" },
+      { label: "Ban tổ chức giải", path: "/login" },
       { label: "Câu lạc bộ", path: "/clubs" },
       { label: "Chủ sân", path: "/courts" },
       { label: "Vận động viên", path: "/rankings" },

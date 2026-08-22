@@ -32,7 +32,7 @@ import {
 
 const NAV_ITEMS = [
   { label: "Trang chủ", path: "/home", match: ["/home", "/"] },
-  { label: "Giải đấu", path: "/tournaments" },
+  { label: "Giải đấu", path: "/public/tournaments", match: ["/public/tournaments"] },
   { label: "CLB", path: "/clubs" },
   { label: "Sân", path: "/courts" },
   { label: "BXH", path: "/rankings" },

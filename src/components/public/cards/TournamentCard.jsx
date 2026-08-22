@@ -10,10 +10,12 @@ import {
   publicCardSx,
   statusChipColors,
 } from "../publicPortalStyles.js";
+import { resolvePublicTournamentCardHref } from "./resolvePublicTournamentCardHref.js";
 
 export default function TournamentCard({ tournament, variant = "dark" }) {
   const chip = statusChipColors[tournament.status] || statusChipColors.upcoming;
   const isLight = variant === "light";
+  const detailTo = resolvePublicTournamentCardHref(tournament);
 
   return (
     <Box
@@ -86,7 +88,7 @@ export default function TournamentCard({ tournament, variant = "dark" }) {
 
         <Button
           component={RouterLink}
-          to={tournament.id ? `/tournaments/${tournament.id}` : "/tournaments"}
+          to={detailTo}
           size="small"
           sx={{
             alignSelf: "flex-start",

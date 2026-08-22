@@ -382,6 +382,8 @@ test("Route/menu public destinations stay on public catalog paths", () => {
   assert.ok(header.includes("/clubs"));
   assert.ok(header.includes("/courts"));
   assert.ok(header.includes("/home"));
+  assert.ok(header.includes("/public/tournaments"));
+  assert.equal(header.includes('path: "/tournaments"'), false);
   assert.equal(header.includes("/finance"), false);
   assert.equal(header.includes("/crm"), false);
   assert.equal(header.includes("/billing"), false);

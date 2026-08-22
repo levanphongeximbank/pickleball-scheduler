@@ -61,7 +61,7 @@ function PublicMatchRow({ match }) {
 
 export default function IndividualPublicExperiencePage() {
   const { tournamentId } = useParams();
-  const { activeClub, revision, clubScopeReady } = useClub();
+  const { activeClub, revision, clubScopeReady, clubScopeStatus } = useClub();
   const { tournament, loading: tournamentLoading, error } = useCanonicalTournament(activeClub, tournamentId, revision);
   const [tab, setTab] = useState("overview");
 
@@ -73,7 +73,29 @@ export default function IndividualPublicExperiencePage() {
     );
   }
 
-  if (!clubScopeReady || tournamentLoading) {
+  // Slice 1A READ_GATE: guests never become clubScopeReady (ClubContext stays "idle").
+  // Do not spin forever waiting for activeClub. Guest-safe published payload is Slice 1B.
+  // While club scope is still hydrating for an authenticated user, keep the loading state.
+  if (clubScopeStatus === "loading") {
+    return (
+      <Box sx={{ minHeight: "100dvh", bgcolor: TOURNAMENT_COLOR.pageBg, p: 3 }} data-testid={TEST_ID}>
+        <Typography>Đang tải trang công khai…</Typography>
+      </Box>
+    );
+  }
+
+  if (!clubScopeReady) {
+    // LOADING_STATE / ERROR_STATE: fail-closed unavailable (not "does not exist").
+    return (
+      <Box sx={{ minHeight: "100dvh", bgcolor: TOURNAMENT_COLOR.pageBg, p: 3 }} data-testid={TEST_ID}>
+        <Typography sx={{ fontWeight: 700 }}>
+          Thông tin giải đấu hiện chưa khả dụng công khai.
+        </Typography>
+      </Box>
+    );
+  }
+
+  if (tournamentLoading) {
     return (
       <Box sx={{ minHeight: "100dvh", bgcolor: TOURNAMENT_COLOR.pageBg, p: 3 }} data-testid={TEST_ID}>
         <Typography>Đang tải trang công khai…</Typography>
