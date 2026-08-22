@@ -126,7 +126,7 @@ export default function IndividualParticipantsPage() {
       return;
     }
     refreshClubs();
-    setMessage({ type: "success", text: "Đã chốt danh sách (lockRegistration)." });
+    setMessage({ type: "success", text: "Đã chốt danh sách vận động viên." });
   };
 
   const handleRemove = async (entryId) => {

@@ -24,13 +24,13 @@ import { resolveSelectedEvent, listTournamentEvents } from "../src/features/tour
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const A1_DIR = path.join(root, "src/features/tournament/experience-a1");
-const ACCEPTED_E_HEAD = "ca955d3544d00cbc034aea639a31170f90ce9ecc";
+// Freeze Screens 01–18 at pre-remediation closure HEAD (exclude Screen 05 presentation fix).
+const ACCEPTED_E_HEAD = "fa454f770d5c16a691a369568d3d266ce21bdcd8";
 const FROZEN_PAGES = [
   "pages/TournamentCenterExperiencePage.jsx",
   "pages/IndividualOverviewPage.jsx",
   "pages/IndividualSettingsPage.jsx",
   "pages/IndividualRegistrationPublicationPage.jsx",
-  "pages/IndividualParticipantsPage.jsx",
   "pages/IndividualPairFormationPage.jsx",
   "pages/IndividualPairDrawRoomPage.jsx",
   "pages/IndividualGroupDrawRoomPage.jsx",

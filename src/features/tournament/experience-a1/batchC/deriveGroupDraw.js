@@ -126,6 +126,13 @@ function deriveInternalGroupDrawModel(tournament, { selectedEventId } = {}) {
     readinessItems: [
       { label: "Đã bốc xong", ready: actionState.drawComplete, note: `${drawnCount}/${expectedTotal || 0}` },
       { label: "Sẵn sàng khóa", ready: false, note: actionState.lockHelper },
+      {
+        label: "Hồ sơ giải đã khóa bốc thăm",
+        ready: tournamentDrawLocked,
+        note: tournamentDrawLocked
+          ? "Áp dụng cả giải, không khóa riêng nội dung này."
+          : "Hồ sơ giải chưa khóa bốc thăm.",
+      },
     ],
     actionState,
     lockLabel: DRAW_LOCK_LABEL,
@@ -140,7 +147,9 @@ function deriveInternalGroupDrawModel(tournament, { selectedEventId } = {}) {
     reopenEnabled: false,
     presentEnabled: groups.length > 0,
     presentHint: groups.length ? "Trình chiếu (read-only)." : "Chưa có bảng.",
-    nextHint: "Chưa hoàn tất bốc thăm",
+    nextHint: actionState.drawComplete
+      ? "Nội dung này chưa có cơ chế khóa riêng."
+      : "Chưa hoàn tất bốc thăm",
     blocker: null,
     drawPublishStatus: null,
     ratingNeutral: null,
@@ -179,13 +188,16 @@ function deriveOfficialGroupDrawModel(tournament, { selectedEventId } = {}) {
   const drawnCount = metrics.progressNumerator;
   const publishStatus = projection.drawPublish?.status || DRAW_PUBLISH_STATUS.DRAFT;
   const tournamentDrawLocked = Boolean(tournament && isDrawLocked(tournament));
+  // Tournament settings.draw lock ≠ Content draw-result lock. Never pass tournament
+  // lock as contentLocked — incomplete draws must not present as "ĐÃ KHÓA".
+  const contentLocked = false;
   const actionState = resolveDrawRoomActionState({
     drawnCount,
     expectedTotal,
-    contentLocked: tournamentDrawLocked,
+    contentLocked,
     constraintsPass: groups.length > 0 && awaiting.length === 0,
     remainingNoun: "cặp chưa chia bảng",
-    lockAuthority: projection.lockEnabled,
+    lockAuthority: false,
   });
 
   const ledger = [];
@@ -246,7 +258,22 @@ function deriveOfficialGroupDrawModel(tournament, { selectedEventId } = {}) {
       ready: true,
       note: "settings.draw",
     },
+    {
+      label: "Hồ sơ giải đã khóa bốc thăm",
+      ready: tournamentDrawLocked,
+      note: tournamentDrawLocked
+        ? "Áp dụng cả giải, không khóa riêng nội dung này."
+        : "Hồ sơ giải chưa khóa bốc thăm.",
+    },
   ];
+
+  const contentResultStatusLabel = metrics.drawComplete
+    ? publishStatus === DRAW_PUBLISH_STATUS.PUBLISHED
+      ? "ĐÃ CÔNG BỐ"
+      : groups.length
+        ? "ĐÃ TẠO (DRAFT)"
+        : actionState.statusLabel
+    : actionState.readinessLabel;
 
   return {
     official: true,
@@ -256,18 +283,9 @@ function deriveOfficialGroupDrawModel(tournament, { selectedEventId } = {}) {
     needsEventChoice: projection.needsEventChoice,
     emptyEvents: scope.emptyEvents,
     events: scope.events,
-    locked: tournamentDrawLocked,
+    locked: contentLocked,
     tournamentDrawLocked,
-    drawStatusLabel:
-      publishStatus === DRAW_PUBLISH_STATUS.PUBLISHED
-        ? "ĐÃ CÔNG BỐ"
-        : publishStatus === DRAW_PUBLISH_STATUS.LOCKED
-          ? "ĐÃ KHÓA"
-          : groups.length
-            ? metrics.drawComplete
-              ? "ĐÃ TẠO (DRAFT)"
-              : actionState.statusLabel
-            : actionState.statusLabel,
+    drawStatusLabel: contentResultStatusLabel,
     multiContentLimitation: MULTI_CONTENT_LIMITATION,
     drawnCount,
     expectedTotal,
@@ -337,18 +355,12 @@ function deriveOfficialGroupDrawModel(tournament, { selectedEventId } = {}) {
           : metrics.drawComplete
             ? publishStatus === DRAW_PUBLISH_STATUS.PUBLISHED
               ? "ĐÃ CÔNG BỐ"
-              : publishStatus === DRAW_PUBLISH_STATUS.LOCKED
-                ? "ĐÃ KHÓA"
-                : "SẴN SÀNG"
+              : "SẴN SÀNG"
             : actionState.statusLabel,
       statusTone: metrics.drawComplete && !projection.blocker ? "success" : "warning",
-      nextLifecycleDisabled: !metrics.drawComplete,
-      lockDisabled: !projection.lockEnabled,
     },
     lockLabel: DRAW_LOCK_LABEL,
-    lockHint: projection.lockEnabled
-      ? "Khóa settings.draw (cả giải)."
-      : "Cần bảng ở trạng thái draft để khóa.",
+    lockHint: "Nội dung này chưa có cơ chế khóa riêng.",
     undoHint: "Hoàn tác từng bước chưa có — dùng reopen/regenerate theo guard.",
     drawNextHint: "Không bốc từng cặp — chia toàn bộ bảng bằng lệnh tường minh.",
     createHint: projection.createEnabled
@@ -372,7 +384,7 @@ function deriveOfficialGroupDrawModel(tournament, { selectedEventId } = {}) {
       : "Chưa có bảng để trình chiếu.",
     nextHint: metrics.drawComplete
       ? "Bước tiếp: Vòng bảng (chưa adopt O5)."
-      : "Cần chia bảng trước.",
+      : "Chưa hoàn tất bốc thăm",
     blocker: projection.blocker,
     drawPublishStatus: publishStatus,
     ratingNeutral: projection.ratingNeutral,

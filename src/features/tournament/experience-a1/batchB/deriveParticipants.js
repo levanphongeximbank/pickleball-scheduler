@@ -117,13 +117,13 @@ export function deriveParticipantsModel(tournament, { selectedEventId } = {}) {
     lockHint: official
       ? locked
         ? "Danh sách / đăng ký đã khóa trên hồ sơ."
-        : "Chốt danh sách Official = lockRegistration (cùng authority đóng đăng ký)."
+        : "Chốt danh sách vận động viên trên hồ sơ đăng ký."
       : "Chốt danh sách chưa có trên hệ thống này.",
     impactLocked: official
       ? "Đã khóa đăng ký / danh sách trên hồ sơ giải."
       : "Chốt danh sách chưa có trên hệ thống này. Không thêm hoặc khóa từ màn này.",
     impactOpen: official
-      ? "Chốt dùng lockRegistration hiện có. Không tạo cặp / pairing trên màn này."
+      ? "Chốt danh sách trên hồ sơ đăng ký. Không tạo cặp / pairing trên màn này."
       : "Sau khi chốt danh sách: không thêm VĐV thường. Hiện chưa có thao tác chốt riêng. Lưu hồ sơ không phải đóng đăng ký, cũng không phải chốt danh sách.",
     rows,
   };
