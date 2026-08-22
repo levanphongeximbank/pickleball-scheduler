@@ -406,9 +406,18 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
           CONTENT_KNOCKOUT_PAIRING_RUNTIME.randomRuntimeClaimedSupported,
         avoidSameGroupFirstRoundConfigured:
           rules.knockout.avoidSameGroupFirstRound !== false,
-        avoidSameGroupRuntime: "DEFERRED_TO_G2_E",
-        knockoutEnabledRuntime: "DEFERRED_TO_G2_E",
-        qualifierCountRuntime: "DEFERRED_TO_G2_E",
+        avoidSameGroupRuntime: "RUNTIME_ENFORCED_FOR_CROSS_GROUP",
+        knockoutEnabledRuntime: "RUNTIME_ENFORCED",
+        qualifierCountRuntime: "RUNTIME_ENFORCED",
+        pairingPolicyRuntimeStatus: {
+          CROSS_GROUP: "SUPPORTED",
+          SEEDED: "DEFERRED_FAIL_CLOSED",
+          RANDOM: "DEFERRED_FAIL_CLOSED",
+        },
+        crossGroupSupportedGroupCounts: [2, 4, 8, 16],
+        crossGroupExistingEngine: "buildFirstKnockoutRound",
+        byeLocalImplementation: false,
+        admissionDeferredToG2F: true,
       },
     },
   };

@@ -134,7 +134,7 @@ export const CONTENT_KNOCKOUT_PAIRING_POLICY = Object.freeze({
   RANDOM: "RANDOM",
 });
 
-/** Runtime truth: Official classic bracket placement remains hardcoded CROSS_GROUP. */
+/** Official classic KO placement runtime truth (G2-E). */
 export const CONTENT_KNOCKOUT_PAIRING_RUNTIME = Object.freeze({
   runtimeSupported: CONTENT_KNOCKOUT_PAIRING_POLICY.CROSS_GROUP,
   runtimeDeferred: Object.freeze([
@@ -143,6 +143,12 @@ export const CONTENT_KNOCKOUT_PAIRING_RUNTIME = Object.freeze({
   ]),
   seededRuntimeClaimedSupported: false,
   randomRuntimeClaimedSupported: false,
+  /** Existing buildFirstKnockoutRound: pairwise A1×B2 / A2×B1 for even group counts. */
+  crossGroupSupportedGroupCounts: Object.freeze([2, 4, 8, 16]),
+  crossGroupRequiresDirectQualifiersPerGroup: 2,
+  crossGroupExistingEngine: "buildFirstKnockoutRound",
+  randomExistingPrimitive: false,
+  seededAuthoritySource: null,
 });
 
 export const CONTENT_ROUND_ROBIN_RUNTIME = Object.freeze({
@@ -1199,7 +1205,9 @@ function knockoutPairingRuntimeMetadata(pairingPolicy) {
  * CONTENT_EXPLICIT wins. Legacy draft never overrides Content.
  * G2-B: groupStageEnabled / groupCount / maxUnitsPerGroup / allowUnevenGroups
  * are enforced at Official/Open group-draw runtime (see validateContentGroupStageDrawStructure).
- * Qualification / knockout / DOUBLE round-robin remain deferred.
+ * Qualification slot math / direct / wildcard handoff: G2-C/D.
+ * Knockout structure + CROSS_GROUP pairing: G2-E (SEEDED/RANDOM deferred).
+ * DOUBLE round-robin remains deferred.
  */
 export function resolveContentGroup2Settings(tournament, options = {}) {
   const resolved = resolveContentCompetitionRules(tournament, {
@@ -1236,9 +1244,10 @@ export function resolveContentGroup2Settings(tournament, options = {}) {
     directQualifiersRuntime: "RUNTIME_ENFORCED",
     wildcardSlotMathRuntime: "RUNTIME_ENFORCED",
     wildcardCandidateRuntime: "DEFERRED_TO_GROUP4",
-    knockoutEnabledRuntime: "DEFERRED_TO_G2_E",
-    qualifierCountRuntime: "DEFERRED_TO_G2_E",
-    avoidSameGroupRuntime: "DEFERRED_TO_G2_E",
+    knockoutEnabledRuntime: "RUNTIME_ENFORCED",
+    qualifierCountRuntime: "RUNTIME_ENFORCED",
+    knockoutPairingPolicyStatus: "PARTIAL_CROSS_GROUP_ONLY",
+    avoidSameGroupRuntime: "RUNTIME_ENFORCED_FOR_CROSS_GROUP",
     legacyClassification: LEGACY_GROUP2_FIELD_CLASS,
     legacyActiveAuthority: false,
     persistedSource: resolved.persistedSource,
@@ -1616,6 +1625,289 @@ export function resolveContentWildcardRequirement(tournament, options = {}) {
     randomWildcardFallback: false,
     ratingWildcardFallback: false,
     registrationOrderWildcardFallback: false,
+  };
+}
+
+function isPowerOfTwo(n) {
+  const v = Number(n);
+  return Number.isInteger(v) && v >= 2 && (v & (v - 1)) === 0;
+}
+
+/**
+ * Content knockout structure / pairing gate before Official bracket execution (G2-E).
+ * Does not place bracket slots itself — constrains existing buildFirstKnockoutRound.
+ */
+export function resolveContentKnockoutRuntimeGate(tournament, options = {}) {
+  const eventId = trim(options.eventId);
+  if (!eventId) {
+    return {
+      ok: false,
+      code: "EVENT_REQUIRED",
+      error: "Chọn nội dung tường minh (eventId) trước khi tạo knockout.",
+    };
+  }
+
+  const group2 = resolveContentGroup2Settings(tournament, {
+    eventId,
+    allowSoleEventInference: false,
+  });
+  if (!group2.ok) return group2;
+
+  const knockout = group2.knockout || {};
+  const groupStage = group2.groupStage || {};
+  const planResolved = resolveContentQualificationPlan(tournament, { eventId });
+  if (!planResolved.ok) {
+    return {
+      ok: false,
+      code: planResolved.code || "INVALID_QUALIFICATION_PLAN",
+      error: planResolved.error || "Cấu hình suất đi tiếp không hợp lệ.",
+      eventId,
+      source: group2.source,
+      knockout,
+    };
+  }
+
+  if (knockout.knockoutEnabled === false) {
+    return {
+      ok: false,
+      code: "KNOCKOUT_DISABLED",
+      error: "Nội dung này tắt knockout (knockoutEnabled=false) — không tạo nhánh.",
+      eventId,
+      source: group2.source,
+      knockout,
+      plan: planResolved.plan,
+    };
+  }
+
+  const qualifierCount = Number(knockout.qualifierCount);
+  const totalQualifiers = Number(planResolved.totalQualifiers);
+  if (
+    !Number.isFinite(qualifierCount) ||
+    !Number.isFinite(totalQualifiers) ||
+    qualifierCount !== totalQualifiers
+  ) {
+    return {
+      ok: false,
+      code: "KNOCKOUT_SIZE_MISMATCH",
+      error: `knockout.qualifierCount (${qualifierCount}) khác qualification.totalQualifiers (${totalQualifiers}).`,
+      eventId,
+      source: group2.source,
+      knockout,
+      plan: planResolved.plan,
+    };
+  }
+
+  const pairingPolicy = knockoutPairingRuntimeMetadata(knockout.pairingPolicy).policyConfigured;
+  const avoidSameGroup = knockout.avoidSameGroupFirstRound !== false;
+  const groupCount = Number(groupStage.groupCount) || Number(planResolved.groupCount) || 0;
+  const directPerGroup = Number(planResolved.directQualifiersPerGroup) || 0;
+  const fieldSize = Number(planResolved.directSlots) || 0;
+
+  if (pairingPolicy === CONTENT_KNOCKOUT_PAIRING_POLICY.SEEDED) {
+    return {
+      ok: false,
+      code: "KNOCKOUT_PAIRING_POLICY_UNSUPPORTED",
+      error:
+        "SEEDED chưa có nguồn seed/order KO hợp lệ — không dùng seedingPolicy Group 1 / rating / VPR. Chưa sẵn sàng.",
+      eventId,
+      source: group2.source,
+      pairingPolicy,
+      pairingRuntimeStatus: "DEFERRED_FAIL_CLOSED",
+      knockout,
+      plan: planResolved.plan,
+    };
+  }
+
+  if (pairingPolicy === CONTENT_KNOCKOUT_PAIRING_POLICY.RANDOM) {
+    return {
+      ok: false,
+      code: "KNOCKOUT_PAIRING_POLICY_UNSUPPORTED",
+      error:
+        "RANDOM knockout placement chưa có primitive an toàn trên Official classic path — không dùng Math.random(). Chưa sẵn sàng.",
+      eventId,
+      source: group2.source,
+      pairingPolicy,
+      pairingRuntimeStatus: "DEFERRED_FAIL_CLOSED",
+      knockout,
+      plan: planResolved.plan,
+    };
+  }
+
+  // CROSS_GROUP — existing buildFirstKnockoutRound only.
+  if (pairingPolicy !== CONTENT_KNOCKOUT_PAIRING_POLICY.CROSS_GROUP) {
+    return {
+      ok: false,
+      code: "KNOCKOUT_PAIRING_POLICY_UNSUPPORTED",
+      error: `pairingPolicy=${pairingPolicy} không được hỗ trợ.`,
+      eventId,
+      source: group2.source,
+      pairingPolicy,
+      knockout,
+      plan: planResolved.plan,
+    };
+  }
+
+  if (
+    !CONTENT_KNOCKOUT_PAIRING_RUNTIME.crossGroupSupportedGroupCounts.includes(groupCount)
+  ) {
+    return {
+      ok: false,
+      code: "KNOCKOUT_STRUCTURE_NOT_READY",
+      error: `CROSS_GROUP hiện hỗ trợ ${CONTENT_KNOCKOUT_PAIRING_RUNTIME.crossGroupSupportedGroupCounts.join("/")} bảng (even). groupCount=${groupCount}.`,
+      eventId,
+      source: group2.source,
+      pairingPolicy,
+      groupCount,
+      knockout,
+      plan: planResolved.plan,
+    };
+  }
+
+  if (
+    directPerGroup !==
+    CONTENT_KNOCKOUT_PAIRING_RUNTIME.crossGroupRequiresDirectQualifiersPerGroup
+  ) {
+    return {
+      ok: false,
+      code: "KNOCKOUT_STRUCTURE_NOT_READY",
+      error: `CROSS_GROUP Official classic yêu cầu đúng ${CONTENT_KNOCKOUT_PAIRING_RUNTIME.crossGroupRequiresDirectQualifiersPerGroup} suất trực tiếp/bảng (hiện ${directPerGroup}).`,
+      eventId,
+      source: group2.source,
+      pairingPolicy,
+      directQualifiersPerGroup: directPerGroup,
+      knockout,
+      plan: planResolved.plan,
+    };
+  }
+
+  if (!isPowerOfTwo(fieldSize)) {
+    return {
+      ok: false,
+      code: "KNOCKOUT_BYE_REQUIRED",
+      error: `Field KO=${fieldSize} không phải lũy thừa của 2 — bye/admission thuộc G2-F (PR #459/#460). Không invent bye cục bộ.`,
+      eventId,
+      source: group2.source,
+      pairingPolicy,
+      fieldSize,
+      knockout,
+      plan: planResolved.plan,
+    };
+  }
+
+  if (planResolved.wildcardSlots > 0) {
+    return {
+      ok: false,
+      code: "QUALIFICATION_NOT_READY",
+      error: `Còn ${planResolved.wildcardSlots} suất wildcard — chờ Nhóm 4. Không tạo KO.`,
+      eventId,
+      source: group2.source,
+      pairingPolicy,
+      knockout,
+      plan: planResolved.plan,
+    };
+  }
+
+  return {
+    ok: true,
+    eventId,
+    source: group2.source,
+    knockout,
+    plan: planResolved.plan,
+    pairingPolicy,
+    pairingRuntimeStatus: "SUPPORTED",
+    avoidSameGroupFirstRound: avoidSameGroup,
+    qualifierCount,
+    totalQualifiers,
+    groupCount,
+    directQualifiersPerGroup: directPerGroup,
+    fieldSize,
+    crossGroupEngine: CONTENT_KNOCKOUT_PAIRING_RUNTIME.crossGroupExistingEngine,
+    supportedGroupCounts: CONTENT_KNOCKOUT_PAIRING_RUNTIME.crossGroupSupportedGroupCounts,
+  };
+}
+
+/**
+ * Post-placement integrity for existing CROSS_GROUP first round (G2-E).
+ */
+export function assertOfficialKnockoutFirstRoundIntegrity(previewRounds, standings, options = {}) {
+  const first = Array.isArray(previewRounds) ? previewRounds[0] : null;
+  const matches = Array.isArray(first?.matches) ? first.matches : [];
+  const avoidSameGroup = options.avoidSameGroupFirstRound !== false;
+
+  const qualifiedIds = [];
+  (standings || []).forEach((groupStanding) => {
+    const groupLabel = String(groupStanding?.group || "");
+    (groupStanding?.qualified || []).forEach((entry, index) => {
+      const id = String(entry?.id || "").trim();
+      if (id) {
+        qualifiedIds.push({
+          id,
+          groupLabel,
+          rank: index + 1,
+        });
+      }
+    });
+  });
+
+  const used = [];
+  const seen = new Set();
+  for (const match of matches) {
+    const homeId = String(match?.home?.id || "").trim();
+    const awayId = String(match?.away?.id || "").trim();
+    if (!homeId || !awayId) {
+      return {
+        ok: false,
+        code: "KNOCKOUT_STRUCTURE_NOT_READY",
+        error: "Trận vòng 1 thiếu entry — không cho bye/null trên Official classic path.",
+      };
+    }
+    if (seen.has(homeId) || seen.has(awayId)) {
+      return {
+        ok: false,
+        code: "KNOCKOUT_PAIRING_CONSTRAINT_UNSATISFIED",
+        error: "Entry xuất hiện trùng trong vòng 1 knockout.",
+      };
+    }
+    seen.add(homeId);
+    seen.add(awayId);
+    used.push(homeId, awayId);
+
+    if (avoidSameGroup) {
+      const homeSeedGroup = String(match.homeSeed || "").replace(/\d+$/, "");
+      const awaySeedGroup = String(match.awaySeed || "").replace(/\d+$/, "");
+      if (homeSeedGroup && awaySeedGroup && homeSeedGroup === awaySeedGroup) {
+        return {
+          ok: false,
+          code: "KNOCKOUT_PAIRING_CONSTRAINT_UNSATISFIED",
+          error: `avoidSameGroupFirstRound: ${match.homeSeed} gặp ${match.awaySeed} cùng bảng.`,
+        };
+      }
+    }
+  }
+
+  if (used.length !== qualifiedIds.length) {
+    return {
+      ok: false,
+      code: "KNOCKOUT_PAIRING_CONSTRAINT_UNSATISFIED",
+      error: `Vòng 1 dùng ${used.length} entry nhưng có ${qualifiedIds.length} suất đi tiếp.`,
+    };
+  }
+
+  for (const row of qualifiedIds) {
+    if (!seen.has(row.id)) {
+      return {
+        ok: false,
+        code: "KNOCKOUT_PAIRING_CONSTRAINT_UNSATISFIED",
+        error: `Thiếu entry đi tiếp trong vòng 1: ${row.id}.`,
+      };
+    }
+  }
+
+  return {
+    ok: true,
+    firstRoundMatchCount: matches.length,
+    entryCount: used.length,
+    avoidSameGroupFirstRound: avoidSameGroup,
   };
 }
 

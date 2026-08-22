@@ -2,8 +2,10 @@
  * Official knockout generation / regeneration guards (UI preview only).
  * Canonical persist is official_open_generate_knockout — do not client-write the bracket.
  *
- * G2-C: qualification readiness uses Content slot plan (totalQualifiers authoritative).
- * Does not implement KO pairing / bye / admission (G2-E / G2-F).
+ * G2-C/D: qualification readiness (totalQualifiers + wildcard fail-closed).
+ * G2-E: Content knockoutEnabled / size / pairingPolicy / avoidSameGroupFirstRound
+ * constrain existing generateKnockoutBracket / buildFirstKnockoutRound.
+ * Does not implement bye / admission (G2-F) or Group 4 wildcard ranking.
  */
 
 import {
@@ -17,6 +19,11 @@ import {
   QUALIFICATION_TIE_UNRESOLVED,
   QUALIFICATION_NOT_READY,
 } from "./officialStandingsEngine.js";
+import {
+  assertOfficialKnockoutFirstRoundIntegrity,
+  resolveContentKnockoutRuntimeGate,
+  CONTENT_KNOCKOUT_PAIRING_POLICY,
+} from "./officialContentCompetitionRules.js";
 
 export function officialKnockoutHasStarted(event) {
   return (event?.matches || []).some(
@@ -65,6 +72,16 @@ export function canGenerateOfficialKnockout(tournament, event, options = {}) {
     };
   }
 
+  const knockoutGate = resolveContentKnockoutRuntimeGate(tournament, { eventId });
+  if (!knockoutGate.ok) {
+    return {
+      ok: false,
+      errors: [knockoutGate.error || "Cấu trúc knockout Nội dung không hợp lệ."],
+      code: knockoutGate.code || "KNOCKOUT_STRUCTURE_NOT_READY",
+      knockoutGate,
+    };
+  }
+
   const qualification = resolveOfficialQualificationReadiness(tournament, event, {
     ...options,
     eventId,
@@ -76,12 +93,12 @@ export function canGenerateOfficialKnockout(tournament, event, options = {}) {
       code: qualification.code || QUALIFICATION_NOT_READY || QUALIFICATION_TIE_UNRESOLVED,
       standings: qualification.standings,
       qualification,
+      knockoutGate,
     };
   }
 
   const qualifiersPerGroup = qualification.directQualifiersPerGroup;
-  // Happy path (wildcardSlots=0): field size === directSlots === totalQualifiers.
-  // generateKnockoutBracket still builds from TOP_N per group — not redesigned in G2-C.
+  // CROSS_GROUP only (gate already enforced): reuse existing Official bracket engine.
   const generated = generateKnockoutBracket(event, { qualifiersPerGroup });
   if (!generated.ok) {
     return {
@@ -90,6 +107,7 @@ export function canGenerateOfficialKnockout(tournament, event, options = {}) {
       warnings: generated.warnings,
       code: "KO_GENERATE_FAILED",
       qualification,
+      knockoutGate,
     };
   }
 
@@ -102,6 +120,37 @@ export function canGenerateOfficialKnockout(tournament, event, options = {}) {
       ],
       code: QUALIFICATION_NOT_READY,
       qualification,
+      knockoutGate,
+    };
+  }
+
+  if (previewFieldSize !== Number(knockoutGate.qualifierCount)) {
+    return {
+      ok: false,
+      errors: [
+        `KNOCKOUT_SIZE_MISMATCH: field=${previewFieldSize}, knockout.qualifierCount=${knockoutGate.qualifierCount}.`,
+      ],
+      code: "KNOCKOUT_SIZE_MISMATCH",
+      qualification,
+      knockoutGate,
+    };
+  }
+
+  const integrityResult = assertOfficialKnockoutFirstRoundIntegrity(
+    generated.event?.bracket?.rounds || [],
+    qualification.standings || generated.groupStandings || [],
+    {
+      avoidSameGroupFirstRound: knockoutGate.avoidSameGroupFirstRound,
+    }
+  );
+  if (!integrityResult.ok) {
+    return {
+      ok: false,
+      errors: [integrityResult.error || "Vòng 1 knockout không đạt ràng buộc."],
+      code: integrityResult.code || "KNOCKOUT_PAIRING_CONSTRAINT_UNSATISFIED",
+      qualification,
+      knockoutGate,
+      integrity: integrityResult,
     };
   }
 
@@ -112,6 +161,10 @@ export function canGenerateOfficialKnockout(tournament, event, options = {}) {
     qualifiersPerGroup,
     standings: qualification.standings,
     qualification,
+    knockoutGate,
+    pairingPolicy: CONTENT_KNOCKOUT_PAIRING_POLICY.CROSS_GROUP,
+    avoidSameGroupFirstRound: knockoutGate.avoidSameGroupFirstRound,
+    integrity: integrityResult,
     preview: generated,
   };
 }
@@ -129,5 +182,9 @@ export function generateOfficialKnockout(tournament, event, options = {}) {
     qualifiersPerGroup: check.qualifiersPerGroup,
     groupStandings: check.standings,
     qualification: check.qualification,
+    knockoutGate: check.knockoutGate,
+    pairingPolicy: check.pairingPolicy,
+    avoidSameGroupFirstRound: check.avoidSameGroupFirstRound,
+    integrity: check.integrity,
   };
 }

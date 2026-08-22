@@ -296,6 +296,13 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
         contentRulesSource: contentResolved?.source || null,
         group2Source: group2?.ok ? group2.source : contentResolved?.source || null,
         group2LegacyActiveAuthority: false,
+        knockoutPairingRuntime: Object.freeze({
+          CROSS_GROUP: "SUPPORTED",
+          SEEDED: "DEFERRED_FAIL_CLOSED",
+          RANDOM: "DEFERRED_FAIL_CLOSED",
+          avoidSameGroupForCrossGroup: "SUPPORTED",
+          byeLocal: false,
+        }),
         wildcardRequirement: Object.freeze({
           wildcardRequired: wildcardRequirement.wildcardRequired === true,
           wildcardSlots: wildcardRequirement.wildcardSlots || 0,

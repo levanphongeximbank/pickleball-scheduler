@@ -1206,10 +1206,20 @@ export default function OfficialContentFormatSettingsPanel({
                   value={draft.knockout?.pairingPolicy || "CROSS_GROUP"}
                   disabled={disabled}
                   onChange={(e) => patch("knockout.pairingPolicy", e.target.value)}
+                  helperText={
+                    draft.knockout?.pairingPolicy === "SEEDED" ||
+                    draft.knockout?.pairingPolicy === "RANDOM"
+                      ? "Chưa sẵn sàng trên Official classic path"
+                      : "Chéo bảng: A1×B2 / A2×B1 (engine hiện có)"
+                  }
                 >
                   <MenuItem value="CROSS_GROUP">Chéo bảng</MenuItem>
-                  <MenuItem value="SEEDED">Theo seed</MenuItem>
-                  <MenuItem value="RANDOM">Ngẫu nhiên</MenuItem>
+                  <MenuItem value="SEEDED" disabled>
+                    Theo seed — Chưa sẵn sàng
+                  </MenuItem>
+                  <MenuItem value="RANDOM" disabled>
+                    Ngẫu nhiên — Chưa sẵn sàng
+                  </MenuItem>
                 </TextField>
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
