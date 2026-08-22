@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 
@@ -85,7 +85,7 @@ describe("Slice 1A public integrity UI", () => {
     expect(baseElement.querySelector("[paperprops]")).toBeNull();
   });
 
-  it("mobile menu opens and closes; focus returns to trigger", async () => {
+  it("mobile menu opens and closes; focus returns to trigger after exit", async () => {
     const user = userEvent.setup();
     wrap(<PublicHeader />);
     const trigger = screen.getByLabelText("Mở menu");
@@ -100,6 +100,49 @@ describe("Slice 1A public integrity UI", () => {
     await vi.waitFor(() => {
       expect(trigger).toHaveFocus();
     });
+    expect(document.getElementById("root")?.getAttribute("aria-hidden")).not.toBe("true");
+  });
+
+  it("mobile drawer nav closes drawer, changes route, and leaves no hidden focused target", async () => {
+    const user = userEvent.setup();
+    function LocationProbe() {
+      const { pathname } = useLocation();
+      return <div data-testid="location-pathname">{pathname}</div>;
+    }
+    wrap(
+      <>
+        <PublicHeader />
+        <LocationProbe />
+      </>,
+      ["/public/tournaments"]
+    );
+    const trigger = screen.getByLabelText("Mở menu");
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("location-pathname")).toHaveTextContent("/public/tournaments");
+
+    const courtsLinks = screen.getAllByRole("link", { name: "Sân" });
+    const drawerCourts = courtsLinks.find((el) => el.closest("#public-mobile-nav-drawer"));
+    expect(drawerCourts).toBeTruthy();
+    await user.click(drawerCourts);
+
+    await vi.waitFor(() => {
+      expect(trigger).toHaveAttribute("aria-expanded", "false");
+    });
+    await vi.waitFor(() => {
+      expect(screen.getByTestId("location-pathname")).toHaveTextContent("/courts");
+    });
+    await vi.waitFor(() => {
+      expect(trigger).toHaveFocus();
+    });
+
+    const active = document.activeElement;
+    expect(active).toBe(trigger);
+    let ancestor = active?.parentElement ?? null;
+    while (ancestor) {
+      expect(ancestor.getAttribute("aria-hidden")).not.toBe("true");
+      ancestor = ancestor.parentElement;
+    }
   });
 
   it("Register CTA remains /login for guests", () => {

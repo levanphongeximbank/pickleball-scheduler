@@ -19,7 +19,7 @@ import {
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import SportsTennisIcon from "@mui/icons-material/SportsTennis";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import UserAvatar from "../identity/UserAvatar.jsx";
@@ -54,27 +54,16 @@ export default function PublicHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const menuTriggerRef = useRef(null);
-  const drawerPanelRef = useRef(null);
   const onHome = isHomeRoute(location.pathname);
 
   const closeMobileMenu = () => setMobileOpen(false);
 
+  // Restore focus only after the Drawer exit transition finishes. MUI's default
+  // restoreFocus runs while #root is still aria-hidden and triggers Chromium's
+  // "Blocked aria-hidden... descendant retained focus" warning.
   const restoreMenuTriggerFocus = () => {
-    const trigger = menuTriggerRef.current;
-    if (trigger && typeof trigger.focus === "function") {
-      window.setTimeout(() => trigger.focus(), 0);
-    }
+    menuTriggerRef.current?.focus?.();
   };
-
-  // Move focus into the drawer when it opens so the menu trigger is not
-  // focused while MUI Modal marks surrounding content aria-hidden.
-  useEffect(() => {
-    if (!mobileOpen) return undefined;
-    const id = window.setTimeout(() => {
-      drawerPanelRef.current?.focus?.();
-    }, 0);
-    return () => window.clearTimeout(id);
-  }, [mobileOpen]);
 
   const handleLogout = async () => {
     setAnchorEl(null);
@@ -209,7 +198,10 @@ export default function PublicHeader() {
         anchor="left"
         open={mobileOpen}
         onClose={closeMobileMenu}
-        ModalProps={{ keepMounted: true }}
+        ModalProps={{
+          keepMounted: true,
+          disableRestoreFocus: true,
+        }}
         slotProps={{
           transition: {
             onExited: restoreMenuTriggerFocus,
@@ -223,12 +215,7 @@ export default function PublicHeader() {
           },
         }}
       >
-        <Box
-          ref={drawerPanelRef}
-          tabIndex={-1}
-          data-testid="public-mobile-nav-panel"
-          sx={{ outline: "none" }}
-        >
+        <Box data-testid="public-mobile-nav-panel">
           <Box sx={{ p: 2.5 }}>
             <Typography fontWeight={800} sx={gradientTextSx}>
               PICK_VN
