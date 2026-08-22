@@ -1,7 +1,11 @@
 /**
- * Canonical App Shell feature flag — Phase 2 Figure 1 foundation.
- * Default OFF: preserves legacy V5 Slate shell for rollback.
- * Production must not enable this flag without an explicit rollout decision.
+ * Canonical App Shell feature flag — exclusive chrome switch (Wave 1 Batch 1A).
+ *
+ * Production: currently ON (CanonicalAppShell).
+ * Code / local default when unset: OFF → LegacyMainLayoutContent (rollback).
+ *
+ * Keep this single flag for Wave 1. Do not add another shell-decision flag.
+ * Do not delete LegacyMainLayoutContent while rollback is required.
  */
 
 export const CANONICAL_APP_SHELL_FLAG = "VITE_CANONICAL_APP_SHELL_ENABLED";

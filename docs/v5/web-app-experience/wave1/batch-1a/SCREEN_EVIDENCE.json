@@ -1,0 +1,56 @@
+{
+  "capturedAt": "2026-08-22T05:04:45.461Z",
+  "flag": "VITE_CANONICAL_APP_SHELL_ENABLED=true",
+  "harness": "batch1a-shell-evidence.html",
+  "note": "MainLayout harness — proves exclusive Canonical chrome; page bodies are labeled stand-ins for /dashboard and /tournament content slots.",
+  "results": [
+    {
+      "route": "/dashboard",
+      "viewport": "1920",
+      "file": "docs/v5/web-app-experience/wave1/batch-1a/screenshots/dashboard-1920.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "bottomNav": 0,
+      "sideDrawers": 1,
+      "href": "http://localhost:5191/batch1a-shell-evidence.html?path=dashboard",
+      "bodyText": "Pickleball Scheduler Pro\nChuẩn\n\nTổng quan\n\n​\n0\nTổng quan\n\nBatch 1A shell exclusivity evidence — page body renders inside a single app chrome."
+    },
+    {
+      "route": "/tournament",
+      "viewport": "1920",
+      "file": "docs/v5/web-app-experience/wave1/batch-1a/screenshots/tournament-1920.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "bottomNav": 0,
+      "sideDrawers": 1,
+      "href": "http://localhost:5191/batch1a-shell-evidence.html?path=tournament",
+      "bodyText": "Pickleball Scheduler Pro\nChuẩn\nTổng quan\n/\n\nKhông có quyền truy cập\n\n​\n0\nTrung tâm giải đấu\n\nBatch 1A shell exclusivity evidence — page body renders inside a single app chrome."
+    },
+    {
+      "route": "/dashboard",
+      "viewport": "1440",
+      "file": "docs/v5/web-app-experience/wave1/batch-1a/screenshots/dashboard-1440.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "bottomNav": 0,
+      "sideDrawers": 1,
+      "href": "http://localhost:5191/batch1a-shell-evidence.html?path=dashboard",
+      "bodyText": "Pickleball Scheduler Pro\nChuẩn\n\nTổng quan\n\n​\n0\nTổng quan\n\nBatch 1A shell exclusivity evidence — page body renders inside a single app chrome."
+    },
+    {
+      "route": "/tournament",
+      "viewport": "1440",
+      "file": "docs/v5/web-app-experience/wave1/batch-1a/screenshots/tournament-1440.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "bottomNav": 0,
+      "sideDrawers": 1,
+      "href": "http://localhost:5191/batch1a-shell-evidence.html?path=tournament",
+      "bodyText": "Pickleball Scheduler Pro\nChuẩn\nTổng quan\n/\n\nKhông có quyền truy cập\n\n​\n0\nTrung tâm giải đấu\n\nBatch 1A shell exclusivity evidence — page body renders inside a single app chrome."
+    }
+  ]
+}

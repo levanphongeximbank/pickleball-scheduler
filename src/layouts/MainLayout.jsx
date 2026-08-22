@@ -85,8 +85,10 @@ function LegacyMainLayoutContent() {
 }
 
 function MainLayoutContent() {
-  // Feature-flagged Figure 1 shell — default OFF preserves legacy rollback path.
-  // Never render both shells simultaneously.
+  // Batch 1A exclusivity lock: exactly one app chrome.
+  // Flag ON  → CanonicalAppShell only (production path).
+  // Flag OFF → LegacyMainLayoutContent only (Wave 1 rollback path).
+  // Never render both shells simultaneously. Do not add a second shell flag.
   if (isCanonicalAppShellEnabled()) {
     return <CanonicalAppShell />;
   }
