@@ -144,7 +144,8 @@ function mapLiveCourts() {
       address: club.address || club.city || club.location || "—",
       courtCount: courts.filter((c) => c.active !== false).length,
       openHours,
-      amenities: ["Đèn LED", "Sân chuẩn"],
+      // Unknown != true: do not invent amenities without authoritative backing.
+      amenities: [],
       image: club.coverImage || null,
     });
   }
