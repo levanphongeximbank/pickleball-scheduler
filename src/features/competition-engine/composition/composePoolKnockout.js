@@ -1,7 +1,12 @@
 /**
  * E2E-02 — Compose Pool → Qualification → Knockout vertical slice.
+ *
+ * When canonical admission profile/plan is supplied:
+ *   pool (bypass) → standings → composeKnockoutAdmission → composeKnockoutStage
+ * When absent: legacy TOP_N qualification → knockout (backward compatible).
  */
 
+import { deriveKnockoutAdmissionPlan } from "../../competition-core/competition-rules/index.js";
 import { createPoolKnockoutFormatDefinition } from "../formats/poolKnockoutFormat.js";
 import {
   E2E02_COMPOSITION_VERSION,
@@ -15,9 +20,50 @@ import {
   deepFreeze,
   isNonEmptyString,
 } from "./fingerprint.js";
+import { composeKnockoutAdmission } from "./knockoutAdmission.js";
 import { composeKnockoutStage } from "./knockoutStage.js";
+import { normalizeCompetitionUnitParticipants } from "./entryIdentity.js";
 import { composePoolStage } from "./poolStage.js";
 import { composeQualificationAdvancement } from "./qualification.js";
+
+/**
+ * @param {string[]} ids
+ * @returns {Set<string>}
+ */
+function toUniqueIdSet(ids, label) {
+  const set = new Set();
+  for (const raw of ids) {
+    const id = String(raw || "").trim();
+    if (!id) {
+      failE2E02(
+        E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+        `empty identity in ${label}`,
+        {}
+      );
+    }
+    if (set.has(id)) {
+      failE2E02(
+        E2E02_ERROR_CODE.DUPLICATE_PARTICIPANT,
+        `duplicate identity in ${label}`,
+        { entryId: id }
+      );
+    }
+    set.add(id);
+  }
+  return set;
+}
+
+/**
+ * @param {Set<string>} a
+ * @param {Set<string>} b
+ */
+function setsEqual(a, b) {
+  if (a.size !== b.size) return false;
+  for (const x of a) {
+    if (!b.has(x)) return false;
+  }
+  return true;
+}
 
 /**
  * @param {{
@@ -25,7 +71,8 @@ import { composeQualificationAdvancement } from "./qualification.js";
  *   tenantId: string,
  *   divisionId?: string,
  *   categoryId?: string|null,
- *   participants: Array<{ participantId: string, seedNumber?: number }|string>,
+ *   competitionVersionId?: string|null,
+ *   participants: Array<{ entryId?: string, participantId?: string, seedNumber?: number }|string>,
  *   deterministicSeed: string,
  *   formatOverrides?: object,
  *   format?: object,
@@ -35,6 +82,13 @@ import { composeQualificationAdvancement } from "./qualification.js";
  *   includeKnockout?: boolean,
  *   templateVersion?: number,
  *   formatVersion?: string,
+ *   competitionRulesProfile?: object,
+ *   knockoutAdmissionPlan?: object|null,
+ *   competitionPopulationEntryIds?: string[],
+ *   competitionUnitKind?: string|null,
+ *   groupStageSeedingProjection?: object|null,
+ *   knockoutSeedingProjection?: object|null,
+ *   authoritativeSeedingProjection?: object|null,
  * }} input
  */
 export function composeIndividualPoolKnockout(input) {
@@ -62,14 +116,106 @@ export function composeIndividualPoolKnockout(input) {
     input.format ||
     createPoolKnockoutFormatDefinition(input.formatOverrides || {});
 
+  const admissionAware =
+    input.competitionRulesProfile != null ||
+    input.knockoutAdmissionPlan != null;
+
+  /** @type {object|null} */
+  let knockoutAdmissionPlan = input.knockoutAdmissionPlan || null;
+  /** @type {string[]} */
+  let canonicalPopulation = [];
+  /** @type {Array<{ entryId: string, participantId: string, seedNumber?: number }>} */
+  let admissionParticipants = [];
+
+  if (admissionAware) {
+    const units = normalizeCompetitionUnitParticipants(input.participants || [], {
+      requireCanonicalEntryId: true,
+      competitionUnitKind: input.competitionUnitKind,
+    });
+    admissionParticipants = units.map((u) => ({
+      entryId: u.entryId,
+      participantId: u.participantId || u.entryId,
+      ...(u.seedNumber != null ? { seedNumber: u.seedNumber } : {}),
+    }));
+
+    const participantSet = toUniqueIdSet(
+      units.map((u) => u.entryId),
+      "normalized participants"
+    );
+
+    if (Array.isArray(input.competitionPopulationEntryIds)) {
+      const explicitSet = toUniqueIdSet(
+        input.competitionPopulationEntryIds,
+        "competitionPopulationEntryIds"
+      );
+      if (!setsEqual(participantSet, explicitSet)) {
+        failE2E02(
+          E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+          "competitionPopulationEntryIds must equal proven participant entryId set",
+          {
+            POPULATION_MISMATCH_FAIL_CLOSED: true,
+            participantCount: participantSet.size,
+            explicitCount: explicitSet.size,
+          }
+        );
+      }
+    }
+
+    canonicalPopulation = [...participantSet].sort();
+
+    if (!knockoutAdmissionPlan) {
+      const derived = deriveKnockoutAdmissionPlan(
+        input.competitionRulesProfile,
+        { competitionPopulationEntryIds: canonicalPopulation }
+      );
+      if (!derived.ok) {
+        failE2E02(
+          E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+          derived.message || "knockout admission plan derivation failed",
+          { code: derived.code, details: derived.details || {} }
+        );
+      }
+      knockoutAdmissionPlan = derived.knockoutAdmissionPlan;
+    }
+
+    const planPop = knockoutAdmissionPlan?.populations?.competitionPopulationEntryIds;
+    if (Array.isArray(planPop)) {
+      const planSet = toUniqueIdSet(planPop, "plan competitionPopulationEntryIds");
+      if (!setsEqual(planSet, participantSet)) {
+        failE2E02(
+          E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+          "knockoutAdmissionPlan population must equal proven participant entryId set",
+          { POPULATION_MISMATCH_FAIL_CLOSED: true }
+        );
+      }
+    }
+  }
+
   const poolStage = composePoolStage({
-    participants: input.participants,
+    participants: admissionAware ? admissionParticipants : input.participants,
     format,
     competitionId,
     tenantId,
     divisionId: input.divisionId,
     categoryId: input.categoryId,
+    competitionVersionId: input.competitionVersionId,
     deterministicSeed: input.deterministicSeed,
+    competitionRulesProfile: admissionAware
+      ? input.competitionRulesProfile
+      : undefined,
+    knockoutAdmissionPlan: admissionAware ? knockoutAdmissionPlan : undefined,
+    applyGroupStageBypass: admissionAware,
+    requireCanonicalEntryId: admissionAware,
+    competitionUnitKind: input.competitionUnitKind,
+    groupStageSeedingProjection: admissionAware
+      ? input.groupStageSeedingProjection
+      : undefined,
+    knockoutSeedingProjection: admissionAware
+      ? input.knockoutSeedingProjection
+      : undefined,
+    authoritativeSeedingProjection: admissionAware
+      ? input.authoritativeSeedingProjection
+      : undefined,
   });
 
   const poolStageComplete = input.poolStageComplete !== false;
@@ -83,6 +229,8 @@ export function composeIndividualPoolKnockout(input) {
   /** @type {object|null} */
   let qualification = null;
   /** @type {object|null} */
+  let knockoutAdmission = null;
+  /** @type {object|null} */
   let knockoutStage = null;
 
   if (wantsKnockout && hasQualificationInputs) {
@@ -93,29 +241,86 @@ export function composeIndividualPoolKnockout(input) {
         {}
       );
     }
-    qualification = composeQualificationAdvancement({
-      format,
-      poolStage,
-      poolStandingsRows: input.poolStandingsRows,
-      poolMatchResults: input.poolMatchResults,
-      competitionId,
-      poolStageComplete: true,
-    });
-    knockoutStage = composeKnockoutStage({
-      format,
-      qualification,
-      competitionId,
-      tenantId,
-      divisionId: input.divisionId,
-      categoryId: input.categoryId,
-      deterministicSeed: input.deterministicSeed,
-      poolStageComplete: true,
-    });
+
+    if (admissionAware) {
+      qualification = composeQualificationAdvancement({
+        format,
+        poolStage,
+        poolStandingsRows: input.poolStandingsRows,
+        poolMatchResults: input.poolMatchResults,
+        competitionId,
+        poolStageComplete: true,
+        advancementMode: "STANDINGS_ONLY",
+      });
+
+      const standingsByGroup = Object.entries(
+        qualification.standingsByGroup || {}
+      ).map(([groupId, rows]) => ({
+        groupId,
+        rows,
+      }));
+
+      knockoutAdmission = composeKnockoutAdmission({
+        knockoutAdmissionPlan,
+        competitionRulesProfile: input.competitionRulesProfile,
+        standingsByGroup,
+        competitionPopulationEntryIds: canonicalPopulation,
+        deterministicSeed: input.deterministicSeed,
+        knockoutRequired: true,
+        competitionId,
+        competitionVersionId: input.competitionVersionId,
+        divisionId: input.divisionId,
+        categoryId: input.categoryId,
+        competitionUnitKind: input.competitionUnitKind,
+        knockoutSeedingProjection: input.knockoutSeedingProjection,
+        authoritativeSeedingProjection: input.authoritativeSeedingProjection,
+        groupStageSeedingProjection: input.groupStageSeedingProjection,
+      });
+
+      knockoutStage = composeKnockoutStage({
+        format,
+        qualification: { qualifiers: knockoutAdmission.qualifiers },
+        competitionId,
+        tenantId,
+        divisionId: input.divisionId,
+        categoryId: input.categoryId,
+        competitionVersionId: input.competitionVersionId,
+        deterministicSeed: input.deterministicSeed,
+        poolStageComplete: true,
+        placementMode: knockoutAdmission.drawPlacementMode,
+      });
+    } else {
+      qualification = composeQualificationAdvancement({
+        format,
+        poolStage,
+        poolStandingsRows: input.poolStandingsRows,
+        poolMatchResults: input.poolMatchResults,
+        competitionId,
+        poolStageComplete: true,
+      });
+      knockoutStage = composeKnockoutStage({
+        format,
+        qualification,
+        competitionId,
+        tenantId,
+        divisionId: input.divisionId,
+        categoryId: input.categoryId,
+        competitionVersionId: input.competitionVersionId,
+        deterministicSeed: input.deterministicSeed,
+        poolStageComplete: true,
+      });
+    }
   } else if (wantsKnockout && !hasQualificationInputs) {
-    // Pool-only composition is valid; knockout deferred until standings/results exist.
     qualification = null;
+    knockoutAdmission = null;
     knockoutStage = null;
   }
+
+  const qualifierIds = knockoutAdmission
+    ? knockoutAdmission.qualifiers.map((q) => q.entryId || q.participantId)
+    : qualification
+      ? qualification.qualifiers.map((q) => q.participantId)
+      : [];
 
   const compositionIdentifier = computeDeterministicFingerprint(
     {
@@ -127,12 +332,12 @@ export function composeIndividualPoolKnockout(input) {
       formatVersion: input.formatVersion ?? format.formatVersion ?? E2E02_FORMAT_VERSION,
       formatFingerprint: format.configurationFingerprint,
       poolFingerprint: poolStage.compositionFingerprint,
-      qualificationQualifierIds: qualification
-        ? qualification.qualifiers.map((q) => q.participantId)
-        : [],
+      qualificationQualifierIds: qualifierIds,
       knockoutFingerprint: knockoutStage
         ? knockoutStage.compositionFingerprint
         : null,
+      admissionAware,
+      canonicalPopulation: admissionAware ? canonicalPopulation : null,
       deterministicSeed: input.deterministicSeed,
       compositionVersion: E2E02_COMPOSITION_VERSION,
     },
@@ -149,9 +354,15 @@ export function composeIndividualPoolKnockout(input) {
     format,
     competitionId,
     tenantId,
+    admissionAware: Boolean(admissionAware),
+    canonicalCompetitionPopulationEntryIds: admissionAware
+      ? Object.freeze([...canonicalPopulation])
+      : null,
+    knockoutAdmissionPlan: admissionAware ? knockoutAdmissionPlan : null,
     stages: {
       pool: poolStage,
       qualification,
+      knockoutAdmission,
       knockout: knockoutStage,
     },
     publicationArchiveReady: Boolean(poolStage),

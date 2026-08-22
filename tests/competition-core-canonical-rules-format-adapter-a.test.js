@@ -107,7 +107,7 @@ const zeroWildcardProfile = {
 
 test("Adapter A identity is internal gateway, not catalog #17", () => {
   assert.equal(COMPETITION_RULES_POLICY_GATEWAY_ID, "competition.rules.policy.gateway.v1");
-  assert.equal(COMPETITION_RULES_POLICY_GATEWAY_VERSION, "1.0.0");
+  assert.equal(COMPETITION_RULES_POLICY_GATEWAY_VERSION, "1.1.0");
   assert.equal(CANONICAL_COMPETITION_RULES_CONTRACT.isCanonicalAdapterCatalogContract, false);
   assert.equal(CANONICAL_COMPETITION_RULES_CONTRACT.catalogContractNumber, null);
   assert.equal(OFFICIAL_CONTRACT_COUNT, 16);
@@ -207,45 +207,39 @@ test("group stage with wildcardSlots=0 does not require cross-group execution", 
   assert.equal(cross.configured, false);
 });
 
-test("wildcard demand + deferred execution fails closed (feasible=false)", () => {
+test("wildcard demand + supported execution remains feasible", () => {
   const result = resolveEffectiveCompetitionRules(baseProfile);
   assert.equal(result.ok, true);
   assert.equal(result.qualificationPlan.wildcardSlots, 2);
-  assert.equal(result.feasible, false);
+  assert.equal(result.feasible, true);
   const cross = result.capability.features.find(
     (f) => f.capabilityId === COMPETITION_RULES_CAPABILITY_ID.CROSS_GROUP_WILDCARD_RANKING
   );
   assert.equal(cross.configured, true);
-  assert.equal(cross.execution, CAPABILITY_STATE.DEFERRED);
-  assert.ok(
+  assert.equal(cross.execution, CAPABILITY_STATE.SUPPORTED);
+  assert.equal(
     result.capability.blockedConfigured.some(
       (f) =>
         f.capabilityId === COMPETITION_RULES_CAPABILITY_ID.CROSS_GROUP_WILDCARD_RANKING
-    )
+    ),
+    false
   );
 
   const policyOnly = resolveWildcardRankingPolicy(baseProfile);
   assert.equal(policyOnly.ok, true);
   assert.equal(policyOnly.policyRepresentable, true);
-  assert.equal(policyOnly.executionAvailable, false);
+  assert.equal(policyOnly.executionAvailable, true);
 
   const execRequest = resolveWildcardRankingPolicy(baseProfile, {
     requestAuthoritativeRanking: true,
   });
-  assert.equal(execRequest.ok, false);
-  assert.equal(execRequest.failClosed, true);
+  assert.equal(execRequest.ok, true);
+  assert.equal(execRequest.authoritativeRankingAvailable, true);
 
   const enforced = validateCompetitionRulesProfile(baseProfile, {
     enforceExecutionCapability: true,
   });
-  assert.equal(enforced.ok, false);
-  assert.ok(
-    enforced.issues.some(
-      (i) =>
-        i.details?.capabilityId ===
-        COMPETITION_RULES_CAPABILITY_ID.CROSS_GROUP_WILDCARD_RANKING
-    )
-  );
+  assert.equal(enforced.ok, true);
 });
 
 test("default crossGroupRanking schema alone does not configure capability", () => {
@@ -303,12 +297,12 @@ test("Adapter A gateway resolves effective rules and rejects mode keys", () => {
   assert.equal(gateway.scoreMatch().ok, false);
   assert.equal(gateway.acceptResult().ok, false);
 
-  const rankingFail = gateway.resolveWildcardRankingPolicy({
+  const rankingOk = gateway.resolveWildcardRankingPolicy({
     profile: baseProfile,
     requestAuthoritativeRanking: true,
   });
-  assert.equal(rankingFail.ok, false);
-  assert.equal(rankingFail.failClosed, true);
+  assert.equal(rankingOk.ok, true);
+  assert.equal(rankingOk.executionAvailable, true);
 });
 
 test("createCompetitionRulesProfile is deterministic for identical input", () => {

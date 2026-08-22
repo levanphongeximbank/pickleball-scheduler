@@ -54,6 +54,7 @@ const EXCLUDED_STATUSES = new Set([
  *   }>,
  *   competitionId: string,
  *   poolStageComplete?: boolean,
+ *   advancementMode?: "TOP_N" | "STANDINGS_ONLY",
  * }} input
  */
 export function composeQualificationAdvancement(input) {
@@ -73,6 +74,8 @@ export function composeQualificationAdvancement(input) {
   }
 
   const format = input.format;
+  const advancementMode =
+    input.advancementMode === "STANDINGS_ONLY" ? "STANDINGS_ONLY" : "TOP_N";
   const policy = format.qualification.policy;
   if (
     format.qualification.unresolvedTieBehavior !==
@@ -85,7 +88,7 @@ export function composeQualificationAdvancement(input) {
     );
   }
 
-  /** @type {Map<string, Array<{ entryId: string, rank: number, points: number, status?: string, tieBreakUnresolved?: boolean }>>} */
+  /** @type {Map<string, Array<object>>} */
   const standingsByGroup = new Map();
 
   if (Array.isArray(input.poolStandingsRows) && input.poolStandingsRows.length) {
@@ -98,6 +101,15 @@ export function composeQualificationAdvancement(input) {
           points: Number(r.points ?? 0),
           status: r.status,
           tieBreakUnresolved: r.tieBreakUnresolved === true,
+          played: Number(r.played ?? r.matchesPlayed ?? 0),
+          wins: Number(r.wins ?? 0),
+          losses: Number(r.losses ?? 0),
+          scoreFor: Number(r.scoreFor ?? r.pointsScored ?? 0),
+          scoreAgainst: Number(r.scoreAgainst ?? 0),
+          scoreDifference: Number(
+            r.scoreDifference ??
+              Number(r.scoreFor ?? 0) - Number(r.scoreAgainst ?? 0)
+          ),
         }))
       );
     }
@@ -118,7 +130,6 @@ export function composeQualificationAdvancement(input) {
           resultType === "VOID" ||
           resultType === "UNVERIFIED"
         ) {
-          // Invalid/unaccepted results are excluded from standings inputs.
           continue;
         }
         matches.push(
@@ -169,6 +180,15 @@ export function composeQualificationAdvancement(input) {
           points: Number(row.points ?? 0),
           status: row.status,
           tieBreakUnresolved: row.tieBreakUnresolved === true,
+          played: Number(row.played ?? 0),
+          wins: Number(row.wins ?? 0),
+          losses: Number(row.losses ?? 0),
+          scoreFor: Number(row.scoreFor ?? 0),
+          scoreAgainst: Number(row.scoreAgainst ?? 0),
+          scoreDifference: Number(
+            row.scoreDifference ??
+              Number(row.scoreFor ?? 0) - Number(row.scoreAgainst ?? 0)
+          ),
         }))
       );
     }
@@ -178,6 +198,29 @@ export function composeQualificationAdvancement(input) {
       "qualification requires poolStandingsRows or poolMatchResults",
       {}
     );
+  }
+
+  const frozenStandings = Object.freeze(
+    Object.fromEntries(
+      [...standingsByGroup.entries()].map(([k, v]) => [k, Object.freeze([...v])])
+    )
+  );
+
+  if (advancementMode === "STANDINGS_ONLY") {
+    return deepFreeze({
+      stage: "QUALIFICATION",
+      policy: "STANDINGS_ONLY",
+      advancementMode: "STANDINGS_ONLY",
+      qualifiers: Object.freeze([]),
+      standingsByGroup: frozenStandings,
+      transition: Object.freeze({
+        from: "POOL",
+        to: "KNOCKOUT_ADMISSION",
+        qualifierCount: 0,
+        validated: true,
+        standingsReady: true,
+      }),
+    });
   }
 
   /** @type {{ participantId: string, seedNumber: number, groupId: string, poolRank: number }[]} */

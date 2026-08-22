@@ -15,6 +15,10 @@ import {
   GROUP_SIZING_POLICY,
   ROUND_ROBIN_POLICY,
   KNOCKOUT_PAIRING_POLICY,
+  KNOCKOUT_ENTRY_ROUND,
+  DIRECT_KNOCKOUT_ENTRY_SOURCE,
+  KNOCKOUT_BYE_ALLOCATION_SHAPE,
+  BYE_POLICY,
   IN_GROUP_TIEBREAK_CRITERION,
   CROSS_GROUP_RANKING_CRITERION,
   WITHDRAWAL_HANDLING,
@@ -184,10 +188,239 @@ export function createDefaultGroupStagePolicy(overrides = {}) {
 }
 
 export function createDefaultQualificationPolicy(overrides = {}) {
+  const hasTotalKnockout = Object.prototype.hasOwnProperty.call(
+    overrides,
+    "totalKnockoutSlots"
+  );
+  const hasTotalQualifiers = Object.prototype.hasOwnProperty.call(
+    overrides,
+    "totalQualifiers"
+  );
+  const parsedKnockout = hasTotalKnockout
+    ? positiveIntOrNull(overrides.totalKnockoutSlots)
+    : null;
+  const parsedQualifiers = hasTotalQualifiers
+    ? positiveIntOrNull(overrides.totalQualifiers)
+    : null;
+
+  // Prefer totalKnockoutSlots; legacy totalQualifiers only when knockout slots omitted.
+  // Conflicting explicit aliases are rejected by validateKnockoutAdmissionRawInput —
+  // do not invent a third value here.
+  const totalKnockoutSlots =
+    parsedKnockout ?? parsedQualifiers ?? 8;
+
+  const hasDirectPerGroup = Object.prototype.hasOwnProperty.call(
+    overrides,
+    "directQualifiersPerGroup"
+  );
+  const directQualifiersPerGroup = hasDirectPerGroup
+    ? nonNegIntOrNull(overrides.directQualifiersPerGroup) ?? 0
+    : 2;
+
+  const directKnockoutEntryCount =
+    nonNegIntOrNull(overrides.directKnockoutEntryCount) ?? 0;
   return {
-    totalQualifiers: positiveIntOrNull(overrides.totalQualifiers) ?? 8,
-    directQualifiersPerGroup:
-      positiveIntOrNull(overrides.directQualifiersPerGroup) ?? 2,
+    /** Preferred canonical slot total for knockout admission. */
+    totalKnockoutSlots,
+    /**
+     * Backward-compatible alias — same value as totalKnockoutSlots.
+     * Legacy profiles used totalQualifiers for the full knockout field size.
+     * Conflicting explicit alias pairs fail closed in raw validation.
+     */
+    totalQualifiers: totalKnockoutSlots,
+    /**
+     * Explicit 0 is preserved (groupDirectQualifierSlots = 0).
+     * Omitted → legacy default 2.
+     */
+    directQualifiersPerGroup,
+    /** Count of DIRECT_KNOCKOUT_ENTRY slots (≠ group direct qualifiers ≠ bye). */
+    directKnockoutEntryCount,
+  };
+}
+
+/**
+ * Canonical competition entry identity for admission refs.
+ * Reuses seeding/standings `entryId` vocabulary.
+ * `participantId` is accepted as a synonym for the same string identity at composition boundaries.
+ * displayName is never an identity.
+ *
+ * @param {unknown} raw
+ * @returns {{ entryId: string }|null}
+ */
+export function normalizeCanonicalEntrantRef(raw) {
+  if (raw == null) return null;
+  if (typeof raw === "string") {
+    const entryId = raw.trim();
+    return entryId ? { entryId } : null;
+  }
+  if (!isPlainObject(raw)) return null;
+  if (raw.displayName != null && raw.entryId == null && raw.participantId == null) {
+    return null;
+  }
+  const entryId = String(raw.entryId || raw.participantId || "").trim();
+  if (!entryId) return null;
+  return { entryId };
+}
+
+/**
+ * @param {unknown} list
+ * @returns {Array<{ entryId: string }>}
+ */
+function normalizeEntrantRefList(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const item of list) {
+    const ref = normalizeCanonicalEntrantRef(item);
+    if (ref) out.push(ref);
+  }
+  return out;
+}
+
+/**
+ * @param {unknown} list
+ * @param {{ defaultSource?: string|null, defaultTargetStage?: string|null }} [defaults]
+ */
+function normalizeDirectEntrants(list, defaults = {}) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const item of list) {
+    const ref = normalizeCanonicalEntrantRef(item);
+    if (!ref) continue;
+    const source = isPlainObject(item)
+      ? enumOr(
+          item.sourceCategory,
+          DIRECT_KNOCKOUT_ENTRY_SOURCE,
+          defaults.defaultSource || null
+        )
+      : defaults.defaultSource || null;
+    const targetStage = isPlainObject(item)
+      ? enumOr(
+          item.targetStage,
+          KNOCKOUT_ENTRY_ROUND,
+          defaults.defaultTargetStage || null
+        )
+      : defaults.defaultTargetStage || null;
+    const seedNumber =
+      isPlainObject(item) && item.seedNumber != null
+        ? nonNegIntOrNull(item.seedNumber)
+        : null;
+    out.push({
+      entryId: ref.entryId,
+      sourceCategory: source,
+      targetStage,
+      /**
+       * Optional ordering hint only — NEVER implies DIRECT_KNOCKOUT_ENTRY by itself.
+       * SEEDING_POLICY ≠ DIRECT_KNOCKOUT_ENTRY.
+       */
+      seedNumber,
+    });
+  }
+  return out;
+}
+
+/**
+ * Knockout admission policy — GROUP_STAGE_BYPASS ≠ DIRECT_KNOCKOUT_ENTRY ≠ KNOCKOUT_BYE ≠ SEEDING.
+ * Policy/plan only. No group draw mutation, no bracket mutation, no result authority.
+ *
+ * @param {object} [overrides]
+ */
+export function createDefaultKnockoutAdmissionPolicy(overrides = {}) {
+  const source = isPlainObject(overrides) ? overrides : {};
+  const bypassRaw = isPlainObject(source.groupStageBypass)
+    ? source.groupStageBypass
+    : {};
+  const directRaw = isPlainObject(source.directKnockoutEntry)
+    ? source.directKnockoutEntry
+    : {};
+  const byeRaw = isPlainObject(source.bye) ? source.bye : {};
+
+  const defaultSource = enumOr(
+    directRaw.sourceCategory,
+    DIRECT_KNOCKOUT_ENTRY_SOURCE,
+    null
+  );
+  const defaultTargetStage = enumOr(
+    directRaw.targetStage,
+    KNOCKOUT_ENTRY_ROUND,
+    null
+  );
+  const entrantsRaw = Array.isArray(directRaw.entrants) ? directRaw.entrants : [];
+  const entrants = normalizeDirectEntrants(entrantsRaw, {
+    defaultSource,
+    defaultTargetStage,
+  });
+  const countFromField = nonNegIntOrNull(directRaw.count);
+  let count =
+    countFromField != null
+      ? countFromField
+      : entrants.length > 0
+        ? entrants.length
+        : 0;
+  let enabled =
+    typeof directRaw.enabled === "boolean"
+      ? directRaw.enabled
+      : count > 0 || entrants.length > 0;
+
+  const bypassEntrantsRaw = Array.isArray(bypassRaw.entrants)
+    ? bypassRaw.entrants
+    : [];
+  let bypassEntrants = normalizeEntrantRefList(bypassEntrantsRaw);
+  let bypassEnabled =
+    typeof bypassRaw.enabled === "boolean"
+      ? bypassRaw.enabled
+      : bypassEntrants.length > 0;
+
+  // Disabled policies must not affect derivation — clear active content.
+  // Contradictory enabled:false + count/entrants is rejected by raw validation.
+  if (enabled === false) {
+    count = 0;
+    // Keep empty entrants for disabled direct entry
+  }
+  const resolvedDirectEntrants = enabled === false ? [] : entrants;
+
+  if (bypassEnabled === false) {
+    bypassEntrants = [];
+  }
+
+  const byePolicy = enumOr(byeRaw.byePolicy, BYE_POLICY, BYE_POLICY.NONE);
+  const allocationShape =
+    byePolicy === BYE_POLICY.NONE
+      ? byeRaw.allocationShape == null
+        ? null
+        : enumOr(byeRaw.allocationShape, KNOCKOUT_BYE_ALLOCATION_SHAPE, null)
+      : enumOr(
+          byeRaw.allocationShape,
+          KNOCKOUT_BYE_ALLOCATION_SHAPE,
+          KNOCKOUT_BYE_ALLOCATION_SHAPE.SINGLE_ELIMINATION_POWER_OF_TWO_FIRST_ROUND
+        );
+
+  return {
+    groupStageBypass: {
+      enabled: bypassEnabled,
+      entrants: bypassEntrants,
+    },
+    directKnockoutEntry: {
+      enabled,
+      count,
+      sourceCategory: defaultSource,
+      /**
+       * Per-unit / policy target stage for DIRECT_KNOCKOUT_ENTRY.
+       * Distinct from bracket-wide knockout.entryRound (derived from qualifierCount).
+       */
+      targetStage: defaultTargetStage,
+      entrants: resolvedDirectEntrants,
+    },
+    bye: {
+      /**
+       * CORE-09 default is NONE — legacy profiles must not suddenly configure BYE.
+       */
+      byePolicy,
+      /**
+       * Certified allocation shape when BYE is active.
+       * When byePolicy === NONE this is dormant metadata (null) — not an active BYE demand.
+       */
+      allocationShape,
+    },
   };
 }
 
@@ -391,13 +624,21 @@ export function createCompetitionRulesProfile(raw = {}) {
     source.matchScoring || source.scoring || {}
   );
   const groupStage = createDefaultGroupStagePolicy(source.groupStage || {});
-  const qualification = createDefaultQualificationPolicy(
-    source.qualification || {}
+  const knockoutAdmission = createDefaultKnockoutAdmissionPolicy(
+    source.knockoutAdmission || {}
   );
+  const qualificationSource = isPlainObject(source.qualification)
+    ? { ...source.qualification }
+    : {};
+  if (qualificationSource.directKnockoutEntryCount == null) {
+    qualificationSource.directKnockoutEntryCount =
+      knockoutAdmission.directKnockoutEntry.count;
+  }
+  const qualification = createDefaultQualificationPolicy(qualificationSource);
   const knockout = createDefaultKnockoutPolicy({
     ...(source.knockout || {}),
     qualifierCount:
-      source.knockout?.qualifierCount ?? qualification.totalQualifiers,
+      source.knockout?.qualifierCount ?? qualification.totalKnockoutSlots,
   });
 
   const profile = {
@@ -415,6 +656,7 @@ export function createCompetitionRulesProfile(raw = {}) {
     stageOverrides: normalizeStageOverrides(source.stageOverrides),
     groupStage,
     qualification,
+    knockoutAdmission,
     inGroupTieBreak: createDefaultInGroupTieBreakPolicy(
       source.inGroupTieBreak || {}
     ),

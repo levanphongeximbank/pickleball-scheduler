@@ -119,6 +119,7 @@
   "tests/canonical-shell-phase4-b01-dual-canonical.test.js",
   "tests/canonical-shell-phase4-b03-guard.test.js",
   "tests/canonical-shell-phase4-tournament-authz.test.js",
+  "tests/web-app-p0-organizer-auth-wave0.test.js",
   "tests/rls-access.test.js",
   "tests/tenant.test.js",
   "tests/tenant-profile-venue-runtime.test.js",

@@ -15,9 +15,12 @@ import {
   resolveEffectiveCompetitionRules,
   resolveStageMatchRules,
   deriveQualificationPlan,
+  deriveKnockoutAdmissionPlan,
+  resolveKnockoutAdmissionPolicy,
   resolveTieBreakPolicy,
   resolveWildcardRankingPolicy,
   canMutateCompetitionRule,
+  canMutateKnockoutAdmissionPolicy,
   resolveCapabilityState,
   resolveProfileCapabilityState,
 } from "../services/index.js";
@@ -124,6 +127,8 @@ export function resolvePublicationPolicy(profileOrRaw) {
 }
 
 /**
+ * Bracket-wide knockout entry round from qualifier / knockout slot count.
+ * Distinct from per-unit DIRECT_KNOCKOUT_ENTRY targetStage.
  * @param {number} qualifierCount
  */
 export function resolveKnockoutEntryRound(qualifierCount) {
@@ -132,6 +137,8 @@ export function resolveKnockoutEntryRound(qualifierCount) {
     ok: entryRound != null,
     qualifierCount: Number(qualifierCount) || 0,
     entryRound,
+    note:
+      "Bracket-wide entry round only — not DIRECT_KNOCKOUT_ENTRY targetStage",
   });
 }
 
@@ -154,10 +161,13 @@ export const CANONICAL_COMPETITION_RULES_CONTRACT = Object.freeze({
     "resolveEffectiveCompetitionRules",
     "resolveStageMatchRules",
     "deriveQualificationPlan",
+    "deriveKnockoutAdmissionPlan",
+    "resolveKnockoutAdmissionPolicy",
     "resolveTieBreakPolicy",
     "resolveWildcardRankingPolicy",
     "resolveKnockoutEntryRound",
     "canMutateCompetitionRule",
+    "canMutateKnockoutAdmissionPolicy",
     "resolveRefereeRequirement",
     "resolveCourtRequirement",
     "resolveScheduleConstraints",
@@ -173,10 +183,13 @@ export const canonicalCompetitionRulesContractApi = Object.freeze({
   resolveEffectiveCompetitionRules,
   resolveStageMatchRules,
   deriveQualificationPlan,
+  deriveKnockoutAdmissionPlan,
+  resolveKnockoutAdmissionPolicy,
   resolveTieBreakPolicy,
   resolveWildcardRankingPolicy,
   resolveKnockoutEntryRound,
   canMutateCompetitionRule,
+  canMutateKnockoutAdmissionPolicy,
   resolveRefereeRequirement,
   resolveCourtRequirement,
   resolveScheduleConstraints,

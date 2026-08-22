@@ -39,6 +39,10 @@ PLATFORM CORE
 | Tie-break / cross-group ranking policy | competition-core.competition-rules |
 | In-group standings / tie-break execution | CORE-18 |
 | Cross-group wildcard ranking execution | DEFERRED (CORE-18 composition) |
+| Knockout admission (bypass / direct entry) policy | THIS MODULE |
+| Knockout admission execution (direct entry composition) | DEFERRED |
+| Group-stage bypass execution (allocation consume plan) | PARTIAL |
+| Knockout BYE execution | CORE-08 / CORE-09 / CE |
 | Competition Rules Profile (policy) | THIS MODULE |
 
 Tenant ≠ Venue. Venue / Facility / Court Cluster ≠ Physical Court.

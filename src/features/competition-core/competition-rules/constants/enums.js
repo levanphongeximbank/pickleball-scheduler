@@ -55,6 +55,34 @@ export const KNOCKOUT_PAIRING_POLICY = Object.freeze({
 });
 
 /**
+ * Direct knockout admission source category — policy label only.
+ * Rules is NOT the authority for ranking/rating/federation/external data.
+ */
+export const DIRECT_KNOCKOUT_ENTRY_SOURCE = Object.freeze({
+  MANUAL_BY_AUTHORIZED_ORGANIZER: "MANUAL_BY_AUTHORIZED_ORGANIZER",
+  CANONICAL_RANKING: "CANONICAL_RANKING",
+  CANONICAL_RATING: "CANONICAL_RATING",
+  FEDERATION_SEED: "FEDERATION_SEED",
+  PRIOR_EVENT_QUALIFICATION: "PRIOR_EVENT_QUALIFICATION",
+  EXTERNAL_AUTHORITY: "EXTERNAL_AUTHORITY",
+});
+
+/**
+ * Knockout BYE allocation shape that shared CORE-08/09/CE execution supports.
+ * Distinct from DIRECT_KNOCKOUT_ENTRY and GROUP_STAGE_BYPASS.
+ */
+export const KNOCKOUT_BYE_ALLOCATION_SHAPE = Object.freeze({
+  SINGLE_ELIMINATION_POWER_OF_TWO_FIRST_ROUND:
+    "SINGLE_ELIMINATION_POWER_OF_TWO_FIRST_ROUND",
+});
+
+/**
+ * Re-export CORE-09 BYE_POLICY vocabulary for Rules policy modeling.
+ * Execution remains match-generation / draw-runtime / CE — not forked here.
+ */
+export { BYE_POLICY } from "../../match-generation/contracts/evaluatedMatchGenerationRules.js";
+
+/**
  * In-group tie-break criteria (policy labels).
  * Mapped to CORE-18 TIEBREAK_TYPE for execution composition.
  */
@@ -196,4 +224,45 @@ export function deriveKnockoutEntryRound(qualifierCount) {
   if (n === 16) return KNOCKOUT_ENTRY_ROUND.ROUND_OF_16;
   if (n === 32) return KNOCKOUT_ENTRY_ROUND.ROUND_OF_32;
   return null;
+}
+
+/**
+ * Ordered from earliest/largest bracket round → latest/smallest.
+ * Used for DIRECT_KNOCKOUT_ENTRY targetStage vs bracket-wide entryRound compatibility.
+ */
+export const KNOCKOUT_ENTRY_ROUND_ORDER = Object.freeze([
+  KNOCKOUT_ENTRY_ROUND.ROUND_OF_32,
+  KNOCKOUT_ENTRY_ROUND.ROUND_OF_16,
+  KNOCKOUT_ENTRY_ROUND.QUARTERFINAL,
+  KNOCKOUT_ENTRY_ROUND.SEMIFINAL,
+  KNOCKOUT_ENTRY_ROUND.FINAL,
+]);
+
+/**
+ * @param {string} round
+ * @returns {number} rank, or -1 if unknown
+ */
+export function knockoutEntryRoundRank(round) {
+  return KNOCKOUT_ENTRY_ROUND_ORDER.indexOf(round);
+}
+
+/**
+ * Direct-entry targetStage is compatible when it is the bracket-wide entry round
+ * or a later (smaller) stage. Earlier/larger rounds are rejected.
+ *
+ * Example: bracketWideEntryRound=QUARTERFINAL → QUARTERFINAL|SEMIFINAL|FINAL ok;
+ * ROUND_OF_16 / ROUND_OF_32 rejected.
+ *
+ * @param {string} targetStage
+ * @param {string} bracketWideEntryRound
+ * @returns {boolean}
+ */
+export function isDirectEntryTargetStageCompatible(
+  targetStage,
+  bracketWideEntryRound
+) {
+  const t = knockoutEntryRoundRank(targetStage);
+  const b = knockoutEntryRoundRank(bracketWideEntryRound);
+  if (t < 0 || b < 0) return false;
+  return t >= b;
 }

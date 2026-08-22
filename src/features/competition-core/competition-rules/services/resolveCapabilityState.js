@@ -14,6 +14,7 @@ import { COMPETITION_RULES_ERROR_CODE } from "../constants/errorCodes.js";
 import {
   SCORING_METHOD,
   MATCH_SERIES,
+  BYE_POLICY,
 } from "../constants/enums.js";
 import { createCompetitionRulesProfile } from "../domain/competitionRulesProfile.js";
 import { deriveQualificationPlan } from "./deriveQualificationPlan.js";
@@ -31,8 +32,10 @@ import { deriveQualificationPlan } from "./deriveQualificationPlan.js";
 export function resolveCrossGroupWildcardRankingDemand(profile) {
   const qualificationPlan = deriveQualificationPlan({
     groupCount: profile.groupStage.groupCount,
+    totalKnockoutSlots: profile.qualification.totalKnockoutSlots,
     totalQualifiers: profile.qualification.totalQualifiers,
     directQualifiersPerGroup: profile.qualification.directQualifiersPerGroup,
+    directKnockoutEntryCount: profile.qualification.directKnockoutEntryCount,
     groupStageEnabled: profile.groupStage.groupStageEnabled,
   });
   const groupStageEnabled = profile.groupStage.groupStageEnabled === true;
@@ -44,6 +47,7 @@ export function resolveCrossGroupWildcardRankingDemand(profile) {
     groupStageEnabled,
     wildcardSlots,
     qualificationPlanOk: qualificationPlan.ok === true,
+    requiresCrossGroupWildcardRanking: configured,
     requiredCondition:
       "groupStageEnabled === true && deriveQualificationPlan(...).wildcardSlots > 0",
   });
@@ -146,6 +150,20 @@ export function resolveProfileCapabilityState(profileOrRaw) {
   push(
     COMPETITION_RULES_CAPABILITY_ID.KNOCKOUT,
     profile.knockout.knockoutEnabled === true
+  );
+  push(
+    COMPETITION_RULES_CAPABILITY_ID.GROUP_STAGE_BYPASS,
+    profile.knockoutAdmission?.groupStageBypass?.enabled === true
+  );
+  push(
+    COMPETITION_RULES_CAPABILITY_ID.DIRECT_KNOCKOUT_ENTRY,
+    profile.knockoutAdmission?.directKnockoutEntry?.enabled === true
+  );
+  push(
+    COMPETITION_RULES_CAPABILITY_ID.KNOCKOUT_BYE,
+    profile.knockout.knockoutEnabled === true &&
+      profile.knockoutAdmission?.bye?.byePolicy != null &&
+      profile.knockoutAdmission.bye.byePolicy !== BYE_POLICY.NONE
   );
   push(COMPETITION_RULES_CAPABILITY_ID.LIFECYCLE_LOCK, true);
 

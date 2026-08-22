@@ -51,10 +51,21 @@ gateway.resolveEffectiveCompetitionRules({
 });
 
 gateway.deriveQualificationPlan({ profile });
+gateway.deriveKnockoutAdmissionPlan({
+  profile,
+  competitionPopulationEntryIds: ["entry-a", "entry-b"],
+  groupParticipantEntryIds: ["entry-a"],
+});
+gateway.resolveKnockoutAdmissionPolicy({ profile });
 gateway.canMutateCompetitionRule({
   profile,
   ruleClass: "SCORING_FORMAT",
   lifecycleMilestone: "AFTER_MATCH_START",
+});
+gateway.canMutateKnockoutAdmissionPolicy({
+  profile,
+  mutationKind: "DIRECT_KNOCKOUT_ENTRY",
+  lifecycleMilestone: "AFTER_GROUP_DRAW",
 });
 ```
 

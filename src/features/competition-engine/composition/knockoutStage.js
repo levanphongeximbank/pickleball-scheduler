@@ -12,6 +12,7 @@ import {
 } from "../../competition-core/match-generation/index.js";
 import { buildKnockoutDrawSnapshotFromQualifiers } from "./adapters/drawSnapshotFromQualifiers.js";
 import { createKnockoutStageEvaluatedRules } from "./adapters/evaluatedRulesFromFormat.js";
+import { resolveEffectiveCompetitionScope } from "./core07SeedingProjection.js";
 import { E2E02_ERROR_CODE, failE2E02 } from "./errors.js";
 import { computeDeterministicFingerprint, deepFreeze } from "./fingerprint.js";
 
@@ -23,8 +24,10 @@ import { computeDeterministicFingerprint, deepFreeze } from "./fingerprint.js";
  *   tenantId: string,
  *   divisionId?: string,
  *   categoryId?: string|null,
+ *   competitionVersionId?: string|null,
  *   deterministicSeed: string,
  *   poolStageComplete?: boolean,
+ *   placementMode?: string,
  * }} input
  */
 export function composeKnockoutStage(input) {
@@ -52,13 +55,19 @@ export function composeKnockoutStage(input) {
   // Odd qualifier counts are supported via power-of-two bye padding.
   void E2E02_ERROR_CODE.ODD_QUALIFIER_UNSUPPORTED;
 
-  const divisionId = String(input.divisionId || "div-1").trim();
-  const categoryId = input.categoryId ?? null;
+  const effectiveScope = resolveEffectiveCompetitionScope({
+    competitionId: input.competitionId,
+    competitionVersionId: input.competitionVersionId,
+    divisionId: input.divisionId,
+    categoryId: input.categoryId,
+  });
+  const divisionId = effectiveScope.effectiveDivisionId;
+  const categoryId = effectiveScope.effectiveCategoryId;
   const stageId = "stage-knockout";
 
-  const { drawSnapshot, bracketSize, byeCount } =
+  const { drawSnapshot, bracketSize, byeCount, placementMode } =
     buildKnockoutDrawSnapshotFromQualifiers({
-      competitionId: input.competitionId,
+      competitionId: effectiveScope.competitionId,
       divisionId,
       categoryId,
       stageId,
@@ -66,6 +75,7 @@ export function composeKnockoutStage(input) {
       bracketSizePolicy: input.format.knockoutStage.bracketSizePolicy,
       byePolicy: input.format.knockoutStage.byePolicy,
       deterministicSeed: input.deterministicSeed,
+      placementMode: input.placementMode,
     });
 
   const evaluatedRules = createKnockoutStageEvaluatedRules(input.format);
@@ -131,6 +141,7 @@ export function composeKnockoutStage(input) {
     tenantId,
     bracketSize,
     byeCount,
+    placementMode,
     qualifiers,
     drawSnapshot,
     matchPlan: generation.matchPlan,

@@ -38,10 +38,13 @@ ordinals for every domain concern. Catalog #07/#08/#01 are untouched.
 ## 4. Shared vs mode-specific
 
 **Shared:** competition unit, match scoring, win condition, change-end policy,
-group stage, qualification (total/direct/wildcard slots), in-group tie-break,
-cross-group wildcard ranking policy, knockout policy, walkover/retired/withdrawal
-policy, check-in policy, schedule constraints, court/referee *requirements*,
-publication policy, lifecycle mutation locks, capability truth.
+group stage, qualification / knockout slot derivation
+(`totalKnockoutSlots` = direct knockout entry + group direct qualifiers + wildcards),
+knockout admission policy (`groupStageBypass` ≠ `directKnockoutEntry` ≠ `knockout bye` ≠ seeding),
+in-group tie-break, cross-group wildcard ranking policy, knockout policy,
+walkover/retired/withdrawal policy, check-in policy, schedule constraints,
+court/referee *requirements*, publication policy, lifecycle mutation locks,
+capability truth.
 
 **Mode-specific (Adapter B later):** public registration/fee (Official), club
 membership eligibility (Internal), roster/Dreambreaker/lineup lock (Team),
@@ -60,7 +63,9 @@ casual session defaults (Daily).
 | Schedule constraints | Schedule engine / CORE-11 |
 | Tie-break criteria | CORE-18 |
 | Cross-group wildcard ranking | Policy here; execution DEFERRED until CORE-18 composition |
-| Qualification plan | CE composition + CORE-18 (selects entries) |
+| Qualification / wildcard slots | CE composition + CORE-18 (selects entries) |
+| Knockout admission plan (bypass / direct entry / bye policy) | THIS MODULE (policy); group allocation + CE composition consume later |
+| Knockout BYE execution | CORE-08 / CORE-09 / CE (reuse — no new bye engine) |
 | Publication | CM publication + CORE-17 for accepted results |
 | Lifecycle locks (gate) | CORE-15 provides lifecycle evidence only |
 
@@ -89,6 +94,15 @@ Capability matrix separates `POLICY` vs `EXECUTION` axes.
   because the profile schema carries a default `crossGroupRanking` object.
   Deferred optional demand must not make unrelated valid profiles globally infeasible.
   Authoritative ranking requests fail closed while execution is unavailable.
+- `GROUP_STAGE_BYPASS`: policy `SUPPORTED`, execution `PARTIAL` until group-allocation
+  composition consumes the admission plan.
+- `DIRECT_KNOCKOUT_ENTRY`: policy `SUPPORTED`, execution `DEFERRED` — CE qualification
+  remains pool-derived; no canonical direct-entry composition yet.
+- `KNOCKOUT_BYE`: policy `SUPPORTED`, execution `SUPPORTED` for single-elimination
+  power-of-two **first-round** BYEs (CORE-08/09/CE). Default `byePolicy=NONE`
+  (CORE-09 compatible) — legacy profiles do not configure BYE demand.
+  Configured only when `byePolicy !== NONE`. Not a new bye engine.
+  Arbitrary mid-bracket BYEs are not certified.
 
 Gateway rejects fake operational claims; `enforceExecutionCapability` fails closed
 for DEFERRED/UNSUPPORTED configured capabilities.
@@ -98,6 +112,19 @@ for DEFERRED/UNSUPPORTED configured capabilities.
 `canMutateCompetitionRule` maps rule classes → milestones
 (e.g. scoring format locks after `AFTER_MATCH_START`). Returns structured
 codes. Does not mutate CORE-15.
+
+`canMutateKnockoutAdmissionPolicy` composes existing classes (no new RULE_CLASS):
+
+- `DIRECT_KNOCKOUT_ENTRY` / `GROUP_STAGE_BYPASS` → `GROUP_ALLOCATION` @ `AFTER_GROUP_DRAW`
+- `KNOCKOUT_BYE` → `KNOCKOUT` @ `AFTER_MATCH_CREATION`
+
+Mandatory admission lock ceilings cannot be loosened by profile configuration.
+Profile may only tighten earlier via
+`effectiveLockAt = earlierOf(mandatory, configured)`.
+
+Owner locks: `POST_GROUP_DRAW_DIRECT_ENTRY_MUTATION=DENY`,
+`POST_GROUP_DRAW_GROUP_BYPASS_MUTATION=DENY`,
+`POST_BRACKET_CREATION_BYE_MUTATION=DENY`.
 
 ## 9. Adapter A = internal policy gateway
 

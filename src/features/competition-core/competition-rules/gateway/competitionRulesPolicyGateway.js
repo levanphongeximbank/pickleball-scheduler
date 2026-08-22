@@ -159,10 +159,32 @@ export function createCompetitionRulesPolicyGateway() {
       const profile = api.getCompetitionRulesProfile(normalized.profile);
       return api.deriveQualificationPlan({
         groupCount: profile.groupStage.groupCount,
+        totalKnockoutSlots: profile.qualification.totalKnockoutSlots,
         totalQualifiers: profile.qualification.totalQualifiers,
         directQualifiersPerGroup:
           profile.qualification.directQualifiersPerGroup,
+        directKnockoutEntryCount:
+          profile.qualification.directKnockoutEntryCount,
         groupStageEnabled: profile.groupStage.groupStageEnabled,
+      });
+    },
+
+    resolveKnockoutAdmissionPolicy(request) {
+      const normalized = normalizeGatewayRequest(request);
+      if (!normalized.ok) return normalized;
+      return api.resolveKnockoutAdmissionPolicy(normalized.profile);
+    },
+
+    deriveKnockoutAdmissionPlan(request) {
+      const normalized = normalizeGatewayRequest(request);
+      if (!normalized.ok) return normalized;
+      return api.deriveKnockoutAdmissionPlan(normalized.profile, {
+        groupParticipantEntryIds:
+          request?.groupParticipantEntryIds ??
+          request?.context?.groupParticipantEntryIds,
+        competitionPopulationEntryIds:
+          request?.competitionPopulationEntryIds ??
+          request?.context?.competitionPopulationEntryIds,
       });
     },
 
@@ -185,6 +207,7 @@ export function createCompetitionRulesPolicyGateway() {
     resolveKnockoutEntryRound(request) {
       const count =
         request?.qualifierCount ??
+        request?.totalKnockoutSlots ??
         request?.profile?.knockout?.qualifierCount ??
         request?.knockout?.qualifierCount;
       return resolveKnockoutEntryRound(count);
@@ -196,6 +219,19 @@ export function createCompetitionRulesPolicyGateway() {
       return api.canMutateCompetitionRule({
         profile: normalized.profile,
         ruleClass: normalized.context.ruleClass,
+        lifecycleMilestone: normalized.context.lifecycleMilestone,
+      });
+    },
+
+    canMutateKnockoutAdmissionPolicy(request) {
+      const normalized = normalizeGatewayRequest(request);
+      if (!normalized.ok) return normalized;
+      return api.canMutateKnockoutAdmissionPolicy({
+        profile: normalized.profile,
+        mutationKind:
+          request?.mutationKind ??
+          request?.context?.mutationKind ??
+          "KNOCKOUT_ADMISSION",
         lifecycleMilestone: normalized.context.lifecycleMilestone,
       });
     },

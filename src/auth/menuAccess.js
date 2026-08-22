@@ -27,6 +27,7 @@ import {
   isTournamentDashboardPath,
   isTournamentEnginePath,
 } from "./tournamentEngineRouteAccess.js";
+import { resolveTournamentExperienceRoutePermissions } from "./tournamentExperienceRouteAccess.js";
 
 const FEATURE_FLAG_CHECKERS = Object.freeze({
   marketplace: isMarketplaceEnabled,
@@ -117,6 +118,15 @@ export function getRouteAccessPermissions(pathname) {
 
   if (pathname.startsWith("/team-portal/")) {
     return [PERMISSIONS.TEAM_VIEW, PERMISSIONS.TEAM_MEMBER_VIEW];
+  }
+
+  // Wave 0 — Tournament Experience organizer workspace requires tournament.update.
+  // Public + register stay on tournament.view. Hubs/legacy /tournament/* keep VIEW fallthrough.
+  {
+    const experiencePermissions = resolveTournamentExperienceRoutePermissions(pathname);
+    if (experiencePermissions) {
+      return [...experiencePermissions];
+    }
   }
 
   if (pathname.startsWith("/tournament/")) {
