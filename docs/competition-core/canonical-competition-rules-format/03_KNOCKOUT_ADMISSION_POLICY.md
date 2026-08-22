@@ -71,6 +71,87 @@ Canonical identity: `entryId` (seeding/standings vocabulary).
   supported on certified group-stage and no-group paths. Later-stage DIRECT
   remains `DEFERRED`.
 
+## Later-stage DIRECT slot accounting
+
+Canonical Competition Rules derives immutable admission constraints only.
+Placement remains CORE-08 authority and match dependencies remain CORE-09
+authority.
+
+```text
+FINAL_REQUIRED_SLOTS = 2
+
+PREVIOUS_STAGE_REQUIRED_SLOTS
+  = 2 × (
+      NEXT_STAGE_REQUIRED_SLOTS
+      - NEXT_STAGE_DIRECT_RESERVATIONS
+    )
+```
+
+The calculation walks backward from `FINAL` through the existing
+`KNOCKOUT_ENTRY_ROUND_ORDER` to `bracketWideEntryRound`.
+
+The derived admission plan exposes:
+
+```js
+laterStageDirect: {
+  enabled,
+  bracketWideEntryRound,
+  accountingDirection: "BACKWARD_FROM_FINAL",
+  finalRequiredSlots: 2,
+  reservationsByStage,
+  requiredEntrantsByStage,
+  firstPlayableRequiredEntrants,
+  firstPlayableDirectEntryCount,
+  laterStageDirectEntryCount,
+  resolvedDirectEntryCount,
+  topologyValid,
+  admissionOnly: true,
+  placementIncluded: false,
+}
+```
+
+`reservationsByStage` contains only DIRECT entrants targeting a stage strictly
+later than `bracketWideEntryRound`. A DIRECT entrant targeting the bracket-wide
+round remains first-playable DIRECT and is counted by
+`firstPlayableDirectEntryCount`. Every resolved DIRECT `entryId` is counted
+exactly once across those categories.
+
+Fail-closed constraints:
+
+- At every stage, `DIRECT_RESERVATIONS(stage) <= REQUIRED_SLOTS(stage)`.
+- Duplicate `entryId`, invalid/unknown target stage, or a target earlier than
+  `bracketWideEntryRound` is rejected.
+- Negative, non-integer, over-capacity, or otherwise impossible backward
+  topology is rejected without repair.
+- Overflow is never converted to BYE, wildcard, earlier-stage participation,
+  fake match, or fake winner.
+- DIRECT defines admission stage only. It does not imply seed, BYE, slot
+  number, bracket half, side, match ID, or dependency.
+- The formula is mode-neutral for group-stage and no-group competitions.
+
+Examples:
+
+```text
+A. bracketWideEntryRound=QUARTERFINAL, reservations SEMIFINAL=2, FINAL=0
+   FINAL=2 → SEMIFINAL=4 → QUARTERFINAL=4
+
+B. bracketWideEntryRound=SEMIFINAL, reservations FINAL=1
+   FINAL=2 → SEMIFINAL=2
+
+C. bracketWideEntryRound=ROUND_OF_16,
+   reservations QUARTERFINAL=2, SEMIFINAL=1, FINAL=0
+   FINAL=2 → SEMIFINAL=4 → QUARTERFINAL=6 → ROUND_OF_16=8
+```
+
+Capability after this policy phase:
+
+- Later-stage DIRECT policy: `SUPPORTED`
+- Later-stage DIRECT slot accounting: `SUPPORTED`
+- Later-stage DIRECT execution: `DEFERRED`
+- CORE-08 stage-aware placement: `DEFERRED`
+- CORE-09 stage-aware match generation: `DEFERRED`
+- `DIRECT_KNOCKOUT_ENTRY` overall execution: `PARTIAL`
+
 **No-group slot accounting (`groupStageEnabled=false`):**
 
 - Common invariants apply first: `totalKnockoutSlots >= 1`,

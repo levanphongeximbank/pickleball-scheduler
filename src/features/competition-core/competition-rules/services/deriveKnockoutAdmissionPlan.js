@@ -18,6 +18,7 @@ import {
   isDirectEntryTargetStageCompatible,
 } from "../constants/enums.js";
 import { createCompetitionRulesProfile } from "../domain/competitionRulesProfile.js";
+import { deriveLaterStageDirectSlotAccounting } from "./deriveLaterStageDirectSlotAccounting.js";
 import { deriveQualificationPlan } from "./deriveQualificationPlan.js";
 
 /**
@@ -117,6 +118,13 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
   const bracketEntryRound = deriveKnockoutEntryRound(
     qualificationPlan.totalKnockoutSlots
   );
+  const resolvedDirectEntrants = directEntrants.map((entrant) =>
+    Object.freeze({
+      ...entrant,
+      effectiveTargetStage:
+        entrant.targetStage || admission.directKnockoutEntry.targetStage || null,
+    })
+  );
 
   if (
     admission.directKnockoutEntry.enabled ||
@@ -166,8 +174,8 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
     }
 
     // Every resolved entrant must have a valid targetStage (own or inherited)
-    for (const e of directEntrants) {
-      const effectiveStage = e.targetStage || policyTargetStage;
+    for (const e of resolvedDirectEntrants) {
+      const effectiveStage = e.effectiveTargetStage;
       if (
         effectiveStage == null ||
         !Object.values(KNOCKOUT_ENTRY_ROUND).includes(effectiveStage)
@@ -333,6 +341,25 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
     );
   }
 
+  let laterStageDirectAccounting = null;
+  if (issues.length === 0) {
+    const accountingResult = deriveLaterStageDirectSlotAccounting({
+      bracketWideEntryRound: bracketEntryRound,
+      entrants: resolvedDirectEntrants,
+    });
+    if (!accountingResult.ok) {
+      issues.push(
+        Object.freeze({
+          code: accountingResult.code,
+          message: accountingResult.message,
+          details: accountingResult.details,
+        })
+      );
+    } else {
+      laterStageDirectAccounting = accountingResult.accounting;
+    }
+  }
+
   const competitionPopulation = Array.isArray(
     context.competitionPopulationEntryIds
   )
@@ -391,15 +418,7 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
        * (derived from totalKnockoutSlots / qualifierCount).
        */
       bracketWideEntryRound: bracketEntryRound,
-      entrants: Object.freeze(
-        directEntrants.map((e) =>
-          Object.freeze({
-            ...e,
-            effectiveTargetStage:
-              e.targetStage || admission.directKnockoutEntry.targetStage || null,
-          })
-        )
-      ),
+      entrants: Object.freeze(resolvedDirectEntrants),
       unresolvedSlotCount: Math.max(
         0,
         admission.directKnockoutEntry.count - directEntrants.length
@@ -414,6 +433,7 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
       laterStageExecutionDeferred: true,
       executionCondition: "effectiveTargetStage == bracketWideEntryRound",
     }),
+    laterStageDirect: laterStageDirectAccounting,
     bye: Object.freeze({
       byePolicy: admission.bye.byePolicy,
       allocationShape: admission.bye.allocationShape,

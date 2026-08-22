@@ -2,6 +2,7 @@ export { validateCompetitionRulesProfile } from "./validateCompetitionRulesProfi
 export { validateKnockoutAdmissionRawInput } from "./validateKnockoutAdmissionRawInput.js";
 export { deriveQualificationPlan } from "./deriveQualificationPlan.js";
 export { deriveKnockoutAdmissionPlan } from "./deriveKnockoutAdmissionPlan.js";
+export { deriveLaterStageDirectSlotAccounting } from "./deriveLaterStageDirectSlotAccounting.js";
 export {
   resolveKnockoutAdmissionPolicy,
   assertKnockoutAdmissionDistinctions,
