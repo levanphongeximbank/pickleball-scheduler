@@ -1,8 +1,10 @@
 /**
  * Shared Competition Engine knockout admission composition boundary.
  *
- * Consumes canonical admission plan + standings + DIRECT/GROUP_DIRECT/WILDCARD
- * selections. Does NOT own ranking (CORE-18), seeding (CORE-07), or bracket/draw (CORE-08/09).
+ * Consumes canonical admission plan + competition population. Group-stage
+ * execution composes DIRECT/GROUP_DIRECT/WILDCARD; no-group execution composes
+ * DIRECT + the exact eligible residual population. Does NOT own ranking
+ * (CORE-18), seeding (CORE-07), or bracket/draw (CORE-08/09).
  *
  * Seeding (canonical admission path):
  *   - consume proven CORE-07 projection via projectAuthoritativeSeedingResult /
@@ -112,6 +114,7 @@ function buildPopulationSet(ids) {
  *   }>,
  *   competitionPopulationEntryIds?: string[],
  *   excludedEntryIds?: string[],
+ *   entryStatusesByEntryId?: Record<string, string>,
  *   knockoutRequired?: boolean,
  *   deterministicSeed?: string,
  *   directQualifiersPerGroup?: number,
@@ -135,20 +138,8 @@ export function composeKnockoutAdmission(input) {
     );
   }
 
-  // Blocker 5 — no-group DIRECT not certified on this shared path (option B)
   const groupStageEnabled =
     plan.groupStageEnabled !== false && Number(plan.groupCount) > 0;
-  if (!groupStageEnabled) {
-    failE2E02(
-      E2E02_ERROR_CODE.INVALID_CONFIGURATION,
-      "no-group DIRECT / base knockout population execution is not certified on shared pool-knockout admission path — fail closed",
-      {
-        NO_GROUP_DIRECT_EXECUTION: "DEFERRED",
-        groupStageEnabled: false,
-        groupCount: plan.groupCount ?? 0,
-      }
-    );
-  }
 
   const populationIds =
     input.competitionPopulationEntryIds ||
@@ -252,6 +243,26 @@ export function composeKnockoutAdmission(input) {
   const excluded = new Set(
     (input.excludedEntryIds || []).map((id) => String(id).trim()).filter(Boolean)
   );
+  const entryStatusesByEntryId =
+    input.entryStatusesByEntryId &&
+    typeof input.entryStatusesByEntryId === "object"
+      ? input.entryStatusesByEntryId
+      : {};
+  if (!groupStageEnabled) {
+    for (const [rawEntryId, rawStatus] of Object.entries(entryStatusesByEntryId)) {
+      const entryId = String(rawEntryId || "").trim();
+      if (!entryId || !population.has(entryId)) {
+        failE2E02(
+          E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+          "entry status supplied outside canonical competition population",
+          { entryId: entryId || null }
+        );
+      }
+      if (EXCLUDED_STATUSES.has(String(rawStatus || "").toUpperCase())) {
+        excluded.add(entryId);
+      }
+    }
+  }
 
   const flatRows = [];
   for (const block of standingsBlocks) {
@@ -282,13 +293,13 @@ export function composeKnockoutAdmission(input) {
     }
   }
 
-  const wildcardPolicy = resolveWildcardRankingPolicy(
-    input.competitionRulesProfile || {}
-  );
   const wildcardSlots = Number(plan.wildcardSlots) || 0;
 
   let rankedWildcards = [];
   if (wildcardSlots > 0) {
+    const wildcardPolicy = resolveWildcardRankingPolicy(
+      input.competitionRulesProfile || {}
+    );
     const ranking = rankCrossGroupWildcardCandidates({
       rows: flatRows.filter((r) => !directIds.has(r.entryId)),
       criteria: wildcardPolicy.criteria,
@@ -413,6 +424,13 @@ export function composeKnockoutAdmission(input) {
   };
 
   for (const d of precedence.direct) {
+    if (!groupStageEnabled && excluded.has(d.entryId)) {
+      failE2E02(
+        E2E02_ERROR_CODE.INVALID_QUALIFIER_COUNT,
+        "no-group DIRECT entrant is excluded or ineligible — fail closed",
+        { entryId: d.entryId }
+      );
+    }
     pushUnique({
       ...d,
       authoritativeSeed: false,
@@ -432,6 +450,46 @@ export function composeKnockoutAdmission(input) {
       authoritativeSeed: false,
       seedNumber: null,
     });
+  }
+
+  let actualBase = 0;
+  const expectedBase = groupStageEnabled ? 0 : Number(plan.remainingSlots) || 0;
+  if (!groupStageEnabled) {
+    const expectedGroupDirect = Number(plan.groupDirectQualifierSlots) || 0;
+    if (expectedGroupDirect !== 0 || wildcardSlots !== 0) {
+      failE2E02(
+        E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+        "no-group admission requires groupDirectQualifierSlots=0 and wildcardSlots=0",
+        { groupDirectQualifierSlots: expectedGroupDirect, wildcardSlots }
+      );
+    }
+
+    const baseEntryIds = [...population]
+      .filter((entryId) => !directIds.has(entryId) && !excluded.has(entryId))
+      .sort();
+    if (baseEntryIds.length !== expectedBase) {
+      failE2E02(
+        E2E02_ERROR_CODE.INVALID_QUALIFIER_COUNT,
+        "eligible no-group base population count must equal remainingSlots",
+        {
+          eligibleBasePopulationCount: baseEntryIds.length,
+          remainingSlots: expectedBase,
+          UNDERFILL_BEHAVIOR: "FAIL_CLOSED",
+          OVERPOPULATION_BEHAVIOR: "FAIL_CLOSED",
+        }
+      );
+    }
+    for (const entryId of baseEntryIds) {
+      pushUnique({
+        entryId,
+        admissionSource: null,
+        compositionProvenance: "NO_GROUP_BASE_POPULATION",
+        effectiveTargetStage: null,
+        authoritativeSeed: false,
+        seedNumber: null,
+      });
+    }
+    actualBase = baseEntryIds.length;
   }
 
   if (usedCore07Projection) {
@@ -491,6 +549,13 @@ export function composeKnockoutAdmission(input) {
       { actualWildcard, expectedWildcard }
     );
   }
+  if (!groupStageEnabled && actualBase !== expectedBase) {
+    failE2E02(
+      E2E02_ERROR_CODE.INVALID_QUALIFIER_COUNT,
+      "ACTUAL_BASE_COUNT must equal remainingSlots",
+      { actualBase, expectedBase }
+    );
+  }
   if (admitted.length !== totalKnockoutSlots) {
     failE2E02(
       E2E02_ERROR_CODE.INVALID_QUALIFIER_COUNT,
@@ -537,6 +602,7 @@ export function composeKnockoutAdmission(input) {
       direct: actualDirect,
       groupDirect: actualGroupDirect,
       wildcard: actualWildcard,
+      base: actualBase,
       total: frozenAdmitted.length,
     }),
     slotEquation: Object.freeze({
@@ -544,15 +610,16 @@ export function composeKnockoutAdmission(input) {
       directKnockoutEntrySlots: expectedDirect,
       groupDirectQualifierSlots: expectedGroupDirect,
       wildcardSlots: expectedWildcard,
+      remainingSlots: groupStageEnabled ? expectedWildcard : expectedBase,
       proven: true,
     }),
     bracketWideEntryRound,
     directExecution: Object.freeze({
       firstPlayableOnly: true,
       laterStageDeferred: true,
-      noGroupDeferred: true,
+      noGroupSupported: !groupStageEnabled,
       condition:
-        "groupStageEnabled && effectiveTargetStage == bracketWideEntryRound",
+        "effectiveTargetStage == bracketWideEntryRound",
     }),
     seeding: Object.freeze({
       admissionSourceAffectsSeeding: false,
@@ -570,5 +637,13 @@ export function composeKnockoutAdmission(input) {
       DIRECT_ENTRY_IMPLIES_BYPASS: false,
     }),
     precedence,
+    noGroupComposition: groupStageEnabled
+      ? null
+      : Object.freeze({
+          exactBasePopulationRequired: true,
+          underfillBehavior: "FAIL_CLOSED",
+          overpopulationBehavior: "FAIL_CLOSED",
+          rankingOrSelectionAuthorityCreated: false,
+        }),
   });
 }

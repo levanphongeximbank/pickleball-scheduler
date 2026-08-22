@@ -148,18 +148,19 @@ export const COMPETITION_RULES_CAPABILITY_MATRIX = Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
     execution: CAPABILITY_STATE.PARTIAL,
     executionCondition:
-      "SUPPORTED only on shared group-stage pool→KO path when effectiveTargetStage == bracketWideEntryRound, proven entryId, resolved DIRECT identities, and valid group allocation authority (CORE-07 group seeding for current E2E02 strategies). Later-stage DIRECT = DEFERRED. No-group DIRECT / base remainingSlots path = DEFERRED (fail closed). SEEDING ≠ DIRECT.",
+      "SUPPORTED on shared group-stage pool→KO and no-group knockout paths when effectiveTargetStage == bracketWideEntryRound, proven entryId, and fully resolved DIRECT identities. No-group additionally requires exact eligible non-DIRECT competition population count == remainingSlots; underfill/overpopulation fail closed. Group-stage seed-ordered allocation still requires valid CORE-07 group seeding for current E2E02 strategies. Later-stage DIRECT = DEFERRED. SEEDING ≠ DIRECT.",
     supportedRuntimePaths: Object.freeze([
       "composeIndividualPoolKnockout admission-aware → composeKnockoutAdmission → composeKnockoutStage",
       "createPoolKnockoutRuntimeComposition pass-through of competitionRulesProfile / knockoutAdmissionPlan",
+      "groupStageEnabled=false → exact DIRECT + eligible residual competition population → composeKnockoutStage",
     ]),
     unsupportedOrHintOnlyPaths: Object.freeze([
       "Later-stage DIRECT (targetStage after bracketWideEntryRound)",
-      "No-group (groupStageEnabled=false) DIRECT / remainingSlots base population",
+      "No-group underfill or overpopulation (exact remainingSlots fill required)",
       "Fake bye / phantom winner simulation of later-stage admission",
     ]),
     evidence:
-      "First-playable DIRECT composed on shared CE admission path only; later-stage and no-group deferred; CE does not assign seeds (CORE-07 authoritative projection or CORE-08 OPEN knockout draw)",
+      "First-playable DIRECT composed on shared CE admission path for group-stage and no-group exact-fill populations; later-stage deferred; CE does not assign seeds (CORE-07 authoritative projection or CORE-08 OPEN knockout draw)",
   }),
   [COMPETITION_RULES_CAPABILITY_ID.KNOCKOUT_BYE]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
