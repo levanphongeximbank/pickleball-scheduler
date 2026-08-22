@@ -183,6 +183,10 @@ import {
   registerOfficialIndividualsBatch,
   toggleOfficialIndividualSelection,
 } from "../../features/individual-tournament/engines/officialRegistrationBatchEngine.js";
+import {
+  CONTENT_RULES_SOURCE,
+  evaluateContentRegistrationCapacity,
+} from "../../features/individual-tournament/engines/officialContentCompetitionRules.js";
 
 const EVENT_OPTIONS = EVENT_TYPE_OPTIONS;
 
@@ -1272,6 +1276,34 @@ export default function OfficialTournamentSetup() {
     if (String(playerA.id) === String(playerB.id)) {
       setError("Cap phai gom 2 VDV khac nhau.");
       return;
+    }
+
+    const pairEventId = String(savedEvent?.id || "").trim();
+    if (!pairEventId && (tournament?.events || []).length > 1) {
+      setError("Chọn nội dung tường minh trước khi đăng ký cặp.");
+      return;
+    }
+
+    const capacityEvent = savedEvent
+      ? { ...savedEvent, entries: displayEntries }
+      : { id: pairEventId || `event-${tournamentId}`, entries: displayEntries };
+    if (pairEventId || (tournament?.events || []).length <= 1) {
+      const capacity = evaluateContentRegistrationCapacity(tournament, capacityEvent, {
+        eventId: pairEventId || capacityEvent.id,
+        allowSoleEventInference: true,
+      });
+      if (
+        capacity.ok &&
+        capacity.source === CONTENT_RULES_SOURCE.CONTENT_EXPLICIT &&
+        capacity.atCapacity
+      ) {
+        setError(
+          capacity.capacityUnit === "PAIR"
+            ? "Nội dung đã đủ số cặp đăng ký."
+            : "Nội dung đã đủ suất đăng ký."
+        );
+        return;
+      }
     }
 
     const validation = validateOpenRegistrationPlayers([playerA, playerB], eventType);

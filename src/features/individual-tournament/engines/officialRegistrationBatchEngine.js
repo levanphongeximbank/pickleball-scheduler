@@ -2,12 +2,20 @@
  * Official individual bulk registration — in-memory orchestration only.
  * Reuses submitRegistration against an evolving aggregate.
  * Persist/readback remain the caller's canonical Tournament authority.
+ *
+ * G1-B: Content registrationMode + Content capacity (unit-safe) for Official/Open.
+ * Tournament settings.registration.maxEntries is not authority when Content is explicit.
  */
 
 import { validateOpenRegistrationPlayers } from "../../../tournament/engines/officialTournamentEngine.js";
 import { checkPlayerEligibility, getEligibilityRules } from "./eligibilityEngine.js";
-import { isOfficialIndividualRegistrationMode } from "./officialTournamentSettingsEngine.js";
+import { OFFICIAL_REGISTRATION_MODE } from "./officialTournamentSettingsEngine.js";
 import { shouldActivateOfficialOpenRating } from "../../tournament/official-open-adapter-b/activation.js";
+import {
+  CONTENT_RULES_SOURCE,
+  evaluateContentRegistrationCapacity,
+  resolveContentRegistrationModeDetailed,
+} from "./officialContentCompetitionRules.js";
 import {
   canSubmitRegistration,
   countApprovedEntries,
@@ -66,10 +74,14 @@ export function formatOfficialBulkRegistrationError(failures = []) {
 
 function findEvent(tournament, eventId) {
   const events = tournament?.events || [];
-  if (eventId) {
-    return events.find((event) => String(event.id) === String(eventId)) || null;
+  const wanted = String(eventId || "").trim();
+  if (wanted) {
+    return events.find((event) => String(event.id) === wanted) || null;
   }
-  return events[0] || null;
+  if (events.length === 1) {
+    return events[0] || null;
+  }
+  return null;
 }
 
 function playerLabel(player, playerId) {
@@ -109,6 +121,44 @@ function prevalidateOnePlayer(tournament, event, player, eventType, options = {}
   return { ok: true };
 }
 
+function resolveBatchCapacityRemaining(tournament, event) {
+  const content = evaluateContentRegistrationCapacity(tournament, event, {
+    eventId: event.id,
+    allowSoleEventInference: false,
+  });
+  if (!content.ok) return content;
+
+  if (content.source === CONTENT_RULES_SOURCE.CONTENT_EXPLICIT) {
+    return {
+      ok: true,
+      maxEntries: content.maxEntries,
+      remaining:
+        content.maxEntries == null ? null : Math.max(0, content.maxEntries - content.used),
+      source: "CONTENT",
+      capacityUnit: content.capacityUnit,
+    };
+  }
+
+  const settings = getRegistrationSettings(tournament);
+  if (settings.maxEntries == null) {
+    return {
+      ok: true,
+      maxEntries: null,
+      remaining: null,
+      source: "LEGACY_RUNTIME_COMPATIBILITY",
+      capacityUnit: null,
+    };
+  }
+  const used = countApprovedEntries(event);
+  return {
+    ok: true,
+    maxEntries: settings.maxEntries,
+    remaining: Math.max(0, Number(settings.maxEntries) - used),
+    source: "LEGACY_RUNTIME_COMPATIBILITY",
+    capacityUnit: null,
+  };
+}
+
 /**
  * Fail-closed atomic batch. No persist. Caller writes once on ok.
  */
@@ -116,20 +166,50 @@ export function registerOfficialIndividualsBatch(tournament, input = {}, options
   const playerIds = uniqueOfficialIndividualSelection(input.playerIds || []);
   const players = Array.isArray(input.players) ? input.players : [];
   const playerMap = new Map(players.map((player) => [String(player.id), player]));
-  const eventId = input.eventId || "";
+  const eventId = String(input.eventId || "").trim();
   const eventType = input.eventType;
+  const events = tournament?.events || [];
 
   if (!tournament) {
     return { ok: false, error: "Không tìm thấy giải.", failures: [], persist: false };
   }
 
-  if (!isOfficialIndividualRegistrationMode(tournament, findEvent(tournament, eventId))) {
+  if (!eventId && events.length > 1) {
+    return {
+      ok: false,
+      error: "Chọn nội dung tường minh (eventId) trước khi đăng ký.",
+      code: "EVENT_REQUIRED",
+      failures: [],
+      persist: false,
+    };
+  }
+
+  const event = findEvent(tournament, eventId);
+  if (!event) {
+    return {
+      ok: false,
+      error: "Giải chưa có nội dung thi đấu.",
+      code: eventId ? "EVENT_NOT_FOUND" : "EVENT_REQUIRED",
+      failures: [],
+      persist: false,
+    };
+  }
+
+  const modeResolved = resolveContentRegistrationModeDetailed(tournament, {
+    eventId: event.id,
+    allowSoleEventInference: false,
+  });
+  if (
+    !modeResolved.ok ||
+    modeResolved.registrationMode !== OFFICIAL_REGISTRATION_MODE.INDIVIDUAL
+  ) {
     return {
       ok: false,
       error: "Chế độ đăng ký không phải cá nhân.",
       code: "NOT_INDIVIDUAL_MODE",
       failures: [],
       persist: false,
+      registrationModeSource: modeResolved.source || null,
     };
   }
 
@@ -146,16 +226,6 @@ export function registerOfficialIndividualsBatch(tournament, input = {}, options
   const gate = canSubmitRegistration(tournament, options);
   if (!gate.ok) {
     return { ...gate, failures: [], persist: false };
-  }
-
-  const event = findEvent(tournament, eventId);
-  if (!event) {
-    return {
-      ok: false,
-      error: "Giải chưa có nội dung thi đấu.",
-      failures: [],
-      persist: false,
-    };
   }
 
   if ((event.groups || []).length > 0 || (event.drawEntries || []).length > 0) {
@@ -178,23 +248,25 @@ export function registerOfficialIndividualsBatch(tournament, input = {}, options
     };
   }
 
-  const settings = getRegistrationSettings(tournament);
-  if (settings.maxEntries != null) {
-    const remaining = Math.max(0, Number(settings.maxEntries) - countApprovedEntries(event));
-    if (playerIds.length > remaining) {
-      return {
-        ok: false,
-        error: `Vượt sức chứa: còn ${remaining} suất, đã chọn ${playerIds.length} VĐV.`,
-        code: "CAPACITY_EXCEEDED",
-        failures: playerIds.map((playerId) => ({
-          playerId,
-          playerName: playerLabel(playerMap.get(playerId), playerId),
-          error: `vượt sức chứa (còn ${remaining} suất)`,
-        })),
-        persist: false,
-        tournament,
-      };
-    }
+  const capacity = resolveBatchCapacityRemaining(tournament, event);
+  if (!capacity.ok) {
+    return { ...capacity, failures: [], persist: false, tournament };
+  }
+  if (capacity.remaining != null && playerIds.length > capacity.remaining) {
+    const unitLabel = capacity.capacityUnit === "PAIR" ? "cặp" : "suất";
+    return {
+      ok: false,
+      error: `Vượt sức chứa: còn ${capacity.remaining} ${unitLabel}, đã chọn ${playerIds.length} VĐV.`,
+      code: "CAPACITY_EXCEEDED",
+      capacitySource: capacity.source,
+      failures: playerIds.map((playerId) => ({
+        playerId,
+        playerName: playerLabel(playerMap.get(playerId), playerId),
+        error: `vượt sức chứa (còn ${capacity.remaining} ${unitLabel})`,
+      })),
+      persist: false,
+      tournament,
+    };
   }
 
   const failures = [];
@@ -277,5 +349,7 @@ export function registerOfficialIndividualsBatch(tournament, input = {}, options
     auditEntries,
     persist: true,
     registeredCount: created.length,
+    registrationModeSource: modeResolved.source,
+    capacitySource: capacity.source,
   };
 }

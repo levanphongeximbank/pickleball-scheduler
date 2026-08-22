@@ -15,7 +15,15 @@ import {
 } from "../../../models/tournament/entry.js";
 import { isDrawPublished } from "../../../tournament/engines/publishDrawEngine.js";
 import { writeAuditLog } from "../../identity/services/auditService.js";
-import { isOfficialIndividualRegistrationMode } from "./officialTournamentSettingsEngine.js";
+import {
+  OFFICIAL_REGISTRATION_MODE,
+  isOfficialIndividualRegistrationMode,
+} from "./officialTournamentSettingsEngine.js";
+import {
+  CONTENT_RULES_SOURCE,
+  evaluateContentRegistrationCapacity,
+  resolveContentRegistrationMode,
+} from "./officialContentCompetitionRules.js";
 
 export const REGISTRATION_AUDIT_ACTIONS = Object.freeze({
   WINDOW_UPDATED: "registration_window_updated",
@@ -32,6 +40,94 @@ export const REGISTRATION_AUDIT_ACTIONS = Object.freeze({
 
 const AUDIT_CAP = 100;
 const SINGLE_EVENT_TYPES = new Set([EVENT_TYPE.MEN_SINGLE, EVENT_TYPE.WOMEN_SINGLE]);
+
+function isOfficialTournament(tournament) {
+  return (
+    String(tournament?.mode || "") === "official_tournament" ||
+    Boolean(tournament?.officialMode)
+  );
+}
+
+/**
+ * Official Content capacity gate. CONTENT_EXPLICIT ignores tournament maxEntries.
+ * Legacy / default Content sources keep LEGACY_RUNTIME_COMPATIBILITY maxEntries.
+ */
+function resolveRegistrationCapacityGate(tournament, event) {
+  if (isOfficialTournament(tournament) && event?.id) {
+    const content = evaluateContentRegistrationCapacity(tournament, event, {
+      eventId: event.id,
+      allowSoleEventInference: false,
+    });
+    if (!content.ok) return content;
+
+    if (content.source === CONTENT_RULES_SOURCE.CONTENT_EXPLICIT) {
+      return {
+        ok: true,
+        maxEntries: content.maxEntries,
+        used: content.used,
+        atCapacity: content.atCapacity,
+        remaining: content.remaining,
+        capacityUnit: content.capacityUnit,
+        registrationMode: content.registrationMode,
+        source: "CONTENT",
+      };
+    }
+
+    const settings = getRegistrationSettings(tournament);
+    const used = countApprovedEntries(event);
+    const maxEntries = settings.maxEntries;
+    return {
+      ok: true,
+      maxEntries,
+      used,
+      atCapacity: maxEntries != null && used >= maxEntries,
+      remaining: maxEntries == null ? null : Math.max(0, maxEntries - used),
+      capacityUnit: null,
+      registrationMode: content.registrationMode,
+      source: "LEGACY_RUNTIME_COMPATIBILITY",
+    };
+  }
+
+  const settings = getRegistrationSettings(tournament);
+  const used = countApprovedEntries(event);
+  const maxEntries = settings.maxEntries;
+  return {
+    ok: true,
+    maxEntries,
+    used,
+    atCapacity: maxEntries != null && used >= maxEntries,
+    remaining: maxEntries == null ? null : Math.max(0, maxEntries - used),
+    capacityUnit: null,
+    registrationMode: null,
+    source: "LEGACY_RUNTIME_COMPATIBILITY",
+  };
+}
+
+function isOrganizerIndividualRegistration(tournament, event) {
+  if (isOfficialTournament(tournament) && event?.id) {
+    return (
+      resolveContentRegistrationMode(tournament, {
+        eventId: event.id,
+        allowSoleEventInference: false,
+      }) === OFFICIAL_REGISTRATION_MODE.INDIVIDUAL
+    );
+  }
+  return isOfficialIndividualRegistrationMode(tournament, event);
+}
+
+function requireOfficialEventId(tournament, eventId) {
+  if (!isOfficialTournament(tournament)) return { ok: true };
+  const events = tournament?.events || [];
+  const wanted = eventId != null ? String(eventId).trim() : "";
+  if (!wanted && events.length > 1) {
+    return {
+      ok: false,
+      code: "EVENT_REQUIRED",
+      error: "Chọn nội dung tường minh (eventId) trước khi đăng ký.",
+    };
+  }
+  return { ok: true };
+}
 
 function cloneTournament(tournament) {
   return JSON.parse(JSON.stringify(tournament));
@@ -337,15 +433,12 @@ export function autoCloseRegistrationIfExpired(tournament, options = {}) {
 }
 
 function resolveInitialStatus(tournament, event, options = {}) {
-  const settings = getRegistrationSettings(tournament);
   if (options.forceWaitlist) {
     return ENTRY_STATUS.WAITLISTED;
   }
-  if (settings.maxEntries != null) {
-    const approvedCount = countApprovedEntries(event);
-    if (approvedCount >= settings.maxEntries) {
-      return ENTRY_STATUS.WAITLISTED;
-    }
+  const capacity = resolveRegistrationCapacityGate(tournament, event);
+  if (capacity.ok && capacity.atCapacity) {
+    return ENTRY_STATUS.WAITLISTED;
   }
   return options.autoApprove ? ENTRY_STATUS.APPROVED : ENTRY_STATUS.PENDING;
 }
@@ -354,6 +447,11 @@ export function submitRegistration(tournament, payload = {}, options = {}) {
   const gate = canSubmitRegistration(tournament, options);
   if (!gate.ok) {
     return gate;
+  }
+
+  const eventScope = requireOfficialEventId(tournament, payload.eventId);
+  if (!eventScope.ok) {
+    return eventScope;
   }
 
   const event = findEvent(tournament, payload.eventId);
@@ -366,7 +464,7 @@ export function submitRegistration(tournament, payload = {}, options = {}) {
   const expectedCount = isSingle ? 1 : 2;
   const organizerIndividual =
     options.organizerIndividual === true ||
-    isOfficialIndividualRegistrationMode(tournament, event);
+    isOrganizerIndividualRegistration(tournament, event);
 
   if (organizerIndividual && playerIds.length !== 1) {
     return { ok: false, error: "Đăng ký cá nhân cần đúng 1 VĐV." };
@@ -444,9 +542,28 @@ export function approveEntry(tournament, entryId, options = {}) {
     return { ok: false, error: "Đăng ký đã khóa.", code: "REGISTRATION_LOCKED" };
   }
 
-  const event = findEvent(tournament, options.eventId);
+  let event = findEvent(tournament, options.eventId);
+  if (!event && entryId) {
+    event =
+      (tournament?.events || []).find((item) =>
+        (item.entries || []).some((entry) => String(entry.id) === String(entryId))
+      ) || null;
+  }
   if (!event) {
     return { ok: false, error: "Không tìm thấy nội dung." };
+  }
+
+  if (isOfficialTournament(tournament) && !String(options.eventId || "").trim()) {
+    const events = tournament?.events || [];
+    if (events.length > 1 && String(event.id)) {
+      // Entry-scoped event resolution is explicit — not events[0] inference.
+    } else if (events.length > 1) {
+      return {
+        ok: false,
+        code: "EVENT_REQUIRED",
+        error: "Chọn nội dung tường minh (eventId) trước khi duyệt đăng ký.",
+      };
+    }
   }
 
   const entry = (event.entries || []).find((item) => String(item.id) === String(entryId));
@@ -469,17 +586,28 @@ export function approveEntry(tournament, entryId, options = {}) {
   if (
     !SINGLE_EVENT_TYPES.has(event.eventType) &&
     (entry.playerIds || []).length < 2 &&
-    !isOfficialIndividualRegistrationMode(tournament, event)
+    !isOrganizerIndividualRegistration(tournament, event)
   ) {
     return { ok: false, error: "Cặp đôi chưa đủ 2 VĐV." };
   }
 
-  const settings = getRegistrationSettings(tournament);
-  if (settings.maxEntries != null && countApprovedEntries(event) >= settings.maxEntries) {
+  const capacity = resolveRegistrationCapacityGate(tournament, event);
+  if (!capacity.ok) {
+    return capacity;
+  }
+  if (capacity.atCapacity) {
+    const unitLabel =
+      capacity.capacityUnit === "PAIR"
+        ? "cặp"
+        : capacity.capacityUnit === "PARTICIPANT"
+          ? "suất"
+          : "suất";
     return {
       ok: false,
-      error: "Giải đã đủ suất. Chuyển danh sách chờ hoặc tăng sức chứa.",
+      error: `Nội dung đã đủ ${unitLabel}. Chuyển danh sách chờ hoặc tăng sức chứa.`,
       code: "AT_CAPACITY",
+      capacitySource: capacity.source,
+      capacityUnit: capacity.capacityUnit,
     };
   }
 

@@ -76,21 +76,48 @@ export function validateRegistrationEligibility(tournament, playerIds, players =
 
 export function gatedSubmitRegistration(tournament, payload = {}, options = {}) {
   const playerIds = payload.playerIds || [];
+  const events = tournament.events || [];
+  const wanted = String(payload.eventId || "").trim();
+  const isOfficial =
+    String(tournament?.mode || "") === "official_tournament" ||
+    Boolean(tournament?.officialMode);
+
+  if (isOfficial && !wanted && events.length > 1) {
+    return {
+      ok: false,
+      error: "Chọn nội dung tường minh (eventId) trước khi đăng ký.",
+      code: "EVENT_REQUIRED",
+      tournament,
+    };
+  }
+
   const event =
-    (tournament.events || []).find((item) => String(item.id) === String(payload.eventId)) ||
-    tournament.events?.[0];
+    (wanted
+      ? events.find((item) => String(item.id) === wanted)
+      : null) ||
+    (events.length === 1 ? events[0] : null) ||
+    (!isOfficial ? events[0] : null);
+
+  if (isOfficial && !event) {
+    return {
+      ok: false,
+      error: "Giải chưa có nội dung thi đấu.",
+      code: wanted ? "EVENT_NOT_FOUND" : "EVENT_REQUIRED",
+      tournament,
+    };
+  }
 
   const eligibility = validateRegistrationEligibility(tournament, playerIds, options.players || [], {
-    eventId: payload.eventId || event?.id,
+    eventId: wanted || event?.id,
     event,
     clubId: options.clubId || tournament.clubId,
     hasInvite: Boolean(options.hasInvite),
     excludeEntryId: options.excludeEntryId,
     requireCanonicalMembershipEvidence:
-      isOfficialTournament(tournament) &&
+      isOfficial &&
       Boolean(tournament?.settings?.eligibilityRules?.clubMembership?.enabled),
     requireCanonicalRatingEvidence:
-      isOfficialTournament(tournament) && shouldActivateOfficialOpenRating(tournament),
+      isOfficial && shouldActivateOfficialOpenRating(tournament),
     membershipEvidence: options.membershipEvidence,
     ratingEvidence: options.ratingEvidence,
   });
@@ -117,7 +144,10 @@ export function gatedSubmitRegistration(tournament, payload = {}, options = {}) 
     };
   }
 
-  const result = submitRegistration(working, payload, options);
+  const result = submitRegistration(working, {
+    ...payload,
+    eventId: wanted || event?.id || payload.eventId,
+  }, options);
   if (!result.ok) {
     return { ...result, tournament: result.tournament || working };
   }

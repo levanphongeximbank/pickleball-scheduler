@@ -182,10 +182,9 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
     Number(rules.roundTargets?.[OFFICIAL_ROUND_SCORE_KEY.GROUP]) ||
     CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT;
 
-  // G1-A: LOSSY Adapter B capacity mapping (runtime unchanged).
-  // Content authority keeps unit truth: INDIVIDUAL → capacity.maxParticipants,
-  // FIXED_PAIR → capacity.maxPairs. Profile contract only has maxParticipants,
-  // so FIXED_PAIR maxPairs is collapsed here. Fix deferred to G1-B.
+  // G1-B: Adapter A competitionUnit only exposes maxParticipants.
+  // FIXED_PAIR Content capacity.maxPairs is still projected into maxParticipants
+  // for profile contract compatibility (lossy). Truthful units are in metadata.officialCapacity.
   const unit = {
     ...mapCompetitionUnit(event, rules.registrationMode),
     minParticipants: null,
@@ -317,6 +316,26 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
       officialSeedingPolicy: rules.seedingPolicy || "NONE",
       officialSubstitution: rules.substitution || null,
       officialEligibility: rules.eligibility || null,
+      // Non-authoritative Content capacity truth (registration runtime uses Content resolver).
+      officialCapacity: {
+        registrationMode: rules.registrationMode,
+        capacityUnit:
+          rules.registrationMode === OFFICIAL_REGISTRATION_MODE.PAIR
+            ? "PAIR"
+            : "PARTICIPANT",
+        maxParticipants:
+          rules.capacity?.maxParticipants != null
+            ? Number(rules.capacity.maxParticipants)
+            : null,
+        maxPairs:
+          rules.capacity?.maxPairs != null
+            ? Number(rules.capacity.maxPairs)
+            : null,
+        profileMaxParticipantsLossy:
+          rules.registrationMode === OFFICIAL_REGISTRATION_MODE.PAIR &&
+          rules.capacity?.maxPairs != null &&
+          rules.capacity?.maxParticipants == null,
+      },
       wildcardSlotsDerived: Number(rules.qualification?.wildcardSlots) || 0,
     },
   };

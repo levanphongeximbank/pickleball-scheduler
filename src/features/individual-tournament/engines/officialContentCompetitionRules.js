@@ -25,6 +25,7 @@ import {
   SIDEOUT_OPERATIONAL,
   BEST_OF_3_OPERATIONAL,
 } from "./officialTournamentSettingsEngine.js";
+import { isDrawEligibleEntry } from "../../../models/tournament/entry.js";
 import { getEligibilityRules } from "./eligibilityEngine.js";
 import { listTournamentEvents, resolveSelectedEvent } from "../../tournament/experience-a1/deriveOverview.js";
 
@@ -66,7 +67,14 @@ export const CONTENT_CAPACITY_UNIT = Object.freeze({
 export const LEGACY_GROUP1_FIELD_CLASS = Object.freeze({
   officialCompetition: "LEGACY_COMPATIBILITY_DRAFT",
   eligibilityRules: "CONFLICTING_LEGACY_RUNTIME",
-  maxEntries: "CONFLICTING_LEGACY_RUNTIME",
+  // G1-B: not authority on explicit Content Official/Open path; may remain for legacy-only callers.
+  maxEntries: "LEGACY_RUNTIME_COMPATIBILITY",
+});
+
+/** Runtime projection unit labels (not persisted schema). */
+export const CONTENT_CAPACITY_RUNTIME_UNIT = Object.freeze({
+  PARTICIPANT: "PARTICIPANT",
+  PAIR: "PAIR",
 });
 
 /**
@@ -130,8 +138,8 @@ function normalizeRegistrationMode(value, fallback = OFFICIAL_REGISTRATION_MODE.
 
 /**
  * Unit-safe Content capacity view. Does not collapse PAIRS → PARTICIPANTS.
- * Adapter B currently still lossily maps both into competitionUnit.maxParticipants
- * for profile translation only (G1-B may fix representation without Adapter A change).
+ * Adapter B profile.competitionUnit.maxParticipants may still be lossy for PAIR
+ * mode (Adapter A contract); truthful units live here + metadata.
  */
 export function normalizeContentCapacity(capacity = {}, registrationMode) {
   const mode = normalizeRegistrationMode(registrationMode);
@@ -149,6 +157,95 @@ export function normalizeContentCapacity(capacity = {}, registrationMode) {
       unit === CONTENT_CAPACITY_UNIT.PAIRS ? maxPairs : maxParticipants,
     adapterBLossyCollapseToMaxParticipants: true,
   });
+}
+
+/**
+ * Count registration units already consuming Content capacity for one Event.
+ * INDIVIDUAL: one draw-eligible entry = one participant.
+ * FIXED_PAIR (pair): one draw-eligible entry = one registered pair.
+ * Does not invent a second pair registry.
+ */
+export function countContentCapacityUsed(event, registrationMode) {
+  const mode = normalizeRegistrationMode(registrationMode);
+  const eligible = (event?.entries || []).filter(isDrawEligibleEntry);
+  if (mode === OFFICIAL_REGISTRATION_MODE.PAIR) {
+    // PAIR_CAPACITY_COUNTING_UNIT=PAIR — canonical entry is the pair container.
+    return eligible.length;
+  }
+  return eligible.length;
+}
+
+/**
+ * Runtime projection for Official registration capacity enforcement.
+ * Not persisted authority. Requires eventId for multi-Content tournaments.
+ */
+export function resolveContentRegistrationCapacityRuntime(tournament, options = {}) {
+  const events = listTournamentEvents(tournament);
+  const wanted = trim(options.eventId);
+  if (!wanted && events.length > 1) {
+    return {
+      ok: false,
+      code: "EVENT_REQUIRED",
+      error: "Chọn nội dung tường minh (eventId) trước khi kiểm tra sức chứa.",
+    };
+  }
+
+  const group1 = resolveContentGroup1Settings(tournament, {
+    eventId: wanted || undefined,
+    allowSoleEventInference:
+      options.allowSoleEventInference != null
+        ? options.allowSoleEventInference
+        : events.length === 1,
+  });
+  if (!group1.ok) return group1;
+
+  const capacity = group1.capacity;
+  const capacityUnit =
+    capacity.unit === CONTENT_CAPACITY_UNIT.PAIRS
+      ? CONTENT_CAPACITY_RUNTIME_UNIT.PAIR
+      : CONTENT_CAPACITY_RUNTIME_UNIT.PARTICIPANT;
+
+  return {
+    ok: true,
+    eventId: group1.eventId,
+    registrationMode: group1.registrationMode,
+    capacityUnit,
+    // Runtime projection only — do not persist as tournament.settings.registration.maxEntries.
+    maxEntries: capacity.effectiveLimit,
+    maxParticipants: capacity.maxParticipants,
+    maxPairs: capacity.maxPairs,
+    source: group1.source,
+    authority: CONTENT_GROUP1_FIELD_AUTHORITY.capacity,
+    legacyMaxEntriesClass: LEGACY_GROUP1_FIELD_CLASS.maxEntries,
+  };
+}
+
+/**
+ * Evaluate whether an Event is at Content capacity.
+ * CONTENT_EXPLICIT: Content capacity only (null = unlimited; never tournament maxEntries).
+ * Other sources: caller may apply LEGACY_RUNTIME_COMPATIBILITY maxEntries.
+ */
+export function evaluateContentRegistrationCapacity(tournament, event, options = {}) {
+  const eventId = trim(options.eventId || event?.id);
+  const resolved = resolveContentRegistrationCapacityRuntime(tournament, {
+    ...options,
+    eventId,
+  });
+  if (!resolved.ok) return resolved;
+
+  const used = countContentCapacityUsed(event, resolved.registrationMode);
+  const maxEntries = resolved.maxEntries;
+  const atCapacity = maxEntries != null && used >= maxEntries;
+  return {
+    ...resolved,
+    used,
+    remaining: maxEntries == null ? null : Math.max(0, maxEntries - used),
+    atCapacity,
+    countingUnit:
+      resolved.capacityUnit === CONTENT_CAPACITY_RUNTIME_UNIT.PAIR
+        ? "PAIR"
+        : "PARTICIPANT",
+  };
 }
 
 /**
