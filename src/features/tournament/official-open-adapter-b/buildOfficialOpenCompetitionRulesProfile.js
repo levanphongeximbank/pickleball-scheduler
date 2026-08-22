@@ -39,6 +39,8 @@ import {
   CONTENT_KNOCKOUT_PAIRING_RUNTIME,
   GROUP2_WILDCARD_RESPONSIBILITY,
 } from "../../individual-tournament/engines/officialContentCompetitionRules.js";
+import { OFFICIAL_KNOCKOUT_ADMISSION_CAPABILITY } from "../../individual-tournament/engines/officialKnockoutAdmissionBridge.js";
+import { BYE_POLICY } from "../../competition-core/competition-rules/index.js";
 
 const ROUND_KEY_TO_STAGE = Object.freeze({
   [OFFICIAL_ROUND_SCORE_KEY.GROUP]: COMPETITION_RULES_STAGE.GROUP,
@@ -178,8 +180,24 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
   const directQualifiersPerGroup =
     Number(rules.qualification.directQualifiersPerGroup) || 2;
   const totalQualifiers =
+    Number(rules.qualification.totalKnockoutSlots) ||
     Number(rules.qualification.totalQualifiers) ||
     groupCount * directQualifiersPerGroup;
+  const directKnockoutEntryCount =
+    Number(rules.qualification.directKnockoutEntryCount) ||
+    Number(rules.knockoutAdmission?.directKnockoutEntry?.count) ||
+    0;
+  const knockoutAdmission = rules.knockoutAdmission || {
+    groupStageBypass: { enabled: false, entrants: [] },
+    directKnockoutEntry: {
+      enabled: false,
+      count: 0,
+      entrants: [],
+      sourceCategory: null,
+      targetStage: null,
+    },
+    bye: { byePolicy: BYE_POLICY.NONE, allocationShape: null },
+  };
 
   const defaultTarget =
     Number(rules.matchScoring.targetPoints) ||
@@ -264,8 +282,11 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
     },
     qualification: {
       totalQualifiers,
+      totalKnockoutSlots: totalQualifiers,
       directQualifiersPerGroup,
+      directKnockoutEntryCount,
     },
+    knockoutAdmission,
     inGroupTieBreak: rules.inGroupTieBreak || undefined,
     crossGroupRanking: rules.crossGroupRanking || undefined,
     knockout: {
@@ -321,7 +342,24 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
       translationOnly: true,
       tournamentRuleInheritance: false,
       lifecycleEvidence: options.lifecycleEvidence || null,
-      pr459AdmissionDeferred: true,
+      pr459AdmissionDeferred: false,
+      knockoutAdmissionCapability: OFFICIAL_KNOCKOUT_ADMISSION_CAPABILITY,
+      knockoutAdmissionConfigured: {
+        groupStageBypassEnabled: knockoutAdmission.groupStageBypass?.enabled === true,
+        directKnockoutEntryEnabled:
+          knockoutAdmission.directKnockoutEntry?.enabled === true,
+        byePolicy: knockoutAdmission.bye?.byePolicy || BYE_POLICY.NONE,
+        byeActive:
+          (knockoutAdmission.bye?.byePolicy || BYE_POLICY.NONE) !== BYE_POLICY.NONE,
+      },
+      officialAdmissionRuntime: {
+        GROUP_STAGE_BYPASS: "SUPPORTED_ON_GROUP_DRAW",
+        DIRECT_KNOCKOUT_ENTRY: "PARTIAL_FAIL_CLOSED_ON_CLASSIC",
+        KNOCKOUT_BYE: "DEFERRED_FAIL_CLOSED_ON_CLASSIC",
+        sharedPolicyApis: true,
+        sharedExecutionAuthority: false,
+        group4WildcardActivated: false,
+      },
       // G1-D: Content seeding is policy metadata only — not pair/group-draw authority.
       // KO/bracket placement consumer is deferred (admission ≠ seeding).
       officialSeedingPolicy: rules.seedingPolicy || "NONE",
@@ -417,7 +455,11 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
         crossGroupSupportedGroupCounts: [2, 4, 8, 16],
         crossGroupExistingEngine: "buildFirstKnockoutRound",
         byeLocalImplementation: false,
-        admissionDeferredToG2F: true,
+        admissionDeferredToG2F: false,
+        admissionAdoptedG2F1: true,
+        admissionClassicDirect: "PARTIAL_FAIL_CLOSED",
+        admissionClassicBye: "DEFERRED_FAIL_CLOSED",
+        admissionClassicBypass: "SUPPORTED_ON_GROUP_DRAW",
       },
     },
   };

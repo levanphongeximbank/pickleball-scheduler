@@ -33,6 +33,7 @@ import {
   resolveContentRegistrationMode,
   validateContentGroupStageDrawStructure,
 } from "../../individual-tournament/engines/officialContentCompetitionRules.js";
+import { applyOfficialGroupStageBypassToDrawUnits } from "../../individual-tournament/engines/officialKnockoutAdmissionBridge.js";
 import {
   OFFICIAL_GROUP_DRAW_AUTHORITY,
   resolveOfficialGroupDrawDispatch,
@@ -600,9 +601,33 @@ export function buildOfficialCreateGroupDrawPatch(tournament, options = {}) {
     };
   }
 
+  // G2-F1: shared GROUP_STAGE_BYPASS population subtraction (no second bypass engine).
+  const bypassed = applyOfficialGroupStageBypassToDrawUnits(tournament, {
+    eventId: event.id,
+    units: unitsResult.units,
+  });
+  if (!bypassed.ok) {
+    return {
+      ok: false,
+      code: bypassed.code || "GROUP_STAGE_BYPASS_FAILED",
+      error: bypassed.error || "Không áp dụng GROUP_STAGE_BYPASS.",
+      admission: bypassed.admission || null,
+    };
+  }
+  const drawUnits = bypassed.units;
+  if ((drawUnits || []).length < 2) {
+    return {
+      ok: false,
+      code: "UNITS_MISSING",
+      error:
+        "Sau GROUP_STAGE_BYPASS không còn đủ đơn vị để chia bảng (cần ≥ 2).",
+      admission: bypassed.admission || null,
+    };
+  }
+
   const structure = validateContentGroupStageDrawStructure(tournament, {
     eventId: event.id,
-    eligibleUnitCount: unitsResult.units.length,
+    eligibleUnitCount: drawUnits.length,
   });
   if (!structure.ok) {
     return {
@@ -622,7 +647,7 @@ export function buildOfficialCreateGroupDrawPatch(tournament, options = {}) {
       ...tournament,
       hostClubName: tournament.hostClubName || options.hostClubName || "",
     },
-    entries: unitsResult.units,
+    entries: drawUnits,
     eventType: event.eventType,
     eventId: event.id,
     groupCount,

@@ -28,6 +28,9 @@ import {
 import { isDrawEligibleEntry } from "../../../models/tournament/entry.js";
 import { getEligibilityRules, normalizeEligibilityRules } from "./eligibilityEngine.js";
 import { listTournamentEvents, resolveSelectedEvent } from "../../tournament/experience-a1/deriveOverview.js";
+import {
+  createDefaultKnockoutAdmissionPolicy,
+} from "../../competition-core/competition-rules/index.js";
 import { deriveQualificationPlan } from "../../competition-core/competition-rules/services/deriveQualificationPlan.js";
 
 export const CONTENT_COMPETITION_RULES_PROPERTY = "competitionRules";
@@ -87,8 +90,11 @@ export const CONTENT_GROUP2_FIELD_AUTHORITY = Object.freeze({
   roundRobinPolicy: "CONTENT_COMPETITION_RULES",
   allowUnevenGroups: "CONTENT_COMPETITION_RULES",
   totalQualifiers: "CONTENT_COMPETITION_RULES",
+  totalKnockoutSlots: "CONTENT_COMPETITION_RULES",
   directQualifiersPerGroup: "CONTENT_COMPETITION_RULES",
+  directKnockoutEntryCount: "CONTENT_COMPETITION_RULES",
   wildcardSlots: "CONTENT_COMPETITION_RULES_STRUCTURAL",
+  knockoutAdmission: "CONTENT_COMPETITION_RULES",
   knockoutEnabled: "CONTENT_COMPETITION_RULES",
   qualifierCount: "CONTENT_COMPETITION_RULES",
   pairingPolicy: "CONTENT_COMPETITION_RULES_METADATA",
@@ -110,7 +116,8 @@ export const GROUP2_WILDCARD_RESPONSIBILITY = Object.freeze({
 
 /**
  * Persisted qualification.wildcardSlots is never editable authority.
- * Always re-derived from totalQualifiers − (groupCount × directQualifiersPerGroup)
+ * Always re-derived from canonical:
+ *   totalKnockoutSlots − directKnockoutEntrySlots − groupDirectQualifierSlots
  * on normalize (SERIALIZED_PROJECTION / DERIVED_CACHE).
  */
 export const CONTENT_WILDCARD_SLOTS_FIELD_CLASS = Object.freeze({
@@ -700,10 +707,29 @@ export function normalizeContentCompetitionRules(input = {}, options = {}) {
     qualification.directQualifiersPerGroup ?? input?.qualifiersPerGroup,
     DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP
   );
-  const totalQualifiersExplicit = toPositiveInt(qualification.totalQualifiers, null);
-  const totalQualifiers =
-    totalQualifiersExplicit || groupCount * directQualifiersPerGroup;
-  const derivedWildcard = Math.max(0, totalQualifiers - groupCount * directQualifiersPerGroup);
+
+  // Canonical knockoutAdmission (PR #459) — replace obsolete null stubs.
+  const knockoutAdmission = createDefaultKnockoutAdmissionPolicy(
+    input?.knockoutAdmission && typeof input.knockoutAdmission === "object"
+      ? input.knockoutAdmission
+      : {}
+  );
+  const directKnockoutEntryCount = Number(
+    knockoutAdmission.directKnockoutEntry?.count
+  ) || 0;
+  const groupDirectQualifierSlots = groupCount * directQualifiersPerGroup;
+  const totalKnockoutSlotsExplicit = toPositiveInt(
+    qualification.totalKnockoutSlots ?? qualification.totalQualifiers,
+    null
+  );
+  const totalKnockoutSlots =
+    totalKnockoutSlotsExplicit ||
+    groupDirectQualifierSlots + directKnockoutEntryCount;
+  // SERIALIZED_PROJECTION — always derived from canonical formula.
+  const derivedWildcard = Math.max(
+    0,
+    totalKnockoutSlots - directKnockoutEntryCount - groupDirectQualifierSlots
+  );
 
   const inGroup = input?.inGroupTieBreak || {};
   const crossGroup = input?.crossGroupRanking || {};
@@ -749,16 +775,18 @@ export function normalizeContentCompetitionRules(input = {}, options = {}) {
     }),
     qualification: Object.freeze({
       directQualifiersPerGroup,
-      totalQualifiers,
+      /** Preferred canonical slot total (PR #459). */
+      totalKnockoutSlots,
+      /** Alias — same value as totalKnockoutSlots. */
+      totalQualifiers: totalKnockoutSlots,
+      directKnockoutEntryCount,
       // SERIALIZED_PROJECTION — always derived; never trust a conflicting stored edit.
       wildcardSlots: derivedWildcard,
-      groupStageBypass: null,
-      directKnockoutEntry: null,
-      knockoutBye: null,
     }),
+    knockoutAdmission,
     knockout: Object.freeze({
       knockoutEnabled: boolOr(knockout.knockoutEnabled, true),
-      qualifierCount: totalQualifiers,
+      qualifierCount: totalKnockoutSlots,
       entryRound: knockout.entryRound || null,
       pairingPolicy: ["CROSS_GROUP", "SEEDED", "RANDOM"].includes(
         String(knockout.pairingPolicy || "").toUpperCase()
@@ -913,6 +941,7 @@ export function serializeContentCompetitionRulesForPersist(rules) {
     roundTargets: rules.roundTargets,
     groupStage: rules.groupStage,
     qualification: rules.qualification,
+    knockoutAdmission: rules.knockoutAdmission,
     knockout: rules.knockout,
     eligibility: rules.eligibility,
     inGroupTieBreak: rules.inGroupTieBreak,
@@ -1228,6 +1257,7 @@ export function resolveContentGroup2Settings(tournament, options = {}) {
     groupStage: rules.groupStage,
     qualification: rules.qualification,
     knockout: rules.knockout,
+    knockoutAdmission: rules.knockoutAdmission,
     wildcardScope: GROUP2_WILDCARD_RESPONSIBILITY,
     knockoutPairingRuntime: pairingRuntime,
     roundRobinRuntime: Object.freeze({
@@ -1473,8 +1503,12 @@ export function resolveContentQualificationPlan(tournament, options = {}) {
   const plan = deriveQualificationPlan({
     groupStageEnabled: groupStage.groupStageEnabled !== false,
     groupCount: groupStage.groupCount,
+    totalKnockoutSlots:
+      qualification.totalKnockoutSlots ?? qualification.totalQualifiers,
     totalQualifiers: qualification.totalQualifiers,
     directQualifiersPerGroup: qualification.directQualifiersPerGroup,
+    directKnockoutEntryCount: qualification.directKnockoutEntryCount ?? 0,
+    directKnockoutEntrySlots: qualification.directKnockoutEntryCount ?? 0,
   });
 
   if (!plan.ok) {
@@ -1483,7 +1517,7 @@ export function resolveContentQualificationPlan(tournament, options = {}) {
       code: plan.code || "INVALID_QUALIFICATION_PLAN",
       error:
         plan.message ||
-        "Cấu hình suất đi tiếp không hợp lệ (groupCount × direct > totalQualifiers).",
+        "Cấu hình suất đi tiếp không hợp lệ (canonical admission slot formula).",
       eventId,
       source: group2.source,
       plan,
@@ -1504,7 +1538,10 @@ export function resolveContentQualificationPlan(tournament, options = {}) {
     groupCount: plan.groupCount,
     directQualifiersPerGroup: plan.directQualifiersPerGroup,
     directSlots: plan.directSlots,
+    groupDirectQualifierSlots: plan.groupDirectQualifierSlots,
+    directKnockoutEntrySlots: plan.directKnockoutEntrySlots,
     totalQualifiers: plan.totalQualifiers,
+    totalKnockoutSlots: plan.totalKnockoutSlots,
     wildcardSlots: plan.wildcardSlots,
     groupStageEnabled: plan.groupStageEnabled === true,
     formula: plan.details?.formula || null,
@@ -1701,7 +1738,8 @@ export function resolveContentKnockoutRuntimeGate(tournament, options = {}) {
   const avoidSameGroup = knockout.avoidSameGroupFirstRound !== false;
   const groupCount = Number(groupStage.groupCount) || Number(planResolved.groupCount) || 0;
   const directPerGroup = Number(planResolved.directQualifiersPerGroup) || 0;
-  const fieldSize = Number(planResolved.directSlots) || 0;
+  const fieldSize =
+    Number(planResolved.groupDirectQualifierSlots ?? planResolved.directSlots) || 0;
 
   if (pairingPolicy === CONTENT_KNOCKOUT_PAIRING_POLICY.SEEDED) {
     return {
@@ -1784,7 +1822,21 @@ export function resolveContentKnockoutRuntimeGate(tournament, options = {}) {
     return {
       ok: false,
       code: "KNOCKOUT_BYE_REQUIRED",
-      error: `Field KO=${fieldSize} không phải lũy thừa của 2 — bye/admission thuộc G2-F (PR #459/#460). Không invent bye cục bộ.`,
+      error: `Field KO (group-direct)=${fieldSize} không phải lũy thừa của 2 — Official classic chưa bind CORE-08/09 bye. Không invent bye cục bộ.`,
+      eventId,
+      source: group2.source,
+      pairingPolicy,
+      fieldSize,
+      knockout,
+      plan: planResolved.plan,
+    };
+  }
+
+  if (fieldSize !== Number(planResolved.totalKnockoutSlots || planResolved.totalQualifiers)) {
+    return {
+      ok: false,
+      code: "KNOCKOUT_SIZE_MISMATCH",
+      error: `Classic CROSS_GROUP field (${fieldSize}) ≠ totalKnockoutSlots (${planResolved.totalKnockoutSlots}) — DIRECT/wildcard chưa compose trên Official classic.`,
       eventId,
       source: group2.source,
       pairingPolicy,
@@ -2161,10 +2213,22 @@ export function patchEventContentCompetitionRules(tournament, eventId, patch = {
         patch.totalQualifiers ??
         draftSource.totalQualifiers ??
         draftSource.qualification?.totalQualifiers ??
+        draftSource.qualification?.totalKnockoutSlots ??
+        current.qualification.totalQualifiers,
+      totalKnockoutSlots:
+        patch.totalKnockoutSlots ??
+        draftSource.totalKnockoutSlots ??
+        draftSource.qualification?.totalKnockoutSlots ??
+        draftSource.qualification?.totalQualifiers ??
+        current.qualification.totalKnockoutSlots ??
         current.qualification.totalQualifiers,
       // wildcardSlots is SERIALIZED_PROJECTION — normalizeContentCompetitionRules
-      // always re-derives from total − (groupCount × direct). Do not accept edits.
+      // always re-derives from canonical admission formula. Do not accept edits.
     },
+    knockoutAdmission:
+      draftSource.knockoutAdmission ??
+      patch.knockoutAdmission ??
+      current.knockoutAdmission,
     knockout: {
       ...current.knockout,
       ...(draftSource.knockout || {}),

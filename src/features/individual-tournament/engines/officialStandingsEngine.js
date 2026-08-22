@@ -219,12 +219,19 @@ export function resolveOfficialQualificationReadiness(tournament, event, options
 
   const {
     directSlots,
+    groupDirectQualifierSlots,
+    directKnockoutEntrySlots,
     wildcardSlots,
     totalQualifiers,
+    totalKnockoutSlots,
     directQualifiersPerGroup,
     source,
     plan,
   } = planResolved;
+
+  const groupDirectSlots =
+    Number(groupDirectQualifierSlots ?? directSlots) || 0;
+  const totalRequired = Number(totalKnockoutSlots ?? totalQualifiers) || 0;
 
   const wildcardRequirement = resolveContentWildcardRequirement(tournament, {
     eventId,
@@ -244,11 +251,12 @@ export function resolveOfficialQualificationReadiness(tournament, event, options
       source,
       plan,
       standings: groupReady.standings || null,
-      directSlots,
+      directSlots: groupDirectSlots,
       directQualifiedCount: countDirectQualified(groupReady.standings),
+      directKnockoutEntrySlots: Number(directKnockoutEntrySlots) || 0,
       wildcardSlots,
       wildcardQualifiedCount: wildcardRequirement.wildcardQualifiedCount || 0,
-      totalRequired: totalQualifiers,
+      totalRequired,
       directQualifiersPerGroup,
       wildcardRequirement,
     };
@@ -268,33 +276,59 @@ export function resolveOfficialQualificationReadiness(tournament, event, options
       source,
       plan,
       standings,
-      directSlots,
+      directSlots: groupDirectSlots,
       directQualifiedCount,
+      directKnockoutEntrySlots: Number(directKnockoutEntrySlots) || 0,
       wildcardSlots,
       wildcardQualifiedCount: wildcardRequirement.wildcardQualifiedCount || 0,
-      totalRequired: totalQualifiers,
+      totalRequired,
       directQualifiersPerGroup,
       wildcardRequirement,
     };
   }
 
-  if (directQualifiedCount !== directSlots) {
+  if (directQualifiedCount !== groupDirectSlots) {
     return {
       ready: false,
       ok: false,
       code: QUALIFICATION_NOT_READY,
-      error: `Suất trực tiếp chưa đủ: cần ${directSlots}, hiện ${directQualifiedCount}. Không đệm / không dùng wildcard ranking.`,
+      error: `Suất trực tiếp từ bảng chưa đủ: cần ${groupDirectSlots}, hiện ${directQualifiedCount}. Không đệm / không dùng wildcard ranking.`,
       eventId,
       source,
       plan,
       standings,
-      directSlots,
+      directSlots: groupDirectSlots,
       directQualifiedCount,
+      directKnockoutEntrySlots: Number(directKnockoutEntrySlots) || 0,
       wildcardSlots,
       wildcardQualifiedCount: wildcardRequirement.wildcardQualifiedCount || 0,
-      totalRequired: totalQualifiers,
+      totalRequired,
       directQualifiersPerGroup,
       wildcardRequirement,
+    };
+  }
+
+  // DIRECT slots require shared CE compose — Official classic readiness stays fail-closed.
+  if (Number(directKnockoutEntrySlots) > 0) {
+    return {
+      ready: false,
+      ok: false,
+      code: "KNOCKOUT_ADMISSION_DIRECT_UNSUPPORTED_ON_OFFICIAL_CLASSIC",
+      error:
+        "DIRECT_KNOCKOUT_ENTRY slots > 0 — Official classic chưa compose shared CE first-playable DIRECT. Không tạo KO thiếu field.",
+      eventId,
+      source,
+      plan,
+      standings,
+      directSlots: groupDirectSlots,
+      directQualifiedCount,
+      directKnockoutEntrySlots: Number(directKnockoutEntrySlots) || 0,
+      wildcardSlots,
+      wildcardQualifiedCount: wildcardRequirement.wildcardQualifiedCount || 0,
+      totalRequired,
+      directQualifiersPerGroup,
+      wildcardRequirement,
+      silentSmallerKoFieldAllowed: false,
     };
   }
 
@@ -306,16 +340,17 @@ export function resolveOfficialQualificationReadiness(tournament, event, options
       code: wildcardRequirement.code || QUALIFICATION_NOT_READY,
       error:
         wildcardRequirement.error ||
-        `Còn ${wildcardSlots} suất wildcard — chờ Nhóm 4. Không tạo KO với ${directSlots}/${totalQualifiers} suất.`,
+        `Còn ${wildcardSlots} suất wildcard — chờ Nhóm 4. Không tạo KO với ${groupDirectSlots}/${totalRequired} suất.`,
       eventId,
       source,
       plan,
       standings,
-      directSlots,
+      directSlots: groupDirectSlots,
       directQualifiedCount,
+      directKnockoutEntrySlots: Number(directKnockoutEntrySlots) || 0,
       wildcardSlots,
       wildcardQualifiedCount: wildcardRequirement.wildcardQualifiedCount || 0,
-      totalRequired: totalQualifiers,
+      totalRequired,
       directQualifiersPerGroup,
       wildcardRequirement,
       wildcardExecutionDeferred: true,
@@ -332,11 +367,12 @@ export function resolveOfficialQualificationReadiness(tournament, event, options
     source,
     plan,
     standings,
-    directSlots,
+    directSlots: groupDirectSlots,
     directQualifiedCount,
+    directKnockoutEntrySlots: 0,
     wildcardSlots,
     wildcardQualifiedCount: wildcardRequirement.wildcardQualifiedCount || 0,
-    totalRequired: totalQualifiers,
+    totalRequired,
     directQualifiersPerGroup,
     wildcardRequirement,
     qualifiedWildcardEntries: wildcardRequirement.qualifiedWildcardEntries || [],

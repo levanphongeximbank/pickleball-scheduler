@@ -5,7 +5,7 @@
  * G2-C/D: qualification readiness (totalQualifiers + wildcard fail-closed).
  * G2-E: Content knockoutEnabled / size / pairingPolicy / avoidSameGroupFirstRound
  * constrain existing generateKnockoutBracket / buildFirstKnockoutRound.
- * Does not implement bye / admission (G2-F) or Group 4 wildcard ranking.
+ * G2-F1: canonical admission policy/plan via Official bridge (no second engine).
  */
 
 import {
@@ -24,6 +24,7 @@ import {
   resolveContentKnockoutRuntimeGate,
   CONTENT_KNOCKOUT_PAIRING_POLICY,
 } from "./officialContentCompetitionRules.js";
+import { resolveOfficialContentKnockoutAdmission } from "./officialKnockoutAdmissionBridge.js";
 
 export function officialKnockoutHasStarted(event) {
   return (event?.matches || []).some(
@@ -72,6 +73,19 @@ export function canGenerateOfficialKnockout(tournament, event, options = {}) {
     };
   }
 
+  // G2-F1: canonical admission before classic structure gate.
+  const admission = resolveOfficialContentKnockoutAdmission(tournament, {
+    eventId,
+  });
+  if (!admission.ok) {
+    return {
+      ok: false,
+      errors: [admission.error || "Knockout admission chưa sẵn sàng."],
+      code: admission.code || "KNOCKOUT_ADMISSION_NOT_READY",
+      admission,
+    };
+  }
+
   const knockoutGate = resolveContentKnockoutRuntimeGate(tournament, { eventId });
   if (!knockoutGate.ok) {
     return {
@@ -79,6 +93,7 @@ export function canGenerateOfficialKnockout(tournament, event, options = {}) {
       errors: [knockoutGate.error || "Cấu trúc knockout Nội dung không hợp lệ."],
       code: knockoutGate.code || "KNOCKOUT_STRUCTURE_NOT_READY",
       knockoutGate,
+      admission,
     };
   }
 
@@ -94,6 +109,7 @@ export function canGenerateOfficialKnockout(tournament, event, options = {}) {
       standings: qualification.standings,
       qualification,
       knockoutGate,
+      admission,
     };
   }
 
@@ -108,6 +124,7 @@ export function canGenerateOfficialKnockout(tournament, event, options = {}) {
       code: "KO_GENERATE_FAILED",
       qualification,
       knockoutGate,
+      admission,
     };
   }
 
@@ -121,6 +138,7 @@ export function canGenerateOfficialKnockout(tournament, event, options = {}) {
       code: QUALIFICATION_NOT_READY,
       qualification,
       knockoutGate,
+      admission,
     };
   }
 
@@ -133,6 +151,7 @@ export function canGenerateOfficialKnockout(tournament, event, options = {}) {
       code: "KNOCKOUT_SIZE_MISMATCH",
       qualification,
       knockoutGate,
+      admission,
     };
   }
 
@@ -150,6 +169,7 @@ export function canGenerateOfficialKnockout(tournament, event, options = {}) {
       code: integrityResult.code || "KNOCKOUT_PAIRING_CONSTRAINT_UNSATISFIED",
       qualification,
       knockoutGate,
+      admission,
       integrity: integrityResult,
     };
   }
@@ -162,6 +182,7 @@ export function canGenerateOfficialKnockout(tournament, event, options = {}) {
     standings: qualification.standings,
     qualification,
     knockoutGate,
+    admission,
     pairingPolicy: CONTENT_KNOCKOUT_PAIRING_POLICY.CROSS_GROUP,
     avoidSameGroupFirstRound: knockoutGate.avoidSameGroupFirstRound,
     integrity: integrityResult,
@@ -183,6 +204,7 @@ export function generateOfficialKnockout(tournament, event, options = {}) {
     groupStandings: check.standings,
     qualification: check.qualification,
     knockoutGate: check.knockoutGate,
+    admission: check.admission,
     pairingPolicy: check.pairingPolicy,
     avoidSameGroupFirstRound: check.avoidSameGroupFirstRound,
     integrity: check.integrity,

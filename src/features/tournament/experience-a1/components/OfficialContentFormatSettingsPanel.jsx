@@ -1242,18 +1242,33 @@ export default function OfficialContentFormatSettingsPanel({
           </WorkspaceCard>
           <WorkspaceCard
             title="Tùy chọn nâng cao"
-            action={<StatusBadge label="Chưa sẵn sàng" tone="warn" />}
+            action={<StatusBadge label="Capability truth" tone="warn" />}
           >
             <Stack spacing={0.75}>
-              <TextField size="small" fullWidth label="Bỏ vòng bảng" value="Chưa sẵn sàng" disabled />
               <TextField
                 size="small"
                 fullWidth
-                label="Vào thẳng knockout"
-                value="Chưa sẵn sàng"
+                label="Bỏ vòng bảng (GROUP_STAGE_BYPASS)"
+                value="SUPPORTED — cần entryId; UI chọn đơn vị chưa sẵn sàng"
                 disabled
+                helperText="Runtime chia bảng đã bind shared bypass population. Không mở control thiếu selector entryId."
               />
-              <TextField size="small" fullWidth label="Bye" value="Chưa sẵn sàng" disabled />
+              <TextField
+                size="small"
+                fullWidth
+                label="Vào thẳng knockout (DIRECT)"
+                value="PARTIAL — Chưa sẵn sàng trên Official classic"
+                disabled
+                helperText="Shared CE first-playable only; Official classic CROSS_GROUP fail-closed."
+              />
+              <TextField
+                size="small"
+                fullWidth
+                label="Bye (KNOCKOUT_BYE)"
+                value="SUPPORTED (CORE-08/09) — Official classic chưa bind"
+                disabled
+                helperText="Không invent bye cục bộ. DIRECT ≠ BYE."
+              />
             </Stack>
           </WorkspaceCard>
         </>
