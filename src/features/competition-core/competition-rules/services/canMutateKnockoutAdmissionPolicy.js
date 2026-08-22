@@ -10,6 +10,7 @@
  *
  * Mapping:
  *   DIRECT_KNOCKOUT_ENTRY / GROUP_STAGE_BYPASS → GROUP_ALLOCATION @ AFTER_GROUP_DRAW
+ *   no-group DIRECT_KNOCKOUT_ENTRY → KNOCKOUT @ AFTER_MATCH_CREATION
  *   KNOCKOUT_BYE → KNOCKOUT @ AFTER_MATCH_CREATION (bracket creation evidence)
  *
  * Note: QUALIFICATION locks at AFTER_ACCEPTED_RESULT — too late alone for
@@ -123,8 +124,8 @@ export function canMutateKnockoutAdmissionPolicy(input = {}) {
     .toUpperCase();
   const lifecycleMilestone = String(input.lifecycleMilestone || "").trim();
 
-  const binding = resolveAdmissionLockBinding(mutationKind);
-  if (!binding) {
+  const baseBinding = resolveAdmissionLockBinding(mutationKind);
+  if (!baseBinding) {
     return Object.freeze({
       allowed: false,
       ok: false,
@@ -134,6 +135,20 @@ export function canMutateKnockoutAdmissionPolicy(input = {}) {
       lifecycleMilestone,
     });
   }
+
+  const profile = createCompetitionRulesProfile(input.profile || {});
+  const noGroupDirectLock =
+    profile.groupStage.groupStageEnabled === false &&
+    (mutationKind ===
+      KNOCKOUT_ADMISSION_MUTATION_KIND.DIRECT_KNOCKOUT_ENTRY ||
+      mutationKind === KNOCKOUT_ADMISSION_MUTATION_KIND.KNOCKOUT_ADMISSION);
+  const binding = noGroupDirectLock
+    ? {
+        ruleClass: RULE_CLASS.KNOCKOUT,
+        mandatoryLockAt: LIFECYCLE_MILESTONE.AFTER_MATCH_CREATION,
+        denyLabel: "POST_BRACKET_CREATION_NO_GROUP_DIRECT_MUTATION",
+      }
+    : baseBinding;
 
   if (!Object.values(LIFECYCLE_MILESTONE).includes(lifecycleMilestone)) {
     return Object.freeze({
@@ -146,7 +161,6 @@ export function canMutateKnockoutAdmissionPolicy(input = {}) {
     });
   }
 
-  const profile = createCompetitionRulesProfile(input.profile || {});
   const effective = resolveEffectiveAdmissionLock(
     binding.mandatoryLockAt,
     profile.lifecycleLocks.lockMap[binding.ruleClass]
@@ -170,6 +184,8 @@ export function canMutateKnockoutAdmissionPolicy(input = {}) {
       details: Object.freeze({
         POST_GROUP_DRAW_DIRECT_ENTRY_MUTATION: "DENY",
         POST_GROUP_DRAW_GROUP_BYPASS_MUTATION: "DENY",
+        POST_BRACKET_CREATION_NO_GROUP_DIRECT_MUTATION: "DENY",
+        POST_BRACKET_CREATION_NO_GROUP_POPULATION_MUTATION: "DENY",
         POST_BRACKET_CREATION_BYE_MUTATION: "DENY",
         PROFILE_CAN_LOOSEN_ADMISSION_HARD_LOCK: false,
         PROFILE_CAN_TIGHTEN_ADMISSION_LOCK: true,
@@ -204,6 +220,8 @@ export function canMutateKnockoutAdmissionPolicy(input = {}) {
         details: Object.freeze({
           POST_GROUP_DRAW_DIRECT_ENTRY_MUTATION: "DENY",
           POST_GROUP_DRAW_GROUP_BYPASS_MUTATION: "DENY",
+          POST_BRACKET_CREATION_NO_GROUP_DIRECT_MUTATION: "DENY",
+          POST_BRACKET_CREATION_NO_GROUP_POPULATION_MUTATION: "DENY",
           POST_BRACKET_CREATION_BYE_MUTATION: "DENY",
           PROFILE_CAN_LOOSEN_ADMISSION_HARD_LOCK: false,
           PROFILE_CAN_TIGHTEN_ADMISSION_LOCK: true,
@@ -230,6 +248,8 @@ export function canMutateKnockoutAdmissionPolicy(input = {}) {
     details: Object.freeze({
       POST_GROUP_DRAW_DIRECT_ENTRY_MUTATION: "DENY",
       POST_GROUP_DRAW_GROUP_BYPASS_MUTATION: "DENY",
+      POST_BRACKET_CREATION_NO_GROUP_DIRECT_MUTATION: "DENY",
+      POST_BRACKET_CREATION_NO_GROUP_POPULATION_MUTATION: "DENY",
       POST_BRACKET_CREATION_BYE_MUTATION: "DENY",
       PROFILE_CAN_LOOSEN_ADMISSION_HARD_LOCK: false,
       PROFILE_CAN_TIGHTEN_ADMISSION_LOCK: true,
