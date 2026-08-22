@@ -166,18 +166,40 @@ describe("NEW_OFFICIAL_TOURNAMENT_BOOTSTRAP_REMEDIATION", () => {
     assert.match(regPage, /Tạo nội dung trong Cài đặt/);
   });
 
-  it("26-29 Side-out remains fail-closed; Rally operational", () => {
-    assert.equal(SIDEOUT_OPERATIONAL, false);
-    const denied = buildOfficialSettingsSavePatch(emptyOfficial(), {
+  it("26-29 Side-out operational via CORE-16; Content event required to persist", () => {
+    assert.equal(SIDEOUT_OPERATIONAL, true);
+
+    const withoutEventId = buildOfficialSettingsSavePatch(emptyOfficial(), {
       name: "Giải đấu 21/8/2026",
       scoringMethod: OFFICIAL_SCORING_METHOD.SIDE_OUT,
       registrationMode: OFFICIAL_REGISTRATION_MODE.INDIVIDUAL,
     });
-    assert.equal(denied.ok, false);
-    assert.equal(denied.code, "SIDE_OUT_UNSUPPORTED");
+    assert.equal(withoutEventId.ok, false);
+    assert.equal(withoutEventId.code, "EVENT_REQUIRED");
 
-    const rally = buildOfficialSettingsSavePatch(emptyOfficial(), {
+    const created = buildAddOfficialEventPatch(emptyOfficial(), {
+      eventType: EVENT_TYPE.MEN_DOUBLE,
+      name: "Đôi nam",
+      registrationMode: OFFICIAL_REGISTRATION_MODE.INDIVIDUAL,
+    });
+    assert.equal(created.ok, true);
+    const withEvent = {
+      ...emptyOfficial(),
+      ...created.patch,
+      events: created.patch.events,
+    };
+
+    const sideOut = buildOfficialSettingsSavePatch(withEvent, {
       name: "Giải đấu 21/8/2026",
+      eventId: created.event.id,
+      scoringMethod: OFFICIAL_SCORING_METHOD.SIDE_OUT,
+      registrationMode: OFFICIAL_REGISTRATION_MODE.INDIVIDUAL,
+    });
+    assert.equal(sideOut.ok, true);
+
+    const rally = buildOfficialSettingsSavePatch(withEvent, {
+      name: "Giải đấu 21/8/2026",
+      eventId: created.event.id,
       scoringMethod: OFFICIAL_SCORING_METHOD.RALLY,
       registrationMode: OFFICIAL_REGISTRATION_MODE.INDIVIDUAL,
     });
@@ -186,8 +208,12 @@ describe("NEW_OFFICIAL_TOURNAMENT_BOOTSTRAP_REMEDIATION", () => {
     const settingsPage = read(
       "src/features/tournament/experience-a1/pages/IndividualSettingsPage.jsx"
     );
-    assert.match(settingsPage, /SIDEOUT_OPERATIONAL/);
-    assert.match(settingsPage, /chưa hỗ trợ|SIDE_OUT|Side-out/i);
+    const formatPanel = read(
+      "src/features/tournament/experience-a1/components/OfficialContentFormatSettingsPanel.jsx"
+    );
+    assert.match(settingsPage, /OfficialContentFormatSettingsPanel/);
+    assert.match(formatPanel, /SIDEOUT_OPERATIONAL/);
+    assert.match(formatPanel, /SIDE_OUT|Side-out/i);
   });
 
   it("36-47 regression locks: CORE authorities + no second shell", () => {

@@ -1,6 +1,7 @@
 /**
  * OFFICIAL_OPEN_CANONICAL_RULES_ADAPTER_B_ADOPTION_01
  * Focused architectural conformance — not a certification campaign.
+ * Content authority: events[].competitionRules → Adapter B (translate only) → gateway.v1
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -21,6 +22,9 @@ import {
   CAPABILITY_STATE,
   LIFECYCLE_MILESTONE,
   RULE_CLASS,
+  DIRECT_KNOCKOUT_ENTRY_SOURCE,
+  KNOCKOUT_ENTRY_ROUND,
+  BYE_POLICY,
 } from "../src/features/competition-core/competition-rules/index.js";
 import {
   OFFICIAL_OPEN_ADAPTER_B_ID,
@@ -29,6 +33,9 @@ import {
   buildOfficialOpenCompetitionRulesProfile,
   resolveOfficialEffectiveCapability,
 } from "../src/features/tournament/official-open-adapter-b/index.js";
+import {
+  CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT,
+} from "../src/features/individual-tournament/engines/officialTournamentSettingsEngine.js";
 import { resolveOfficialMatchScoringRules } from "../src/features/individual-tournament/engines/officialScoringRulesResolver.js";
 import { projectOfficialSettings } from "../src/features/tournament/official-tournament-experience/officialExperienceCommands.js";
 import { OFFICIAL_EXPERIENCE_AUTHORITY } from "../src/features/tournament/official-tournament-experience/authorityLock.js";
@@ -37,6 +44,61 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function read(rel) {
   return readFileSync(path.join(root, rel), "utf8");
+}
+
+function explicitContentRules(overrides = {}) {
+  const target = CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT;
+  return {
+    registrationMode: "pair",
+    matchScoring: {
+      scoringMethod: "rally",
+      matchFormat: "BEST_OF_1",
+      targetPoints: target,
+      winCondition: {
+        winByEnabled: true,
+        winByMargin: 2,
+        pointCapEnabled: false,
+        pointCap: null,
+      },
+      changeEnd: {
+        changeEndsEnabled: false,
+        changeEndsAtPoints: null,
+        changeEndsBetweenGames: true,
+        decidingGameChangeEndsAt: null,
+      },
+    },
+    roundTargets: {
+      group: target,
+      round_of_16: target,
+      quarterfinal: target,
+      semifinal: target,
+      final: target,
+    },
+    groupStage: { groupStageEnabled: true, groupCount: 3 },
+    qualification: {
+      directQualifiersPerGroup: 2,
+      totalKnockoutSlots: 8,
+      totalQualifiers: 8,
+    },
+    knockout: {
+      knockoutEnabled: true,
+      pairingPolicy: "CROSS_GROUP",
+      avoidSameGroupFirstRound: true,
+    },
+    knockoutAdmission: {
+      groupStageBypass: { enabled: false, entrants: [] },
+      directKnockoutEntry: {
+        enabled: false,
+        count: 0,
+        entrants: [],
+        // Valid dormant enums — null is "supplied but invalid" for raw validation.
+        sourceCategory: DIRECT_KNOCKOUT_ENTRY_SOURCE.MANUAL_BY_AUTHORIZED_ORGANIZER,
+        targetStage: KNOCKOUT_ENTRY_ROUND.QUARTERFINAL,
+      },
+      bye: { byePolicy: BYE_POLICY.NONE },
+    },
+    ...overrides,
+  };
 }
 
 function officialFixture(overrides = {}) {
@@ -54,6 +116,7 @@ function officialFixture(overrides = {}) {
         entries: [],
         groups: [],
         matches: [],
+        competitionRules: explicitContentRules(),
       },
       {
         id: "ev-women",
@@ -62,36 +125,23 @@ function officialFixture(overrides = {}) {
         entries: [],
         groups: [],
         matches: [],
+        competitionRules: explicitContentRules(),
       },
     ],
-    settings: {
-      officialCompetition: {
-        scoringMethod: "rally",
-        matchFormat: "BEST_OF_1",
-        groupCount: 3,
-        qualifiersPerGroup: 2,
-        totalQualifiers: 8,
-        roundTargets: {
-          group: 11,
-          round_of_16: 11,
-          quarterfinal: 11,
-          semifinal: 11,
-          final: 15,
-        },
-      },
-    },
+    // Tournament blob is legacy compatibility only — not current Group 2 authority.
+    settings: {},
     ...overrides,
   };
 }
 
 describe("OFFICIAL_OPEN_CANONICAL_RULES_ADAPTER_B_ADOPTION_01", () => {
-  it("1-4 Adapter B maps Official settings → profile.v1 and calls Adapter A; owns no authority", () => {
+  it("1-4 Adapter B maps Content-explicit rules → profile.v1 and calls Adapter A; owns no authority", () => {
     const tournament = officialFixture();
     const built = buildOfficialOpenCompetitionRulesProfile(tournament, {
       eventId: "ev-doubles",
     });
     assert.equal(built.ok, true);
-    assert.equal(built.derived, true);
+    assert.equal(built.persistedSource, "events[].competitionRules");
     assert.equal(built.ownsAuthority, false);
     assert.equal(built.profile.schemaVersion, COMPETITION_RULES_PROFILE_SCHEMA_V1);
     assert.equal(built.profile.tenantId, "venue-staging-a");
@@ -129,7 +179,7 @@ describe("OFFICIAL_OPEN_CANONICAL_RULES_ADAPTER_B_ADOPTION_01", () => {
       stage: "FINAL",
     });
     assert.equal(stage.ok, true);
-    assert.equal(stage.matchScoring.targetPoints, 15);
+    assert.equal(stage.matchScoring.targetPoints, CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT);
     assert.equal(stage.executionOwners.scoring, "CORE-16");
     assert.equal(stage.executionOwners.refereeAssignment, "CORE-13");
 
@@ -138,7 +188,7 @@ describe("OFFICIAL_OPEN_CANONICAL_RULES_ADAPTER_B_ADOPTION_01", () => {
       { stage: "final", eventId: "ev-doubles" },
       { eventId: "ev-doubles" }
     );
-    assert.equal(resolved.targetPoints, 15);
+    assert.equal(resolved.targetPoints, CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT);
     assert.equal(resolved.rulesSource, "competition.rules.policy.gateway.v1");
   });
 
@@ -203,7 +253,9 @@ describe("OFFICIAL_OPEN_CANONICAL_RULES_ADAPTER_B_ADOPTION_01", () => {
     );
     assert.match(profileSrc, /No persistence/);
     assert.doesNotMatch(profileSrc, /localStorage/);
-    assert.match(profileSrc, /không dùng events\[0\]/);
+    assert.match(profileSrc, /allowSoleEventInference:\s*false/);
+    assert.match(profileSrc, /explicit Content context/);
+    assert.doesNotMatch(profileSrc, /events\s*\[\s*0\s*\]/);
 
     assert.equal(OFFICIAL_EXPERIENCE_AUTHORITY.REFEREE_ASSIGNMENT, "CORE-13");
     assert.equal(OFFICIAL_EXPERIENCE_AUTHORITY.SCORING, "CORE-16");
@@ -234,11 +286,11 @@ describe("OFFICIAL_OPEN_CANONICAL_RULES_ADAPTER_B_ADOPTION_01", () => {
 
     assert.equal(rally.effectiveSelectable, true);
     assert.equal(sideOut.sharedExecution, CAPABILITY_STATE.SUPPORTED);
-    assert.equal(sideOut.effectiveSelectable, false);
-    assert.equal(sideOut.bindingGap, true);
+    assert.equal(sideOut.effectiveSelectable, true);
+    assert.equal(sideOut.bindingGap, false);
     assert.equal(bo1.effectiveSelectable, true);
     assert.equal(bo3.effectiveSelectable, false);
-    assert.equal(winBy.effectiveSelectable, false);
+    assert.equal(winBy.effectiveSelectable, true);
     assert.equal(changeEnd.effectiveSelectable, false);
     assert.equal(wildcard.failClosed, true);
 
@@ -246,7 +298,7 @@ describe("OFFICIAL_OPEN_CANONICAL_RULES_ADAPTER_B_ADOPTION_01", () => {
       selectedEventId: "ev-doubles",
     });
     assert.equal(projected.scoringCapabilities.rally, true);
-    assert.equal(projected.scoringCapabilities.sideOut, false);
+    assert.equal(projected.scoringCapabilities.sideOut, true);
     assert.equal(projected.scoringCapabilities.bestOf3, false);
     assert.equal(projected.rulesAdoption.ok, true);
     assert.equal(projected.rulesAdoption.qualification.wildcardSlots, 2);

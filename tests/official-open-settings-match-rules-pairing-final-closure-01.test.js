@@ -1,6 +1,7 @@
 /**
  * Official/Open Settings + Match Rules + Pairing Presentation final closure.
- * PATH B — operable UX/settings + presentation; shared Side-out/BO3/win-by/change-end remain unavailable.
+ * PATH B — operable UX/settings + presentation; BEST_OF_3 / change-end remain unavailable.
+ * Side-out + win-by follow canonical capability truth (CORE-16 via Adapter B).
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
@@ -21,6 +22,7 @@ import {
   SIDEOUT_OPERATIONAL,
   BEST_OF_3_OPERATIONAL,
   WIN_BY_POLICY_DEFERRED,
+  CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT,
   getOfficialCompetitionSettings,
   patchOfficialCompetitionSettings,
   normalizeOfficialTournamentName,
@@ -34,6 +36,11 @@ import {
   buildOfficialMatchRulesSummaryLines,
   formatOfficialMatchRulesSummary,
 } from "../src/features/individual-tournament/engines/officialScoringRulesResolver.js";
+import {
+  DIRECT_KNOCKOUT_ENTRY_SOURCE,
+  KNOCKOUT_ENTRY_ROUND,
+  BYE_POLICY,
+} from "../src/features/competition-core/competition-rules/index.js";
 import { createOfficialTournamentRefereeAdapter } from "../src/features/tournament/official-open-adapter-b/officialTournamentRefereeAdapter.js";
 import {
   buildPairingSteps,
@@ -45,6 +52,56 @@ import {
   runCompetitionRefereeAdapterConformance,
   COMPETITION_REFEREE_ADAPTER_CONTRACT_ID,
 } from "../src/features/competition-engine/integration/referee/index.js";
+
+function explicitContentRules(overrides = {}) {
+  const target = CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT;
+  return {
+    registrationMode: OFFICIAL_REGISTRATION_MODE.INDIVIDUAL,
+    matchScoring: {
+      scoringMethod: OFFICIAL_SCORING_METHOD.RALLY,
+      matchFormat: OFFICIAL_MATCH_FORMAT.BEST_OF_1,
+      targetPoints: target,
+      winCondition: {
+        winByEnabled: true,
+        winByMargin: 2,
+        pointCapEnabled: false,
+        pointCap: null,
+      },
+      changeEnd: {
+        changeEndsEnabled: false,
+        changeEndsAtPoints: null,
+        changeEndsBetweenGames: true,
+        decidingGameChangeEndsAt: null,
+      },
+    },
+    roundTargets: {
+      group: target,
+      round_of_16: target,
+      quarterfinal: target,
+      semifinal: target,
+      final: target,
+    },
+    groupStage: { groupStageEnabled: true, groupCount: 4 },
+    qualification: { directQualifiersPerGroup: 2 },
+    knockout: {
+      knockoutEnabled: true,
+      pairingPolicy: "CROSS_GROUP",
+      avoidSameGroupFirstRound: true,
+    },
+    knockoutAdmission: {
+      groupStageBypass: { enabled: false, entrants: [] },
+      directKnockoutEntry: {
+        enabled: false,
+        count: 0,
+        entrants: [],
+        sourceCategory: DIRECT_KNOCKOUT_ENTRY_SOURCE.MANUAL_BY_AUTHORIZED_ORGANIZER,
+        targetStage: KNOCKOUT_ENTRY_ROUND.QUARTERFINAL,
+      },
+      bye: { byePolicy: BYE_POLICY.NONE },
+    },
+    ...overrides,
+  };
+}
 
 function baseTournament(overrides = {}) {
   return {
@@ -65,10 +122,11 @@ function baseTournament(overrides = {}) {
         entries: [],
         groups: [],
         matches: [
-          { id: "m-g", stage: MATCH_STAGE.GROUP },
-          { id: "m-k", stage: MATCH_STAGE.QUARTERFINAL },
-          { id: "m-f", stage: MATCH_STAGE.FINAL },
+          { id: "m-g", stage: MATCH_STAGE.GROUP, eventId: "ev1" },
+          { id: "m-k", stage: MATCH_STAGE.QUARTERFINAL, eventId: "ev1" },
+          { id: "m-f", stage: MATCH_STAGE.FINAL, eventId: "ev1" },
         ],
+        competitionRules: explicitContentRules(),
       },
     ],
     ...overrides,
@@ -136,6 +194,7 @@ describe("official-open-settings-match-rules-pairing-final-closure-01", () => {
           entries: [{ id: "e1", playerIds: ["a", "b"] }],
           groups: [],
           matches: [],
+          competitionRules: explicitContentRules(),
         },
       ],
     });
@@ -147,23 +206,23 @@ describe("official-open-settings-match-rules-pairing-final-closure-01", () => {
   });
 
   it("12-16 operable rules persist; unsupported cannot save as operable; summary deterministic", () => {
-    assert.equal(SIDEOUT_OPERATIONAL, false);
+    assert.equal(SIDEOUT_OPERATIONAL, true);
     assert.equal(BEST_OF_3_OPERATIONAL, false);
-    assert.equal(WIN_BY_POLICY_DEFERRED, true);
+    assert.equal(WIN_BY_POLICY_DEFERRED, false);
     const t = patchOfficialCompetitionSettings(baseTournament(), {
       scoringMethod: OFFICIAL_SCORING_METHOD.SIDE_OUT,
       matchFormat: OFFICIAL_MATCH_FORMAT.BEST_OF_3,
       roundTargets: { group: 11, final: 15 },
     });
     const settings = getOfficialCompetitionSettings(t);
-    assert.equal(settings.scoringMethod, "rally");
+    assert.equal(settings.scoringMethod, "side_out");
     assert.equal(settings.matchFormat, "BEST_OF_1");
     assert.equal(settings.roundTargets.group, 11);
 
     const summary = formatOfficialMatchRulesSummary({
       scoringMethodLabel: "Rally",
       matchFormatLabel: "Best of 1",
-      targetPoints: 11,
+      targetPoints: CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT,
       roundLabel: "Vòng bảng",
     });
     assert.match(summary, /Rally/);
@@ -171,25 +230,53 @@ describe("official-open-settings-match-rules-pairing-final-closure-01", () => {
     assert.match(summary, /11/);
     assert.doesNotMatch(summary, /Side-out|Best of 3|winBy|đổi sân/i);
 
-    const lines = buildOfficialMatchRulesSummaryLines(t, { stage: MATCH_STAGE.GROUP });
-    assert.ok(lines.lines.some((row) => row.key === "win_by" && row.unavailable));
+    const lines = buildOfficialMatchRulesSummaryLines(t, {
+      stage: MATCH_STAGE.GROUP,
+      eventId: "ev1",
+    });
+    assert.ok(lines.lines.some((row) => row.key === "win_by" && !row.unavailable));
     assert.ok(lines.lines.some((row) => row.key === "change_end" && row.unavailable));
+    assert.ok(lines.lines.some((row) => row.key === "best_of_3" && row.unavailable));
   });
 
-  it("17-20 group/knockout/final + Adapter B summary", () => {
-    const t = patchOfficialCompetitionSettings(baseTournament(), {
+  it("17-20 group/knockout/final + Adapter B summary consume canonical Content targets", () => {
+    const patched = patchOfficialCompetitionSettings(baseTournament(), {
       registrationMode: OFFICIAL_REGISTRATION_MODE.INDIVIDUAL,
       matchFormat: OFFICIAL_MATCH_FORMAT.BEST_OF_1,
       roundTargets: { group: 11, quarterfinal: 11, final: 15 },
     });
-    const g = resolveOfficialMatchScoringRules(t, { stage: MATCH_STAGE.GROUP });
-    const k = resolveOfficialMatchScoringRules(t, { stage: MATCH_STAGE.QUARTERFINAL });
-    const f = resolveOfficialMatchScoringRules(t, { stage: MATCH_STAGE.FINAL });
+    assert.equal(getOfficialCompetitionSettings(patched).roundTargets.final, 15);
+
+    const t = {
+      ...patched,
+      events: [
+        {
+          ...patched.events[0],
+          competitionRules: explicitContentRules(),
+        },
+      ],
+    };
+    const g = resolveOfficialMatchScoringRules(
+      t,
+      { stage: MATCH_STAGE.GROUP, eventId: "ev1" },
+      { eventId: "ev1" }
+    );
+    const k = resolveOfficialMatchScoringRules(
+      t,
+      { stage: MATCH_STAGE.QUARTERFINAL, eventId: "ev1" },
+      { eventId: "ev1" }
+    );
+    const f = resolveOfficialMatchScoringRules(
+      t,
+      { stage: MATCH_STAGE.FINAL, eventId: "ev1" },
+      { eventId: "ev1" }
+    );
     assert.equal(g.matchFormat, "BEST_OF_1");
     assert.equal(k.matchFormat, "BEST_OF_1");
     assert.equal(f.matchFormat, "BEST_OF_1");
     assert.equal(g.scoringMethod, "rally");
-    assert.equal(f.targetPoints, 15);
+    assert.equal(f.targetPoints, CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT);
+    assert.equal(f.rulesSource, "competition.rules.policy.gateway.v1");
 
     const adapter = createOfficialTournamentRefereeAdapter({
       tournament: { ...t, name: "Named For Ref" },
@@ -199,7 +286,16 @@ describe("official-open-settings-match-rules-pairing-final-closure-01", () => {
       competitionId: "t-final-closure",
     });
     assert.equal(ctx.tournamentName, "Named For Ref");
-    assert.match(String(ctx.matchRulesSummary || ""), /Rally|Best of 1|điểm/i);
+    // Competition context without match/eventId fail-closes Content resolution.
+    assert.match(String(ctx.matchRulesSummary || ""), /eventId|Thiếu/i);
+    const scoring = adapter.getScoringRules({
+      tenantId: "tenant-1",
+      competitionId: "t-final-closure",
+      matchId: "m-g",
+    });
+    assert.equal(scoring.schemaVersion, "competition-core.scoring.format.v1");
+    assert.equal(scoring.pointsToWin, CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT);
+    assert.equal(scoring.scoringSystem, "RALLY");
   });
 
   it("21-25 pairing presentation consumes canonical pairs; zero mutation; invariants", () => {

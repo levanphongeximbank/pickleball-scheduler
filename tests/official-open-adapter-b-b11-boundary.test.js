@@ -15,7 +15,6 @@ import {
   COMPETITION_REFEREE_ADAPTER_CONTRACT_VERSION,
   REFEREE_ADAPTER_FORBIDDEN_METHODS,
 } from "../src/features/competition-engine/integration/referee/constants.js";
-import { isRefereeAdapterContractError } from "../src/features/competition-engine/integration/referee/errors.js";
 import { SHARED_FORBIDDEN_METHODS } from "../src/features/competition-engine/integration/contracts/kernel/constants.js";
 import {
   IDENTITY_ACCESS_CONTRACT,
@@ -38,6 +37,10 @@ import {
   ELIGIBILITY_VIOLATION,
 } from "../src/features/individual-tournament/engines/eligibilityEngine.js";
 import { getCanonicalEntryPaymentEvidence } from "../src/features/individual-tournament/engines/entryFeeEngine.js";
+import {
+  WIN_BY_POLICY_DEFERRED,
+  OFFICIAL_WIN_BY_DUPLICATE_AUTHORITY,
+} from "../src/features/individual-tournament/engines/officialTournamentSettingsEngine.js";
 import {
   ADAPTER_B_STATUS,
   BYPASS_CLASSIFICATION,
@@ -248,6 +251,9 @@ describe("Official/Open Adapter B1.1 boundary", () => {
   });
 
   it("does not invent Official win-by policy", () => {
+    assert.equal(WIN_BY_POLICY_DEFERRED, false);
+    assert.equal(OFFICIAL_WIN_BY_DUPLICATE_AUTHORITY, false);
+
     const tournament = officialTournament({
       matches: [
         {
@@ -266,23 +272,22 @@ describe("Official/Open Adapter B1.1 boundary", () => {
       adapter.sharedContractCapabilityGaps[0].code,
       SHARED_REFEREE_CONTRACT_CAPABILITY_GAP
     );
-    try {
-      adapter.getScoringRules({
-        tenantId: "tenant-1",
-        competitionId: "comp-ref-1",
-        matchId: "match-1",
-      });
-      assert.fail("expected SHARED_REFEREE_CONTRACT_CAPABILITY_GAP");
-    } catch (err) {
-      assert.equal(isRefereeAdapterContractError(err), true);
-      assert.equal(err.code, SHARED_REFEREE_CONTRACT_CAPABILITY_GAP);
-      assert.equal(err.details.winBy, null);
-      assert.equal(err.details.winByPolicyDeferred, true);
-    }
+    // Win-by is bound via CORE-16 mapping — Adapter B must not invent a deferred
+    // Official-only win-by authority when the shared capability is operational.
+    const rules = adapter.getScoringRules({
+      tenantId: "tenant-1",
+      competitionId: "comp-ref-1",
+      matchId: "match-1",
+    });
+    assert.equal(rules.schemaVersion, "competition-core.scoring.format.v1");
+    assert.equal(rules.scoringSystem, "RALLY");
+    assert.equal(rules.winBy, 2);
     const source = readSrc(
       "src/features/tournament/official-open-adapter-b/officialTournamentRefereeAdapter.js"
     );
-    assert.equal(/winBy:\s*2/.test(source), false);
+    assert.match(source, /mapModeScoringRulesToCore16/);
+    assert.match(source, /winByPolicyDeferred === true/);
+    assert.doesNotMatch(source, /inventOfficialWinBy|OFFICIAL_LOCAL_WIN_BY\s*=/);
   });
 
   it("propagates Finance capability gap and classifies legacy payments as noncanonical", async () => {
