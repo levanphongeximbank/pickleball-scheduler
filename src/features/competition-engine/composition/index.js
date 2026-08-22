@@ -42,7 +42,7 @@ export { composeIndividualPoolKnockout } from "./composePoolKnockout.js";
 export {
   composeKnockoutAdmission,
   adaptAdmittedToKnockoutQualifiers,
-  assignSourceNeutralKnockoutSeeds,
+  KNOCKOUT_DRAW_PLACEMENT_MODE,
 } from "./knockoutAdmission.js";
 export {
   normalizeCompetitionUnitIdentity,

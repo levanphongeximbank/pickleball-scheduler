@@ -25,6 +25,7 @@ import { computeDeterministicFingerprint, deepFreeze } from "./fingerprint.js";
  *   categoryId?: string|null,
  *   deterministicSeed: string,
  *   poolStageComplete?: boolean,
+ *   placementMode?: string,
  * }} input
  */
 export function composeKnockoutStage(input) {
@@ -56,7 +57,7 @@ export function composeKnockoutStage(input) {
   const categoryId = input.categoryId ?? null;
   const stageId = "stage-knockout";
 
-  const { drawSnapshot, bracketSize, byeCount } =
+  const { drawSnapshot, bracketSize, byeCount, placementMode } =
     buildKnockoutDrawSnapshotFromQualifiers({
       competitionId: input.competitionId,
       divisionId,
@@ -66,6 +67,7 @@ export function composeKnockoutStage(input) {
       bracketSizePolicy: input.format.knockoutStage.bracketSizePolicy,
       byePolicy: input.format.knockoutStage.byePolicy,
       deterministicSeed: input.deterministicSeed,
+      placementMode: input.placementMode,
     });
 
   const evaluatedRules = createKnockoutStageEvaluatedRules(input.format);
@@ -131,6 +133,7 @@ export function composeKnockoutStage(input) {
     tenantId,
     bracketSize,
     byeCount,
+    placementMode,
     qualifiers,
     drawSnapshot,
     matchPlan: generation.matchPlan,

@@ -159,7 +159,7 @@ export const COMPETITION_RULES_CAPABILITY_MATRIX = Object.freeze({
       "Fake bye / phantom winner simulation of later-stage admission",
     ]),
     evidence:
-      "First-playable DIRECT composed on shared CE admission path only; later-stage and no-group deferred",
+      "First-playable DIRECT composed on shared CE admission path only; later-stage and no-group deferred; CE does not assign seeds (CORE-07 authoritative or CORE-08 OPEN draw)",
   }),
   [COMPETITION_RULES_CAPABILITY_ID.KNOCKOUT_BYE]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,

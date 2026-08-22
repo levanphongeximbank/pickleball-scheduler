@@ -50,78 +50,102 @@ import { createInMemoryOrganizerOperationsStore } from "./store/createInMemoryOr
  */
 function normalizeEntries(entries) {
   if (!Array.isArray(entries)) return [];
-  const seen = new Set();
+  const seenKeys = new Set();
   const out = [];
   for (const raw of entries) {
     if (raw == null) continue;
     if (typeof raw === "string") {
-      const entryId = raw.trim();
-      if (!entryId) continue;
-      if (seen.has(entryId)) {
+      const participantId = raw.trim();
+      if (!participantId) continue;
+      if (seenKeys.has(`p:${participantId}`)) {
         failOrganizer(
           ORGANIZER_ERROR_CODE.DUPLICATE_PARTICIPANT,
-          `Duplicate participant: ${entryId}`,
-          { participantId: entryId, entryId }
+          `Duplicate participant: ${participantId}`,
+          { participantId }
         );
       }
-      seen.add(entryId);
+      seenKeys.add(`p:${participantId}`);
+      // Legacy bare string = participantId transport only — do NOT promote to entryId.
       out.push(
         Object.freeze({
-          entryId,
-          participantId: entryId,
+          entryId: null,
+          participantId,
           status: ENTRY_OPS_STATUS.ELIGIBLE,
         })
       );
       continue;
     }
     if (typeof raw !== "object") continue;
-    const entryId = String(
-      /** @type {{ entryId?: unknown, participantId?: unknown, id?: unknown }} */ (raw)
-        .entryId ||
-        /** @type {{ participantId?: unknown }} */ (raw).participantId ||
-        /** @type {{ id?: unknown }} */ (raw).id ||
+    const obj = /** @type {Record<string, unknown>} */ (raw);
+    const explicitEntryId = String(
+      obj.entryId ||
+        (obj.competitionEntry &&
+        typeof obj.competitionEntry === "object" &&
+        /** @type {{ entryId?: unknown }} */ (obj.competitionEntry).entryId) ||
+        (typeof obj.identityKey === "string" &&
+        String(obj.identityKey).includes("::ENTRY::")
+          ? obj.identityKey
+          : "") ||
         ""
     ).trim();
-    if (!entryId) {
+    const participantId = String(obj.participantId || obj.id || "").trim();
+
+    if (explicitEntryId && participantId && participantId !== explicitEntryId) {
       failOrganizer(
         ORGANIZER_ERROR_CODE.INVALID_INPUT,
-        "entryId is required on each entry (participantId alias only when equal)",
+        "participantId alias must equal canonical entryId when both are present",
+        { entryId: explicitEntryId, participantId }
+      );
+    }
+
+    if (!explicitEntryId && !participantId) {
+      failOrganizer(
+        ORGANIZER_ERROR_CODE.INVALID_INPUT,
+        "entryId or participantId is required on each entry",
         {}
       );
     }
-    const alias = String(
-      /** @type {{ participantId?: unknown }} */ (raw).participantId || ""
-    ).trim();
-    if (alias && alias !== entryId) {
-      failOrganizer(
-        ORGANIZER_ERROR_CODE.INVALID_INPUT,
-        "participantId alias must equal canonical entryId",
-        { entryId, participantId: alias }
-      );
-    }
-    if (seen.has(entryId)) {
+
+    const uniqueKey = explicitEntryId
+      ? `e:${explicitEntryId}`
+      : `p:${participantId}`;
+    if (seenKeys.has(uniqueKey)) {
       failOrganizer(
         ORGANIZER_ERROR_CODE.DUPLICATE_PARTICIPANT,
-        `Duplicate participant: ${entryId}`,
-        { participantId: entryId, entryId }
+        `Duplicate participant: ${explicitEntryId || participantId}`,
+        {
+          entryId: explicitEntryId || null,
+          participantId: participantId || null,
+        }
       );
     }
-    seen.add(entryId);
-    const statusRaw = String(
-      /** @type {{ status?: unknown }} */ (raw).status || ENTRY_OPS_STATUS.ELIGIBLE
-    )
+    seenKeys.add(uniqueKey);
+
+    const statusRaw = String(obj.status || ENTRY_OPS_STATUS.ELIGIBLE)
       .trim()
       .toUpperCase();
     const status = Object.values(ENTRY_OPS_STATUS).includes(statusRaw)
       ? statusRaw
       : ENTRY_OPS_STATUS.INVALID;
-    out.push(
-      Object.freeze({
-        entryId,
-        participantId: entryId,
-        status,
-      })
-    );
+
+    if (explicitEntryId) {
+      out.push(
+        Object.freeze({
+          entryId: explicitEntryId,
+          participantId: participantId || explicitEntryId,
+          status,
+        })
+      );
+    } else {
+      // Participant-only legacy entry — entryId remains unproven/absent.
+      out.push(
+        Object.freeze({
+          entryId: null,
+          participantId,
+          status,
+        })
+      );
+    }
   }
   return out;
 }

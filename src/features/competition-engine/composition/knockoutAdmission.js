@@ -2,11 +2,12 @@
  * Shared Competition Engine knockout admission composition boundary.
  *
  * Consumes canonical admission plan + standings + DIRECT/GROUP_DIRECT/WILDCARD
- * selections. Does NOT own ranking (CORE-18), seeding, or bracket/draw (CORE-08/09).
+ * selections. Does NOT own ranking (CORE-18), seeding (CORE-07), or bracket/draw (CORE-08/09).
  *
- * Supported DIRECT execution (this PR):
- *   group stage enabled AND effectiveTargetStage == bracketWideEntryRound
- * No-group DIRECT and later-stage DIRECT remain deferred / fail-closed.
+ * Seeding:
+ *   - consume authoritativeSeedsByEntryId when fully supplied (SEEDED draw)
+ *   - otherwise OPEN deterministic CORE-08 draw (no CE seed fabrication)
+ *   - partial authoritative seed sets fail closed
  */
 
 import {
@@ -19,6 +20,11 @@ import { rankCrossGroupWildcardCandidates } from "../../competition-core/standin
 import { E2E02_ERROR_CODE, failE2E02 } from "./errors.js";
 import { deepFreeze } from "./fingerprint.js";
 
+export const KNOCKOUT_DRAW_PLACEMENT_MODE = Object.freeze({
+  SEEDED: "SEEDED",
+  OPEN: "OPEN",
+});
+
 const EXCLUDED_STATUSES = new Set([
   "WITHDRAWN",
   "DISQUALIFIED",
@@ -29,63 +35,30 @@ const EXCLUDED_STATUSES = new Set([
 ]);
 
 /**
- * Source-neutral seed assignment: admissionSource does NOT define seeding.
- * Preserves explicit authoritative seedNumber only; otherwise assigns by
- * deterministic entryId order (existing identity-order contract).
+ * Adapt admitted field → existing composeKnockoutStage qualifier shape.
+ * Does NOT fabricate seedNumber. Authoritative seeds only when present.
  *
- * @param {object[]} admitted
- * @returns {object[]}
+ * @param {Array<object>} admitted
+ * @param {"SEEDED"|"OPEN"} placementMode
  */
-export function assignSourceNeutralKnockoutSeeds(admitted) {
-  const rows = (admitted || []).map((row) => ({ ...row }));
-  const used = new Set();
-  for (const row of rows) {
-    if (
+export function adaptAdmittedToKnockoutQualifiers(admitted, placementMode) {
+  return (admitted || []).map((row) => {
+    const hasAuth =
       row.authoritativeSeed === true &&
       Number.isFinite(Number(row.seedNumber)) &&
-      Number(row.seedNumber) >= 1
-    ) {
-      used.add(Number(row.seedNumber));
-    } else {
-      row.seedNumber = null;
-      row.authoritativeSeed = false;
-    }
-  }
-  const needing = rows
-    .filter((r) => r.seedNumber == null)
-    .sort((a, b) => String(a.entryId).localeCompare(String(b.entryId)));
-  let next = 1;
-  for (const row of needing) {
-    while (used.has(next)) next += 1;
-    row.seedNumber = next;
-    used.add(next);
-    next += 1;
-  }
-  return rows;
-}
-
-/**
- * Adapt admitted field → existing composeKnockoutStage qualifier shape.
- * Seed numbers must already be source-neutral (not admission-order fallback).
- *
- * @param {Array<{ entryId: string, seedNumber?: number|null, admissionSource?: string, groupId?: string|null, poolRank?: number|null }>} admitted
- */
-export function adaptAdmittedToKnockoutQualifiers(admitted) {
-  return (admitted || []).map((row) => {
-    if (
-      !Number.isFinite(Number(row.seedNumber)) ||
-      Number(row.seedNumber) < 1
-    ) {
+      Number(row.seedNumber) >= 1;
+    if (placementMode === KNOCKOUT_DRAW_PLACEMENT_MODE.SEEDED && !hasAuth) {
       failE2E02(
         E2E02_ERROR_CODE.INVALID_CONFIGURATION,
-        "admitted entrant missing source-neutral seedNumber before knockout adaptation",
+        "SEEDED knockout placement requires authoritative seedNumber for every admitted entrant",
         { entryId: row.entryId }
       );
     }
     return Object.freeze({
       participantId: row.entryId,
       entryId: row.entryId,
-      seedNumber: Number(row.seedNumber),
+      seedNumber: hasAuth ? Number(row.seedNumber) : null,
+      authoritativeSeed: hasAuth,
       admissionSource: row.admissionSource || null,
       groupId: row.groupId != null ? row.groupId : null,
       poolRank: row.poolRank != null ? row.poolRank : null,
@@ -344,11 +317,7 @@ export function composeKnockoutAdmission(input) {
       const explicit =
         Number.isFinite(Number(auth)) && Number(auth) >= 1
           ? Number(auth)
-          : Number.isFinite(Number(e.seedNumber)) &&
-              Number(e.seedNumber) >= 1 &&
-              e.authoritativeSeed === true
-            ? Number(e.seedNumber)
-            : null;
+          : null;
       return {
         entryId,
         effectiveTargetStage: e.effectiveTargetStage || e.targetStage || null,
@@ -410,14 +379,32 @@ export function composeKnockoutAdmission(input) {
   };
 
   for (const d of precedence.direct) {
+    const auth = authSeeds[d.entryId];
+    const hasAuth = Number.isFinite(Number(auth)) && Number(auth) >= 1;
     pushUnique({
       ...d,
-      authoritativeSeed: d.authoritativeSeed === true,
-      seedNumber: d.authoritativeSeed === true ? d.seedNumber : null,
+      authoritativeSeed: hasAuth,
+      seedNumber: hasAuth ? Number(auth) : null,
     });
   }
-  for (const g of precedence.groupDirect) pushUnique({ ...g, authoritativeSeed: false });
-  for (const w of precedence.wildcard) pushUnique({ ...w, authoritativeSeed: false });
+  for (const g of precedence.groupDirect) {
+    const auth = authSeeds[g.entryId];
+    const hasAuth = Number.isFinite(Number(auth)) && Number(auth) >= 1;
+    pushUnique({
+      ...g,
+      authoritativeSeed: hasAuth,
+      seedNumber: hasAuth ? Number(auth) : null,
+    });
+  }
+  for (const w of precedence.wildcard) {
+    const auth = authSeeds[w.entryId];
+    const hasAuth = Number.isFinite(Number(auth)) && Number(auth) >= 1;
+    pushUnique({
+      ...w,
+      authoritativeSeed: hasAuth,
+      seedNumber: hasAuth ? Number(auth) : null,
+    });
+  }
 
   const actualDirect = admitted.filter(
     (a) => a.admissionSource === ADMISSION_SOURCE.DIRECT
@@ -466,23 +453,42 @@ export function composeKnockoutAdmission(input) {
     );
   }
 
-  // SEEDING ≠ DIRECT — source-neutral identity-order seeds
-  const seeded = assignSourceNeutralKnockoutSeeds(admitted).map((row) =>
-    Object.freeze(row)
+  // CE does NOT assign seeds. Full authoritative set → SEEDED; none → OPEN; partial → fail closed.
+  const authCount = admitted.filter((a) => a.authoritativeSeed === true).length;
+  if (authCount > 0 && authCount < admitted.length) {
+    failE2E02(
+      E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+      "partial authoritative seed set is not certified — fail closed (CE does not invent missing seeds)",
+      {
+        authoritativeCount: authCount,
+        admittedCount: admitted.length,
+        PARTIAL_SEED_CONFIG_BEHAVIOR: "FAIL_CLOSED",
+      }
+    );
+  }
+  const drawPlacementMode =
+    authCount === admitted.length && admitted.length > 0
+      ? KNOCKOUT_DRAW_PLACEMENT_MODE.SEEDED
+      : KNOCKOUT_DRAW_PLACEMENT_MODE.OPEN;
+
+  const frozenAdmitted = admitted.map((row) => Object.freeze({ ...row }));
+  const qualifiers = adaptAdmittedToKnockoutQualifiers(
+    frozenAdmitted,
+    drawPlacementMode
   );
-  const qualifiers = adaptAdmittedToKnockoutQualifiers(seeded);
 
   return deepFreeze({
     stage: "KNOCKOUT_ADMISSION",
-    admitted: Object.freeze(seeded),
+    admitted: Object.freeze(frozenAdmitted),
     qualifiers: Object.freeze(qualifiers),
+    drawPlacementMode,
     competitionPopulationEntryIds: Object.freeze([...population].sort()),
     populationBoundaryProven: true,
     counts: Object.freeze({
       direct: actualDirect,
       groupDirect: actualGroupDirect,
       wildcard: actualWildcard,
-      total: seeded.length,
+      total: frozenAdmitted.length,
     }),
     slotEquation: Object.freeze({
       totalKnockoutSlots,
@@ -501,7 +507,9 @@ export function composeKnockoutAdmission(input) {
     }),
     seeding: Object.freeze({
       admissionSourceAffectsSeeding: false,
-      contract: "source-neutral entryId order + explicit authoritative seeds only",
+      ceAssignsSeeds: false,
+      authority: "CORE-07 when authoritative; otherwise CORE-08 OPEN draw",
+      drawPlacementMode,
     }),
     distinctions: Object.freeze({
       DIRECT_NE_BYE: true,
