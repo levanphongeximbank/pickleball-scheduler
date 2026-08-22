@@ -378,6 +378,10 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
         wildcardSlots: Number(rules.qualification?.wildcardSlots) || 0,
         wildcardScope: GROUP2_WILDCARD_RESPONSIBILITY.GROUP2,
         wildcardRankingDeferredToGroup4: true,
+        slotMathAuthority: "deriveQualificationPlan",
+        slotMathRuntime: "RUNTIME_ENFORCED",
+        directQualifiersRuntime: "RUNTIME_ENFORCED",
+        wildcardCandidateRuntime: "DEFERRED_TO_G2_D",
       },
       officialKnockout: {
         knockoutEnabled: rules.knockout.knockoutEnabled !== false,
@@ -393,8 +397,8 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
         avoidSameGroupFirstRoundConfigured:
           rules.knockout.avoidSameGroupFirstRound !== false,
         avoidSameGroupRuntime: "DEFERRED_TO_G2_E",
-        knockoutEnabledRuntime: "DEFERRED_TO_G2_C",
-        qualifierCountRuntime: "DEFERRED_TO_G2_C",
+        knockoutEnabledRuntime: "DEFERRED_TO_G2_E",
+        qualifierCountRuntime: "DEFERRED_TO_G2_E",
       },
     },
   };

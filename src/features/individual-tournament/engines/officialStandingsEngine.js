@@ -3,13 +3,21 @@
  * Locked points (must match official_open_event_qualification SQL):
  * win=2, loss=1, forfeit=0, then scoreDiff, pointsFor, wins.
  * name.localeCompare is display ordering after ranks are assigned.
+ *
+ * G2-C: direct TOP_N per group comes from Content qualification policy.
+ * Canonical slot math is Adapter A deriveQualificationPlan (via
+ * resolveContentQualificationPlan). Wildcard candidate ranking is NOT here.
  */
 
 import { buildGroupStandingFromMatches } from "../../../tournament/engines/rankingEngine.js";
 import { DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP as SETTINGS_DEFAULT_Q } from "./officialTournamentSettingsEngine.js";
-import { resolveContentQualifiersPerGroup } from "./officialContentCompetitionRules.js";
+import {
+  resolveContentQualifiersPerGroup,
+  resolveContentQualificationPlan,
+} from "./officialContentCompetitionRules.js";
 
 export const QUALIFICATION_TIE_UNRESOLVED = "QUALIFICATION_TIE_UNRESOLVED";
+export const QUALIFICATION_NOT_READY = "QUALIFICATION_NOT_READY";
 export const DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP = SETTINGS_DEFAULT_Q;
 
 export function sportingMetricsEqual(a, b) {
@@ -107,6 +115,10 @@ export function buildOfficialAllGroupStandings(event, options = {}) {
     .sort((a, b) => a.group.localeCompare(b.group, "vi", { numeric: true }));
 }
 
+/**
+ * Group-stage completion + direct TOP_N tie gate (legacy shape).
+ * Prefer resolveOfficialQualificationReadiness for Content-scoped KO gates (G2-C).
+ */
 export function officialQualificationReady(event, options = {}) {
   const groupMatches = (event?.matches || []).filter((match) => !match.bracketMatchId);
   if (!groupMatches.length) {
@@ -133,4 +145,184 @@ export function officialQualificationReady(event, options = {}) {
     };
   }
   return { ready: true, standings };
+}
+
+function countDirectQualified(standings = []) {
+  return (standings || []).reduce(
+    (sum, group) => sum + (Array.isArray(group?.qualified) ? group.qualified.length : 0),
+    0
+  );
+}
+
+/**
+ * Content-scoped qualification readiness (G2-C).
+ *
+ * Combines:
+ *   resolveContentQualificationPlan (Adapter A slot math)
+ *   + officialQualificationReady (group complete + TOP_N ties)
+ *
+ * wildcardSlots > 0 → QUALIFICATION_NOT_READY (no candidate ranking yet).
+ * Does not silently shrink the KO field to directSlots only.
+ */
+export function resolveOfficialQualificationReadiness(tournament, event, options = {}) {
+  const eventId = String(options.eventId || options.selectedEventId || event?.id || "").trim();
+  if (!eventId) {
+    return {
+      ready: false,
+      ok: false,
+      code: "EVENT_REQUIRED",
+      error: "Chọn nội dung tường minh (eventId) trước khi xét suất đi tiếp.",
+      directSlots: 0,
+      directQualifiedCount: 0,
+      wildcardSlots: 0,
+      wildcardQualifiedCount: 0,
+      totalRequired: 0,
+    };
+  }
+  if (!event) {
+    return {
+      ready: false,
+      ok: false,
+      code: "EVENT_NOT_FOUND",
+      error: "Không tìm thấy nội dung thi đấu.",
+      eventId,
+      directSlots: 0,
+      directQualifiedCount: 0,
+      wildcardSlots: 0,
+      wildcardQualifiedCount: 0,
+      totalRequired: 0,
+    };
+  }
+
+  const planResolved = resolveContentQualificationPlan(tournament, { eventId });
+  if (!planResolved.ok) {
+    return {
+      ready: false,
+      ok: false,
+      code: planResolved.code || "INVALID_QUALIFICATION_PLAN",
+      error: planResolved.error || "Cấu hình suất đi tiếp không hợp lệ.",
+      eventId,
+      source: planResolved.source || null,
+      plan: planResolved.plan || null,
+      directSlots: Number(planResolved.plan?.directSlots) || 0,
+      directQualifiedCount: 0,
+      wildcardSlots: Number(planResolved.plan?.wildcardSlots) || 0,
+      wildcardQualifiedCount: 0,
+      totalRequired: Number(planResolved.plan?.totalQualifiers) || 0,
+    };
+  }
+
+  const {
+    directSlots,
+    wildcardSlots,
+    totalQualifiers,
+    directQualifiersPerGroup,
+    source,
+    plan,
+  } = planResolved;
+
+  const groupReady = officialQualificationReady(event, {
+    qualifiersPerGroup: directQualifiersPerGroup,
+  });
+  if (!groupReady.ready) {
+    return {
+      ready: false,
+      ok: false,
+      code: groupReady.code || QUALIFICATION_NOT_READY,
+      error: groupReady.error,
+      eventId,
+      source,
+      plan,
+      standings: groupReady.standings || null,
+      directSlots,
+      directQualifiedCount: countDirectQualified(groupReady.standings),
+      wildcardSlots,
+      wildcardQualifiedCount: 0,
+      totalRequired: totalQualifiers,
+      directQualifiersPerGroup,
+    };
+  }
+
+  const standings = groupReady.standings || [];
+  const directQualifiedCount = countDirectQualified(standings);
+  const groupCount = Number(plan.groupCount) || 0;
+
+  if (groupCount > 0 && standings.length !== groupCount) {
+    return {
+      ready: false,
+      ok: false,
+      code: QUALIFICATION_NOT_READY,
+      error: `Số bảng có xếp hạng (${standings.length}) khác groupCount (${groupCount}).`,
+      eventId,
+      source,
+      plan,
+      standings,
+      directSlots,
+      directQualifiedCount,
+      wildcardSlots,
+      wildcardQualifiedCount: 0,
+      totalRequired: totalQualifiers,
+      directQualifiersPerGroup,
+    };
+  }
+
+  if (directQualifiedCount !== directSlots) {
+    return {
+      ready: false,
+      ok: false,
+      code: QUALIFICATION_NOT_READY,
+      error: `Suất trực tiếp chưa đủ: cần ${directSlots}, hiện ${directQualifiedCount}. Không đệm / không dùng wildcard ranking.`,
+      eventId,
+      source,
+      plan,
+      standings,
+      directSlots,
+      directQualifiedCount,
+      wildcardSlots,
+      wildcardQualifiedCount: 0,
+      totalRequired: totalQualifiers,
+      directQualifiersPerGroup,
+    };
+  }
+
+  // Structural wildcard slots without candidate execution → fail closed (G2-D).
+  if (wildcardSlots > 0) {
+    return {
+      ready: false,
+      ok: false,
+      code: QUALIFICATION_NOT_READY,
+      error: `Còn ${wildcardSlots} suất wildcard — chưa có xếp hạng cross-group (G2-D/Group 4). Không tạo KO với ${directSlots}/${totalQualifiers} suất.`,
+      eventId,
+      source,
+      plan,
+      standings,
+      directSlots,
+      directQualifiedCount,
+      wildcardSlots,
+      wildcardQualifiedCount: 0,
+      totalRequired: totalQualifiers,
+      directQualifiersPerGroup,
+      wildcardExecutionDeferred: true,
+      silentSmallerKoFieldAllowed: false,
+    };
+  }
+
+  return {
+    ready: true,
+    ok: true,
+    code: null,
+    error: null,
+    eventId,
+    source,
+    plan,
+    standings,
+    directSlots,
+    directQualifiedCount,
+    wildcardSlots: 0,
+    wildcardQualifiedCount: 0,
+    totalRequired: totalQualifiers,
+    directQualifiersPerGroup,
+    wildcardExecutionDeferred: false,
+    silentSmallerKoFieldAllowed: false,
+  };
 }

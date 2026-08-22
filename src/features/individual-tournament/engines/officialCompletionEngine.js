@@ -5,7 +5,7 @@
 
 import { MATCH_STAGE, MATCH_STATUS, TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
 import { isTournamentClosed } from "./tournamentClosingEngine.js";
-import { officialQualificationReady } from "./officialStandingsEngine.js";
+import { resolveOfficialQualificationReadiness } from "./officialStandingsEngine.js";
 import { hasBracketGenerated } from "../../../tournament/engines/bracketEngine.js";
 
 export function resolveOfficialFinalMatch(event) {
@@ -43,10 +43,15 @@ export function evaluateOfficialCompletionPredicate(tournament, options = {}) {
   }
   const event =
     (tournament.events || []).find((item) => String(item.id) === String(options.eventId || "")) ||
-    tournament.events?.[0] ||
     null;
   if (!event) {
-    return { ok: false, error: "Thiếu nội dung thi đấu.", code: "NO_EVENT" };
+    return {
+      ok: false,
+      error: options.eventId
+        ? "Không tìm thấy nội dung thi đấu."
+        : "Chọn nội dung tường minh (eventId) trước khi chốt giải.",
+      code: options.eventId ? "NO_EVENT" : "EVENT_REQUIRED",
+    };
   }
 
   const groupMatches = (event.matches || []).filter((match) => !match.bracketMatchId);
@@ -60,12 +65,16 @@ export function evaluateOfficialCompletionPredicate(tournament, options = {}) {
     return { ok: false, error: "Chưa hoàn tất vòng bảng.", code: "GROUP_INCOMPLETE" };
   }
 
-  const qualification = officialQualificationReady(event, options);
+  const qualification = resolveOfficialQualificationReadiness(tournament, event, {
+    eventId: String(event.id),
+    ...options,
+  });
   if (!qualification.ready) {
     return {
       ok: false,
       error: qualification.error,
       code: qualification.code,
+      qualification,
     };
   }
 

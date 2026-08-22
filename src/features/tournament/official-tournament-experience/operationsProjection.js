@@ -6,7 +6,7 @@
  * - Group matches: buildGroupStageSchedule (event.matches SSOT)
  * - Schedule time/court: scheduleOfficialGroupMatches
  * - Schedule publish: publishScheduleEngine
- * - Standings: buildOfficialAllGroupStandings / officialQualificationReady
+ * - Standings: buildOfficialAllGroupStandings / resolveOfficialQualificationReadiness
  * - CORE-13/15/16/17 declared; Screen 11 does not invent local writers
  */
 
@@ -30,6 +30,7 @@ import {
   buildOfficialAllGroupStandings,
   officialQualificationReady,
   resolveOfficialQualifiersPerGroup,
+  resolveOfficialQualificationReadiness,
 } from "../../individual-tournament/engines/officialStandingsEngine.js";
 import { listTournamentEvents, resolveSelectedEvent } from "../experience-a1/deriveOverview.js";
 import { OFFICIAL_EXPERIENCE_AUTHORITY } from "./authorityLock.js";
@@ -476,7 +477,11 @@ export function projectOfficialStandings(tournament, { selectedEventId } = {}) {
   const standings = buildOfficialAllGroupStandings(eventForStandings, {
     qualifiersPerGroup,
   });
-  const qualification = officialQualificationReady(eventForStandings, {
+  const qualification = resolveOfficialQualificationReadiness(tournament, eventForStandings, {
+    eventId: scoped.eventId,
+  });
+  // Keep legacy group-complete shape available for display diagnostics.
+  const groupStageQualification = officialQualificationReady(eventForStandings, {
     qualifiersPerGroup,
   });
 
@@ -488,16 +493,28 @@ export function projectOfficialStandings(tournament, { selectedEventId } = {}) {
     qualifiersPerGroup,
     standings,
     qualification,
+    groupStageQualification,
+    qualificationPlan: qualification.plan || null,
+    directSlots: qualification.directSlots ?? null,
+    directQualifiedCount: qualification.directQualifiedCount ?? null,
+    wildcardSlots: qualification.wildcardSlots ?? null,
+    wildcardQualifiedCount: qualification.wildcardQualifiedCount ?? null,
+    totalRequired: qualification.totalRequired ?? null,
     // Blob Official path: completed/forfeit on event.matches (officialStandingsEngine).
     // CORE-17 accepted active is RPC/live path — Screen 12 does not invent a second filter.
     resultCountingPolicy: "officialStandingsEngine:completed_or_forfeit_on_event.matches",
     onlyAcceptedActiveViaCore17: false,
-    formulaAuthority: "officialStandingsEngine",
-    qualificationAuthority: "officialQualificationReady+contentCompetitionRules",
+    formulaAuthority: "deriveQualificationPlan+officialStandingsEngine",
+    qualificationAuthority: "resolveOfficialQualificationReadiness+contentCompetitionRules",
     authority: OFFICIAL_EXPERIENCE_AUTHORITY.OFFICIAL_STANDINGS,
     blocker:
       groupStageMatches(event).length === 0
         ? { code: "MATCHES_MISSING", error: "Chưa có trận để xếp hạng." }
-        : null,
+        : !qualification.ready
+          ? {
+              code: qualification.code || "QUALIFICATION_NOT_READY",
+              error: qualification.error || "Chưa sẵn sàng xét suất đi tiếp.",
+            }
+          : null,
   };
 }

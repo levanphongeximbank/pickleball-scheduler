@@ -28,6 +28,7 @@ import {
 import { isDrawEligibleEntry } from "../../../models/tournament/entry.js";
 import { getEligibilityRules, normalizeEligibilityRules } from "./eligibilityEngine.js";
 import { listTournamentEvents, resolveSelectedEvent } from "../../tournament/experience-a1/deriveOverview.js";
+import { deriveQualificationPlan } from "../../competition-core/competition-rules/services/deriveQualificationPlan.js";
 
 export const CONTENT_COMPETITION_RULES_PROPERTY = "competitionRules";
 
@@ -1210,8 +1211,11 @@ export function resolveContentGroup2Settings(tournament, options = {}) {
     allowUnevenGroupsRuntime: "RUNTIME_ENFORCED",
     groupStageEnabledRuntime: "RUNTIME_ENFORCED",
     groupCountRuntime: "RUNTIME_ENFORCED",
-    knockoutEnabledRuntime: "DEFERRED_TO_G2_C",
-    qualifierCountRuntime: "DEFERRED_TO_G2_C",
+    qualificationSlotMathRuntime: "RUNTIME_ENFORCED",
+    directQualifiersRuntime: "RUNTIME_ENFORCED",
+    wildcardCandidateRuntime: "DEFERRED_TO_G2_D",
+    knockoutEnabledRuntime: "DEFERRED_TO_G2_E",
+    qualifierCountRuntime: "DEFERRED_TO_G2_E",
     avoidSameGroupRuntime: "DEFERRED_TO_G2_E",
     legacyClassification: LEGACY_GROUP2_FIELD_CLASS,
     legacyActiveAuthority: false,
@@ -1410,6 +1414,71 @@ export function assertAllocatedGroupsMatchContentGroupStage(groups = [], groupSt
     ok: true,
     sizes,
     balanced: sizes.length === 0 || Math.max(...sizes) - Math.min(...sizes) <= 1,
+  };
+}
+
+/**
+ * Thin Content → Adapter A qualification slot-math wrapper (G2-C).
+ * Does not invent a second formula. Does not select wildcard candidates.
+ */
+export function resolveContentQualificationPlan(tournament, options = {}) {
+  const eventId = trim(options.eventId);
+  if (!eventId) {
+    return {
+      ok: false,
+      code: "EVENT_REQUIRED",
+      error: "Chọn nội dung tường minh (eventId) trước khi xét suất đi tiếp.",
+    };
+  }
+
+  const group2 = resolveContentGroup2Settings(tournament, {
+    eventId,
+    allowSoleEventInference: false,
+  });
+  if (!group2.ok) return group2;
+
+  const groupStage = group2.groupStage || {};
+  const qualification = group2.qualification || {};
+  const plan = deriveQualificationPlan({
+    groupStageEnabled: groupStage.groupStageEnabled !== false,
+    groupCount: groupStage.groupCount,
+    totalQualifiers: qualification.totalQualifiers,
+    directQualifiersPerGroup: qualification.directQualifiersPerGroup,
+  });
+
+  if (!plan.ok) {
+    return {
+      ok: false,
+      code: plan.code || "INVALID_QUALIFICATION_PLAN",
+      error:
+        plan.message ||
+        "Cấu hình suất đi tiếp không hợp lệ (groupCount × direct > totalQualifiers).",
+      eventId,
+      source: group2.source,
+      plan,
+      groupStage,
+      qualification,
+      authority: CONTENT_GROUP2_FIELD_AUTHORITY,
+    };
+  }
+
+  return {
+    ok: true,
+    eventId,
+    source: group2.source,
+    authority: CONTENT_GROUP2_FIELD_AUTHORITY,
+    groupStage,
+    qualification,
+    plan,
+    groupCount: plan.groupCount,
+    directQualifiersPerGroup: plan.directQualifiersPerGroup,
+    directSlots: plan.directSlots,
+    totalQualifiers: plan.totalQualifiers,
+    wildcardSlots: plan.wildcardSlots,
+    groupStageEnabled: plan.groupStageEnabled === true,
+    formula: plan.details?.formula || null,
+    wildcardCandidateSelection: false,
+    wildcardRankingDeferredToGroup4: true,
   };
 }
 

@@ -72,8 +72,9 @@ export function deriveStandingsModel(tournament, options = {}) {
     ...base,
     standings: standings.length ? standings : base.standings,
     official: true,
-    formulaAuthority: "officialStandingsEngine",
-    qualificationAuthority: "officialQualificationReady",
+    formulaAuthority: projection.formulaAuthority || "deriveQualificationPlan+officialStandingsEngine",
+    qualificationAuthority:
+      projection.qualificationAuthority || "resolveOfficialQualificationReadiness",
     qualificationReady: projection.qualification?.ready === true,
     qualificationError: projection.qualification?.error || null,
     resultCountingPolicy: projection.resultCountingPolicy,
@@ -88,9 +89,11 @@ export function deriveStandingsModel(tournament, options = {}) {
         note: "win=2 / loss=1 / forfeit=0",
       },
       {
-        label: "Xét suất (officialQualificationReady)",
+        label: "Xét suất (resolveOfficialQualificationReadiness)",
         ready: projection.qualification?.ready === true,
-        note: projection.qualification?.error || "Sẵn sàng",
+        note: projection.qualification?.ready
+          ? `direct=${projection.directQualifiedCount}/${projection.directSlots}; wildcard=${projection.wildcardSlots}`
+          : projection.qualification?.error || "Sẵn sàng",
       },
       {
         label: "CORE-17 accepted-only (RPC path)",

@@ -341,9 +341,11 @@ export {
 
 export {
   QUALIFICATION_TIE_UNRESOLVED,
+  QUALIFICATION_NOT_READY,
   buildOfficialAllGroupStandings,
   officialQualificationReady,
   resolveOfficialQualifiersPerGroup,
+  resolveOfficialQualificationReadiness,
 } from "./engines/officialStandingsEngine.js";
 
 export {
