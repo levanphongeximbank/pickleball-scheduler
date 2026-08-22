@@ -3,6 +3,10 @@
  * from wiping unsaved edits (CANONICAL_REHYDRATE_OVERWRITE).
  *
  * Hydrate only when canonical identity fingerprint changes and draft is clean.
+ *
+ * G2-G: fingerprint / draft intentionally omit Group 2 structure fields
+ * (groupCount / qualifiersPerGroup). Those are Content-scoped on
+ * events[].competitionRules — not Tournament officialCompetition authority.
  */
 import {
   getOfficialCompetitionSettings,
@@ -22,8 +26,6 @@ export function buildOfficialSettingsCanonicalFingerprint(tournament) {
     scoringMethod: settings.scoringMethod || "",
     matchFormat: settings.matchFormat || "",
     roundTargets: settings.roundTargets || {},
-    groupCount: settings.groupCount,
-    qualifiersPerGroup: settings.qualifiersPerGroup,
     maxSkillLevel: eligibility.skill?.maxLevel ?? null,
     maxRating: eligibility.rating?.maxRating ?? null,
   });
@@ -38,6 +40,7 @@ export function buildOfficialSettingsDraftFromTournament(tournament) {
     scoringMethod: current.scoringMethod || OFFICIAL_SCORING_METHOD.RALLY,
     matchFormat: current.matchFormat || OFFICIAL_MATCH_FORMAT.BEST_OF_1,
     roundTargets: { ...current.roundTargets },
+    // Display-only legacy projection for old Settings screen (read-only UI).
     qualifiersPerGroup: current.qualifiersPerGroup || 2,
     maxSkillLevel:
       eligibility.skill?.maxLevel != null ? String(eligibility.skill.maxLevel) : "",
@@ -48,5 +51,12 @@ export function buildOfficialSettingsDraftFromTournament(tournament) {
 
 export function officialSettingsDraftEqualsCanonical(draft, tournament) {
   const canonical = buildOfficialSettingsDraftFromTournament(tournament);
-  return JSON.stringify(draft) === JSON.stringify(canonical);
+  // Compare without Group 2 display-only fields so legacy qualifiersPerGroup
+  // cannot mark Tournament settings dirty across Content edits.
+  const strip = (row) => {
+    const next = { ...row };
+    delete next.qualifiersPerGroup;
+    return next;
+  };
+  return JSON.stringify(strip(draft)) === JSON.stringify(strip(canonical));
 }

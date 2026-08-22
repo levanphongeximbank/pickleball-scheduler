@@ -57,7 +57,6 @@ export default function OfficialTournamentSettingsScreen({
   officialMode,
   onOfficialModeChange,
   groupCount,
-  onGroupCountChange,
   canManage = true,
   onPersistSettings,
 }) {
@@ -174,8 +173,7 @@ export default function OfficialTournamentSettingsScreen({
         scoringMethod: selectedMethod,
         matchFormat: selectedFormat,
         roundTargets: draft.roundTargets,
-        groupCount,
-        qualifiersPerGroup: Number(draft.qualifiersPerGroup) || 2,
+        // G2-G: do not dual-write Group 2 into settings.officialCompetition.
       });
       next = { ...next, name: nameResult.name };
 
@@ -323,14 +321,10 @@ export default function OfficialTournamentSettingsScreen({
             type="number"
             label="Số bảng"
             value={groupCount}
-            disabled={!canManage}
+            disabled
             InputLabelProps={fieldLabelProps}
             inputProps={{ min: 1, max: 16 }}
-            onChange={(e) => {
-              setDirty(true);
-              onGroupCountChange?.(Number(e.target.value) || 1);
-            }}
-            helperText="Lưu cùng Lưu cài đặt (một nguồn officialCompetition.groupCount)."
+            helperText="LEGACY hiển thị — authority: Nội dung → Nhóm 2 (events[].competitionRules). Không ghi officialCompetition.groupCount."
           />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
@@ -340,13 +334,10 @@ export default function OfficialTournamentSettingsScreen({
             type="number"
             label="Suất vào knockout mỗi bảng"
             value={draft.qualifiersPerGroup ?? 2}
-            disabled={!canManage}
+            disabled
             InputLabelProps={fieldLabelProps}
             inputProps={{ min: 1, max: 8 }}
-            onChange={(e) =>
-              updateDraft({ qualifiersPerGroup: Number(e.target.value) || 2 })
-            }
-            helperText="Mặc định 2. Không dùng best runners-up."
+            helperText="LEGACY hiển thị — chỉnh ở Settings Nội dung (Nhóm 2). Không dual-write Tournament."
           />
         </Grid>
       </Grid>

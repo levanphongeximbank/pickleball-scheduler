@@ -60,7 +60,9 @@ import {
 } from "../../official-tournament-experience/officialExperienceCommands.js";
 import {
   normalizeContentCompetitionRules,
+  CONTENT_RULES_SOURCE,
 } from "../../../individual-tournament/engines/officialContentCompetitionRules.js";
+import { formatContentRulesBootstrapSource } from "../../../individual-tournament/engines/contentRulesSourceLabels.js";
 import {
   buildAddOfficialEventPatch,
   buildIdentityPatch,
@@ -315,7 +317,9 @@ export default function IndividualSettingsPage() {
       })
     );
     setRulesBootstrapSource(
-      draft?.source || competition?.source || "canonical.system.default"
+      formatContentRulesBootstrapSource(
+        draft?.source || competition?.source || CONTENT_RULES_SOURCE.CANONICAL_SYSTEM_DEFAULT
+      )
     );
   }, [tournament, dirty, selectedEventId]);
 

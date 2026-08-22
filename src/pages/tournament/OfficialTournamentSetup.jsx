@@ -150,6 +150,10 @@ import {
   OFFICIAL_REGISTRATION_MODE,
 } from "../../features/individual-tournament/engines/officialTournamentSettingsEngine.js";
 import {
+  resolveContentGroupCount,
+  resolveContentQualifiersPerGroup,
+} from "../../features/individual-tournament/engines/officialContentCompetitionRules.js";
+import {
   OFFICIAL_PAIRING_AUTHORITY,
   assessOfficialCompetitionStrategyChange,
   resolveOfficialPairingDispatch,
@@ -579,7 +583,10 @@ export default function OfficialTournamentSetup() {
     () =>
       savedEvent
         ? buildOfficialAllGroupStandings(savedEvent, {
-            qualifiersPerGroup: getOfficialCompetitionSettings(tournament).qualifiersPerGroup,
+            qualifiersPerGroup: resolveContentQualifiersPerGroup(tournament, {
+              eventId: savedEvent.id,
+              allowSoleEventInference: false,
+            }),
           })
         : [],
     [savedEvent, tournament]
@@ -612,11 +619,17 @@ export default function OfficialTournamentSetup() {
   }, [tournament?.officialMode]);
 
   useEffect(() => {
-    const configured = getOfficialCompetitionSettings(tournament).groupCount;
+    // G2-G: hydrate local groupCount UI from Content Group 2, not Tournament blob.
+    const eventId = String(savedEvent?.id || activeEventId || "").trim();
+    if (!eventId || !tournament) return;
+    const configured = resolveContentGroupCount(tournament, {
+      eventId,
+      allowSoleEventInference: false,
+    });
     if (configured >= 1) {
       setGroupCount(configured);
     }
-  }, [tournament?.id, tournament?.settings?.officialCompetition?.groupCount]);
+  }, [tournament, savedEvent?.id, activeEventId, savedEvent?.competitionRules]);
 
   useEffect(() => {
     if (!tournament?.id || officialClosed) {

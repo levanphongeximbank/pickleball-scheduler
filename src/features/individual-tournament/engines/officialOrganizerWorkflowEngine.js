@@ -20,6 +20,7 @@ import {
   OFFICIAL_REGISTRATION_MODE_LABELS,
   isOfficialRegistrationModeResolved,
 } from "./officialTournamentSettingsEngine.js";
+import { resolveContentGroupCount } from "./officialContentCompetitionRules.js";
 import { projectOfficialDrawSubsteps } from "./officialDrawOrchestrationEngine.js";
 
 export const OFFICIAL_STAGE_ID = Object.freeze({
@@ -57,12 +58,19 @@ export const OFFICIAL_STAGE_DEFS = Object.freeze([
   { id: "results", label: "Kết quả / Bảng xếp hạng", order: 1000 },
 ]);
 
+/**
+ * Resolve Content for organizer projection.
+ * G2-G: no events[0] business fallback. Sole-event only when eventId omitted
+ * and events.length === 1 (SOLE_EVENT_COMPATIBILITY / display).
+ */
 function primaryEvent(tournament, eventId = "") {
   const events = tournament?.events || [];
-  if (eventId) {
-    return events.find((event) => String(event.id) === String(eventId)) || events[0] || null;
+  const wanted = eventId != null ? String(eventId).trim() : "";
+  if (wanted) {
+    return events.find((event) => String(event.id) === wanted) || null;
   }
-  return events[0] || null;
+  if (events.length === 1) return events[0] || null;
+  return null;
 }
 
 function isMatchComplete(match) {
@@ -272,7 +280,16 @@ export function buildOfficialCompetitionFacts(tournament, options = {}) {
   const competition = getOfficialCompetitionSettings(tournament);
   const locked = isRegistrationLocked(tournament);
   const draw = getDrawPublishStatus(tournament);
-  const hasGroups = (event?.groups || []).length > 0;
+  const allocatedGroupCount = (event?.groups || []).length || 0;
+  const contentGroupCount =
+    event?.id != null
+      ? Number(
+          resolveContentGroupCount(tournament, { eventId: String(event.id) })
+        ) || 0
+      : 0;
+  // G2-G: never use settings.officialCompetition.groupCount as Group 2 authority.
+  const configuredGroupCount = allocatedGroupCount || contentGroupCount || 0;
+  const hasGroups = allocatedGroupCount > 0;
   const hasDraw =
     hasGroups ||
     draw.status === DRAW_PUBLISH_STATUS.LOCKED ||
@@ -315,7 +332,7 @@ export function buildOfficialCompetitionFacts(tournament, options = {}) {
     draw: {
       hasDraw,
       hasGroups,
-      groupCount: (event?.groups || []).length || competition.groupCount || 0,
+      groupCount: configuredGroupCount,
       status: draw.status,
       eligibleCount: entries.drawEligibleCount,
       minDrawEntries,

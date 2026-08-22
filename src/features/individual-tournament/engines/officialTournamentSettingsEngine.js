@@ -6,10 +6,10 @@
  * - tournament identity name → tournament.name (top-level; not duplicated in blob)
  * - registrationMode / scoringMethod / roundTargets / matchFormat → officialCompetition
  *   (Group 1: LEGACY_COMPATIBILITY_DRAFT when Content rules exist)
- * - groupCount → officialCompetition.groupCount is LEGACY_COMPATIBILITY_DRAFT /
- *   leftover blob only. Not active Group 2 authority when
- *   events[].competitionRules.groupStage.groupCount exists. Official Content
- *   callers must use resolveContentGroup2Settings / resolveContentGroupCount.
+ * - groupCount / qualifiersPerGroup on officialCompetition are
+ *   LEGACY_COMPATIBILITY_DRAFT leftovers only. patchOfficialCompetitionSettings
+ *   does NOT accept them as writable Group 2 authority (G2-G). Content path:
+ *   events[].competitionRules via resolveContentGroup2Settings.
  * - eligibility max skill/rating → settings.eligibilityRules (eligibilityEngine) ONLY
  * - Side-out enum preserved but NOT operational on classic Official live path
  * - matchFormat BEST_OF_1 is operational (legacy single-game); BEST_OF_3 fail-closed
@@ -501,6 +501,10 @@ export function getOfficialCompetitionSettings(tournament) {
  * Does NOT write eligibilityRules (use eligibilityEngine.updateEligibilityRules).
  * Does NOT persist side_out as active operable mode (fail-closed).
  * Blocks unsafe registrationMode switches when entry shapes conflict.
+ *
+ * G2-G: Does NOT write Group 2 structure fields (groupCount / qualifiersPerGroup).
+ * Those remain frozen legacy blob values for LEGACY_COMPATIBILITY_DRAFT bootstrap only.
+ * Canonical Group 2 authority: events[].competitionRules.
  */
 export function patchOfficialCompetitionSettings(tournament, patch = {}) {
   const current = getOfficialCompetitionSettings(tournament);
@@ -582,14 +586,9 @@ export function patchOfficialCompetitionSettings(tournament, patch = {}) {
       ...current.roundTargets,
       ...(patch.roundTargets || {}),
     }),
-    groupCount:
-      patch.groupCount != null
-        ? toPositiveInt(patch.groupCount, current.groupCount)
-        : current.groupCount,
-    qualifiersPerGroup:
-      patch.qualifiersPerGroup != null
-        ? toPositiveInt(patch.qualifiersPerGroup, current.qualifiersPerGroup)
-        : current.qualifiersPerGroup,
+    // G2-G: preserve historical Group 2 blob only — never re-author from this patch.
+    groupCount: current.groupCount,
+    qualifiersPerGroup: current.qualifiersPerGroup,
     winByEnabled:
       patch.winByEnabled != null ? Boolean(patch.winByEnabled) : current.winByEnabled !== false,
     winByMargin:

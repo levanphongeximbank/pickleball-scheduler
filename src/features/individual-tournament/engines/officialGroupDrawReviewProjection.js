@@ -29,10 +29,12 @@ const UUID_RE =
 
 function primaryEvent(tournament, eventId = "") {
   const events = Array.isArray(tournament?.events) ? tournament.events : [];
-  if (eventId) {
-    return events.find((event) => String(event.id) === String(eventId)) || events[0] || null;
+  const wanted = eventId != null ? String(eventId).trim() : "";
+  if (wanted) {
+    return events.find((event) => String(event.id) === wanted) || null;
   }
-  return events[0] || null;
+  if (events.length === 1) return events[0] || null;
+  return null;
 }
 
 export function isRawTechnicalId(value) {

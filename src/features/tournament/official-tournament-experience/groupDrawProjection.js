@@ -23,7 +23,6 @@ import {
   projectOfficialDrawSubsteps,
 } from "../../individual-tournament/engines/officialDrawOrchestrationEngine.js";
 import {
-  getOfficialCompetitionSettings,
   OFFICIAL_REGISTRATION_MODE,
 } from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
 import {
@@ -168,11 +167,13 @@ export function listOfficialGroupDrawCompetitionUnits(tournament, { selectedEven
     };
   }
 
-  const competition = getOfficialCompetitionSettings(tournament);
+  // G2-G: Content registrationMode authority (explicit or legacy draft via Content resolver).
+  // Do not dual-read settings.officialCompetition.registrationMode as parallel authority.
   if (
-    resolveContentRegistrationMode(tournament, { eventId: event.id }) ===
-      OFFICIAL_REGISTRATION_MODE.PAIR ||
-    competition.registrationMode === OFFICIAL_REGISTRATION_MODE.PAIR
+    resolveContentRegistrationMode(tournament, {
+      eventId: event.id,
+      allowSoleEventInference: false,
+    }) === OFFICIAL_REGISTRATION_MODE.PAIR
   ) {
     const registeredPairs = uniqueByEntryId(
       filterDrawEligibleEntries(registrations, tournament).filter(isOfficialPairShapedEntry)
