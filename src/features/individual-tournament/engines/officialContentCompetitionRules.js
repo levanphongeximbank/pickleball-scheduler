@@ -65,11 +65,26 @@ export const CONTENT_CAPACITY_UNIT = Object.freeze({
  * Content authority on Save. Runtime gate switches deferred to G1-B/C/E.
  */
 export const LEGACY_GROUP1_FIELD_CLASS = Object.freeze({
+  // G1-E: draft projection only — never override explicit Content Group 1 fields.
   officialCompetition: "LEGACY_COMPATIBILITY_DRAFT",
-  // G1-C: not skill/rating authority on explicit Content Official/Open path.
+  // G1-C/E: not skill/rating authority on explicit Content Official/Open path.
+  // Non-skill/rating dimensions may remain as separate registration-domain checks.
   eligibilityRules: "LEGACY_RUNTIME_COMPATIBILITY",
-  // G1-B: not authority on explicit Content Official/Open path; may remain for legacy-only callers.
+  // G1-B/E: not capacity authority on explicit Content Official/Open path.
   maxEntries: "LEGACY_RUNTIME_COMPATIBILITY",
+});
+
+/**
+ * Sole-event inference classification (G1-E).
+ * MUTATION / Official business runtime must NOT use this.
+ * DISPLAY/READ may opt-in with allowSoleEventInference=true when events.length === 1.
+ */
+export const SOLE_EVENT_COMPATIBILITY = Object.freeze({
+  class: "SOLE_EVENT_COMPATIBILITY",
+  allowedForMutation: false,
+  allowedForOfficialBusinessRuntime: false,
+  allowedForDisplayRead: true,
+  neverWhenMultiContent: true,
 });
 
 /** Runtime projection unit labels (not persisted schema). */
@@ -934,7 +949,9 @@ export function deriveLegacyCompatibilityContentRulesDraft(tournament, options =
 function resolveExplicitEvent(tournament, eventId, options = {}) {
   const events = listTournamentEvents(tournament);
   const wanted = trim(eventId);
-  const allowSoleEventInference = options.allowSoleEventInference !== false;
+  // G1-E: sole-event inference is opt-in DISPLAY/READ compatibility only.
+  // Default false — Official business/mutation must pass explicit eventId.
+  const allowSoleEventInference = options.allowSoleEventInference === true;
   if (!wanted) {
     if (allowSoleEventInference && events.length === 1) {
       return {
@@ -942,6 +959,7 @@ function resolveExplicitEvent(tournament, eventId, options = {}) {
         event: events[0],
         eventId: String(events[0].id),
         inferredSoleEvent: true,
+        compatibilityClass: SOLE_EVENT_COMPATIBILITY.class,
       };
     }
     return {
@@ -958,7 +976,13 @@ function resolveExplicitEvent(tournament, eventId, options = {}) {
       error: "Không tìm thấy nội dung (eventId).",
     };
   }
-  return { ok: true, event, eventId: wanted, inferredSoleEvent: false };
+  return {
+    ok: true,
+    event,
+    eventId: wanted,
+    inferredSoleEvent: false,
+    compatibilityClass: null,
+  };
 }
 
 /** Mutations must never infer sole event / events[0]. */
@@ -972,11 +996,13 @@ function resolveExplicitEventForMutation(tournament, eventId) {
  * Resolve effective Content rules input for Adapter B / consumers.
  * Explicit Content rules win. Else legacy draft. Else canonical defaults.
  * Never auto-persists.
- * READ path may infer sole-event when eventId omitted (compatibility).
+ *
+ * G1-E: eventId required by default. Sole-event inference only when caller
+ * explicitly sets allowSoleEventInference=true (DISPLAY/READ compatibility).
  */
 export function resolveContentCompetitionRules(tournament, options = {}) {
   const scoped = resolveExplicitEvent(tournament, options.eventId, {
-    allowSoleEventInference: options.allowSoleEventInference !== false,
+    allowSoleEventInference: options.allowSoleEventInference === true,
   });
   if (!scoped.ok) return scoped;
 
@@ -989,6 +1015,7 @@ export function resolveContentCompetitionRules(tournament, options = {}) {
       event: scoped.event,
       eventId: scoped.eventId,
       inferredSoleEvent: scoped.inferredSoleEvent === true,
+      compatibilityClass: scoped.compatibilityClass,
       rules,
       source: CONTENT_RULES_SOURCE.CONTENT_EXPLICIT,
       persistedSource: `events[].${CONTENT_COMPETITION_RULES_PROPERTY}`,
@@ -1004,6 +1031,7 @@ export function resolveContentCompetitionRules(tournament, options = {}) {
       event: scoped.event,
       eventId: scoped.eventId,
       inferredSoleEvent: scoped.inferredSoleEvent === true,
+      compatibilityClass: scoped.compatibilityClass,
       rules,
       source: CONTENT_RULES_SOURCE.LEGACY_COMPATIBILITY_DRAFT,
       persistedSource: "settings.officialCompetition (legacy compatibility only)",
@@ -1019,6 +1047,7 @@ export function resolveContentCompetitionRules(tournament, options = {}) {
     event: scoped.event,
     eventId: scoped.eventId,
     inferredSoleEvent: scoped.inferredSoleEvent === true,
+    compatibilityClass: scoped.compatibilityClass,
     rules,
     source: CONTENT_RULES_SOURCE.CANONICAL_SYSTEM_DEFAULT,
     persistedSource: null,
@@ -1090,9 +1119,9 @@ function contentBoundOrNull(value) {
 }
 
 export function resolveOfficialRegistrationEligibilityRules(tournament, options = {}) {
-  const events = listTournamentEvents(tournament);
   const wanted = trim(options.eventId);
-  if (!wanted && events.length > 1) {
+  // G1-E: Official business eligibility requires explicit eventId (no sole-event default).
+  if (!wanted) {
     return {
       ok: false,
       code: "EVENT_REQUIRED",
@@ -1101,11 +1130,8 @@ export function resolveOfficialRegistrationEligibilityRules(tournament, options 
   }
 
   const content = resolveContentEligibilityBounds(tournament, {
-    eventId: wanted || undefined,
-    allowSoleEventInference:
-      options.allowSoleEventInference != null
-        ? options.allowSoleEventInference
-        : events.length === 1,
+    eventId: wanted,
+    allowSoleEventInference: false,
   });
   if (!content.ok) return content;
 

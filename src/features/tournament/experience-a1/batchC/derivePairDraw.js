@@ -154,7 +154,15 @@ function deriveOfficialPairDrawModel(tournament, { selectedEventId } = {}) {
   const projection = projectOfficialPairDraw(tournament, { selectedEventId });
   const listed = listOfficialPairDrawUnits(tournament, { selectedEventId });
   const modeResolution =
-    projection.modeResolution || resolveOfficialPairFormationMode(tournament);
+    projection.modeResolution ||
+    (scope.event
+      ? resolveOfficialPairFormationMode(tournament, { eventId: scope.event.id })
+      : {
+          ok: false,
+          mode: PAIR_FORMATION_MODE.NOT_SUPPORTED,
+          code: "EVENT_REQUIRED",
+          error: "Chọn nội dung tường minh trước khi xem bốc thăm ghép cặp.",
+        });
 
   let modeLabel = "Không hỗ trợ";
   if (modeResolution.mode === PAIR_FORMATION_MODE.RANDOM_PAIRING) {

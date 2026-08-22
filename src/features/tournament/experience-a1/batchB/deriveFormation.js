@@ -173,7 +173,14 @@ function deriveInternalFormationModel(tournament, { selectedEventId, mode = "tog
 function deriveOfficialFormationModel(tournament, { selectedEventId } = {}) {
   const scope = resolveBatchBEvent(tournament, selectedEventId);
   const event = scope.event;
-  const modeResolution = resolveOfficialPairFormationMode(tournament);
+  const modeResolution = event
+    ? resolveOfficialPairFormationMode(tournament, { eventId: event.id })
+    : {
+        ok: false,
+        mode: PAIR_FORMATION_MODE.NOT_SUPPORTED,
+        code: "EVENT_REQUIRED",
+        error: "Chọn nội dung tường minh trước khi hình thành cặp.",
+      };
   const sub = event ? projectOfficialDrawSubsteps(tournament, event.id) : null;
 
   let uiMode = "together";

@@ -62,7 +62,8 @@ function resolveEligibilityOptions(tournament, options = {}) {
 
   const resolved = resolveOfficialRegistrationEligibilityRules(tournament, {
     eventId: eventId || undefined,
-    allowSoleEventInference: !eventId && (tournament?.events || []).length === 1,
+    // G1-E: Official eligibility never sole-event-infers.
+    allowSoleEventInference: false,
   });
   if (!resolved.ok) {
     return {
@@ -155,7 +156,8 @@ export function gatedSubmitRegistration(tournament, payload = {}, options = {}) 
   const wanted = String(payload.eventId || "").trim();
   const isOfficial = isOfficialTournament(tournament);
 
-  if (isOfficial && !wanted && events.length > 1) {
+  // G1-E: Official business registration always requires explicit eventId.
+  if (isOfficial && !wanted) {
     return {
       ok: false,
       error: "Chọn nội dung tường minh (eventId) trước khi đăng ký.",
@@ -168,7 +170,7 @@ export function gatedSubmitRegistration(tournament, payload = {}, options = {}) 
     (wanted
       ? events.find((item) => String(item.id) === wanted)
       : null) ||
-    (events.length === 1 ? events[0] : null) ||
+    (!isOfficial && events.length === 1 ? events[0] : null) ||
     (!isOfficial ? events[0] : null);
 
   if (isOfficial && !event) {
@@ -320,14 +322,28 @@ export function gatedApproveEntry(tournament, entryId, options = {}) {
 }
 
 export function gatedPromoteFromWaitlist(tournament, options = {}) {
-  const queueEvent =
-    (tournament.events || []).find((item) => String(item.id) === String(options.eventId)) ||
-    ((tournament.events || []).length === 1 ? tournament.events[0] : null);
-  if (!queueEvent && isOfficialTournament(tournament) && (tournament.events || []).length > 1) {
+  const isOfficial = isOfficialTournament(tournament);
+  const wanted = String(options.eventId || "").trim();
+  // G1-E: Official mutation always requires explicit eventId (no sole-event inference).
+  if (isOfficial && !wanted) {
     return {
       ok: false,
       error: "Chọn nội dung tường minh (eventId) trước khi duyệt danh sách chờ.",
       code: "EVENT_REQUIRED",
+    };
+  }
+  const queueEvent =
+    (wanted
+      ? (tournament.events || []).find((item) => String(item.id) === wanted)
+      : null) ||
+    (!isOfficial && (tournament.events || []).length === 1
+      ? tournament.events[0]
+      : null);
+  if (isOfficial && !queueEvent) {
+    return {
+      ok: false,
+      error: "Không tìm thấy nội dung (eventId).",
+      code: wanted ? "EVENT_NOT_FOUND" : "EVENT_REQUIRED",
     };
   }
   const waitlisted = (queueEvent?.entries || [])

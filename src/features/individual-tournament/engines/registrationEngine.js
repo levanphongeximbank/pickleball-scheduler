@@ -49,8 +49,9 @@ function isOfficialTournament(tournament) {
 }
 
 /**
- * Official Content capacity gate. CONTENT_EXPLICIT ignores tournament maxEntries.
- * Legacy / default Content sources keep LEGACY_RUNTIME_COMPATIBILITY maxEntries.
+ * Official Content capacity gate.
+ * CONTENT_EXPLICIT: Content capacity only (null = unlimited). Never tournament maxEntries.
+ * Non-explicit Content sources: LEGACY_RUNTIME_COMPATIBILITY maxEntries for legacy callers only.
  */
 function resolveRegistrationCapacityGate(tournament, event) {
   if (isOfficialTournament(tournament) && event?.id) {
@@ -70,6 +71,8 @@ function resolveRegistrationCapacityGate(tournament, event) {
         capacityUnit: content.capacityUnit,
         registrationMode: content.registrationMode,
         source: "CONTENT",
+        // Explicit Content with unconfigured capacity stays unlimited — no maxEntries substitute.
+        legacyMaxEntriesUsed: false,
       };
     }
 
@@ -85,6 +88,8 @@ function resolveRegistrationCapacityGate(tournament, event) {
       capacityUnit: null,
       registrationMode: content.registrationMode,
       source: "LEGACY_RUNTIME_COMPATIBILITY",
+      legacyMaxEntriesUsed: true,
+      legacyClass: "LEGACY_RUNTIME_COMPATIBILITY",
     };
   }
 
@@ -100,6 +105,7 @@ function resolveRegistrationCapacityGate(tournament, event) {
     capacityUnit: null,
     registrationMode: null,
     source: "LEGACY_RUNTIME_COMPATIBILITY",
+    legacyMaxEntriesUsed: true,
   };
 }
 
@@ -117,9 +123,9 @@ function isOrganizerIndividualRegistration(tournament, event) {
 
 function requireOfficialEventId(tournament, eventId) {
   if (!isOfficialTournament(tournament)) return { ok: true };
-  const events = tournament?.events || [];
   const wanted = eventId != null ? String(eventId).trim() : "";
-  if (!wanted && events.length > 1) {
+  // G1-E: Official business/mutation always requires explicit eventId (even sole Content).
+  if (!wanted) {
     return {
       ok: false,
       code: "EVENT_REQUIRED",
@@ -306,10 +312,14 @@ export function listWaitlistedEntries(event) {
 
 function findEvent(tournament, eventId) {
   const events = tournament?.events || [];
-  if (eventId) {
-    return events.find((event) => String(event.id) === String(eventId)) || null;
+  const wanted = eventId != null ? String(eventId).trim() : "";
+  if (wanted) {
+    return events.find((event) => String(event.id) === wanted) || null;
   }
-  return events[0] || null;
+  // G1-E: Official never resolves events[0] without explicit eventId.
+  if (isOfficialTournament(tournament)) return null;
+  // Non-official legacy sole-event read compatibility only.
+  return events.length === 1 ? events[0] || null : null;
 }
 
 function replaceEvent(tournament, nextEvent) {

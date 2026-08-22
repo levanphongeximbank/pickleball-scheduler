@@ -76,13 +76,8 @@ export function formatOfficialBulkRegistrationError(failures = []) {
 function findEvent(tournament, eventId) {
   const events = tournament?.events || [];
   const wanted = String(eventId || "").trim();
-  if (wanted) {
-    return events.find((event) => String(event.id) === wanted) || null;
-  }
-  if (events.length === 1) {
-    return events[0] || null;
-  }
-  return null;
+  if (!wanted) return null;
+  return events.find((event) => String(event.id) === wanted) || null;
 }
 
 function playerLabel(player, playerId) {
@@ -179,13 +174,12 @@ export function registerOfficialIndividualsBatch(tournament, input = {}, options
   const playerMap = new Map(players.map((player) => [String(player.id), player]));
   const eventId = String(input.eventId || "").trim();
   const eventType = input.eventType;
-  const events = tournament?.events || [];
 
   if (!tournament) {
     return { ok: false, error: "Không tìm thấy giải.", failures: [], persist: false };
   }
 
-  if (!eventId && events.length > 1) {
+  if (!eventId) {
     return {
       ok: false,
       error: "Chọn nội dung tường minh (eventId) trước khi đăng ký.",

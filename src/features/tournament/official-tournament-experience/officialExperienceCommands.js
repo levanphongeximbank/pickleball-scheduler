@@ -11,7 +11,6 @@ import {
   buildUpdateEventPatch,
 } from "../experience-a1/settingsWriters.js";
 import {
-  getOfficialCompetitionSettings,
   normalizeOfficialTournamentName,
   OFFICIAL_MATCH_FORMAT,
   OFFICIAL_SCORING_METHOD,
@@ -92,9 +91,16 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
   const events = listTournamentEvents(tournament);
   const selectedEvent = resolveSelectedEvent(events, selectedEventId);
   const registration = getRegistrationSettings(tournament);
-  const eventId = trim(selectedEventId) || (events.length === 1 ? String(events[0].id) : "");
+  // DISPLAY/READ sole-event compatibility: project settings for the only Content.
+  // Does not mutate; multi-Content still requires selectedEventId.
+  const eventId =
+    trim(selectedEventId) ||
+    (events.length === 1 ? String(events[0].id) : "");
   const contentResolved = eventId
-    ? resolveContentCompetitionRules(tournament, { eventId })
+    ? resolveContentCompetitionRules(tournament, {
+        eventId,
+        allowSoleEventInference: false,
+      })
     : null;
   const rules = contentResolved?.ok ? contentResolved.rules : null;
 
@@ -328,13 +334,16 @@ export function projectOfficialRegistration(tournament, { selectedEventId } = {}
 export function projectOfficialParticipants(tournament, { selectedEventId } = {}) {
   const events = listTournamentEvents(tournament);
   const selectedEvent = resolveSelectedEvent(events, selectedEventId);
+  // DISPLAY/READ: sole-event may supply eventId via resolveSelectedEvent.
   const eventId = trim(selectedEventId) || (selectedEvent ? String(selectedEvent.id) : "");
   const content = eventId
-    ? resolveContentCompetitionRules(tournament, { eventId })
+    ? resolveContentCompetitionRules(tournament, {
+        eventId,
+        allowSoleEventInference: false,
+      })
     : null;
-  const registrationMode = content?.ok
-    ? content.rules.registrationMode
-    : getOfficialCompetitionSettings(tournament).registrationMode;
+  // Never use Tournament officialCompetition as Content registrationMode authority.
+  const registrationMode = content?.ok ? content.rules.registrationMode : null;
   const entries = Array.isArray(selectedEvent?.entries) ? selectedEvent.entries : [];
 
   const rows = entries.map((entry) => {
@@ -598,7 +607,9 @@ export function buildOfficialFormPairsPatch(tournament, options = {}) {
     };
   }
 
-  const modeResolution = resolveOfficialPairFormationMode(tournament);
+  const modeResolution = resolveOfficialPairFormationMode(tournament, {
+    eventId: event.id,
+  });
   if (!modeResolution.ok || modeResolution.mode === PAIR_FORMATION_MODE.NOT_SUPPORTED) {
     return {
       ok: false,
@@ -693,8 +704,16 @@ export function buildOfficialFormPairsPatch(tournament, options = {}) {
 
 export function projectOfficialPairFormation(tournament, { selectedEventId } = {}) {
   const events = listTournamentEvents(tournament);
+  // DISPLAY sole-event resolve: only when exactly one Content (SOLE_EVENT_COMPATIBILITY).
   const event = resolveSelectedEvent(events, selectedEventId);
-  const modeResolution = resolveOfficialPairFormationMode(tournament);
+  const modeResolution = event
+    ? resolveOfficialPairFormationMode(tournament, { eventId: event.id })
+    : {
+        ok: false,
+        mode: PAIR_FORMATION_MODE.NOT_SUPPORTED,
+        code: "EVENT_REQUIRED",
+        error: "Chọn nội dung tường minh trước khi xem hình thành cặp.",
+      };
   const sub = event
     ? projectOfficialDrawSubsteps(tournament, event.id)
     : null;

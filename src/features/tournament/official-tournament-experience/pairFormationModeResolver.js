@@ -11,13 +11,10 @@ import {
   OFFICIAL_PAIRING_AUTHORITY,
   resolveOfficialPairingDispatch,
 } from "../../individual-tournament/engines/officialCompetitionStrategyEngine.js";
-import {
-  OFFICIAL_REGISTRATION_MODE,
-  getOfficialCompetitionSettings,
-} from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
+import { OFFICIAL_REGISTRATION_MODE } from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
 import {
   assertContentSeedingNotPairFormationAuthority,
-  resolveContentRegistrationMode,
+  resolveContentRegistrationModeDetailed,
 } from "../../individual-tournament/engines/officialContentCompetitionRules.js";
 
 export const PAIR_FORMATION_MODE = Object.freeze({
@@ -47,18 +44,10 @@ export function resolveOfficialPairFormationMode(tournament, options = {}) {
 
   const officialMode = tournament?.officialMode || null;
   const eventId = String(options.eventId || options.selectedEventId || "").trim();
-  let registrationMode;
-  let unresolved = false;
 
-  if (eventId) {
-    registrationMode = resolveContentRegistrationMode(tournament, { eventId });
-  } else {
-    const competition = getOfficialCompetitionSettings(tournament);
-    registrationMode = competition.registrationMode || null;
-    unresolved = competition.registrationModeUnresolved === true;
-  }
-
-  if (unresolved || !registrationMode) {
+  // G1-E: pair formation is Official business runtime — explicit eventId + Content rules.
+  // Never fall back to tournament.settings.officialCompetition.registrationMode.
+  if (!eventId) {
     return {
       ok: false,
       mode: PAIR_FORMATION_MODE.NOT_SUPPORTED,
@@ -67,8 +56,31 @@ export function resolveOfficialPairFormationMode(tournament, options = {}) {
       pairingInvoked: false,
       registrationMode: null,
       officialMode,
-      code: "REGISTRATION_MODE_UNRESOLVED",
-      error: "Chưa xác định chế độ đăng ký (cá nhân / cặp).",
+      code: "EVENT_REQUIRED",
+      error: "Chọn nội dung tường minh (eventId) trước khi xác định chế độ ghép cặp.",
+      seedingIgnored: true,
+    };
+  }
+
+  const modeResolved = resolveContentRegistrationModeDetailed(tournament, {
+    eventId,
+    allowSoleEventInference: false,
+  });
+  const registrationMode = modeResolved.ok ? modeResolved.registrationMode : null;
+
+  if (!modeResolved.ok || !registrationMode) {
+    return {
+      ok: false,
+      mode: PAIR_FORMATION_MODE.NOT_SUPPORTED,
+      pairingAuthority: OFFICIAL_PAIRING_AUTHORITY.INVALID,
+      usesRating: false,
+      pairingInvoked: false,
+      registrationMode: null,
+      officialMode,
+      code: modeResolved.code || "REGISTRATION_MODE_UNRESOLVED",
+      error:
+        modeResolved.error ||
+        "Chưa xác định chế độ đăng ký (cá nhân / cặp).",
       seedingIgnored: true,
     };
   }

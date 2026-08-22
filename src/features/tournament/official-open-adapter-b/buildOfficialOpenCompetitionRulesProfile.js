@@ -166,6 +166,8 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
 
   const resolved = resolveContentCompetitionRules(tournament, {
     eventId: options.eventId,
+    // Adapter B translation requires explicit Content context (G1-E).
+    allowSoleEventInference: false,
   });
   if (!resolved.ok) return resolved;
 
@@ -308,6 +310,11 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
       eventId: String(eventId),
       contentId: String(eventId),
       inferredSoleEvent: resolved.inferredSoleEvent === true,
+      compatibilityClass: resolved.compatibilityClass || null,
+      legacyClass:
+        source === CONTENT_RULES_SOURCE.LEGACY_COMPATIBILITY_DRAFT
+          ? "LEGACY_COMPATIBILITY_DRAFT"
+          : null,
       ownsAuthority: false,
       translationOnly: true,
       tournamentRuleInheritance: false,

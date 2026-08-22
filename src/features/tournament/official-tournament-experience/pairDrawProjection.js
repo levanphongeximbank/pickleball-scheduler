@@ -50,7 +50,12 @@ export function listOfficialPairDrawUnits(tournament, { selectedEventId } = {}) 
       units: [],
       source: null,
       substeps: null,
-      modeResolution: resolveOfficialPairFormationMode(tournament),
+      modeResolution: {
+        ok: false,
+        mode: null,
+        code: "EVENT_REQUIRED",
+        error: "Chọn nội dung trước khi xem bốc thăm ghép cặp.",
+      },
       code: "EVENT_REQUIRED",
       error: "Chọn nội dung trước khi xem bốc thăm ghép cặp.",
     };
@@ -62,13 +67,20 @@ export function listOfficialPairDrawUnits(tournament, { selectedEventId } = {}) 
       units: [],
       source: null,
       substeps: null,
-      modeResolution: resolveOfficialPairFormationMode(tournament),
+      modeResolution: {
+        ok: false,
+        mode: null,
+        code: "EVENT_NOT_FOUND",
+        error: "Không tìm thấy nội dung thi đấu.",
+      },
       code: "EVENT_NOT_FOUND",
       error: "Không tìm thấy nội dung thi đấu.",
     };
   }
 
-  const modeResolution = resolveOfficialPairFormationMode(tournament);
+  const modeResolution = resolveOfficialPairFormationMode(tournament, {
+    eventId: event.id,
+  });
   if (!modeResolution.ok || modeResolution.mode === PAIR_FORMATION_MODE.NOT_SUPPORTED) {
     return {
       ok: false,

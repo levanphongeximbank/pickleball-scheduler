@@ -46,6 +46,7 @@ function sanitizeBracket(bracket) {
 export function buildOfficialPublicResultsDto(tournament, options = {}) {
   const events = Array.isArray(tournament?.events) ? tournament.events : [];
   const wanted = String(options.eventId || "").trim();
+  // DISPLAY/READ SOLE_EVENT_COMPATIBILITY only — never for mutation/business gates.
   const event = wanted
     ? events.find((row) => String(row.id) === wanted) || null
     : events.length === 1
@@ -55,7 +56,10 @@ export function buildOfficialPublicResultsDto(tournament, options = {}) {
     ? resolveOfficialQualifiersPerGroup(tournament, { eventId: event.id })
     : 2;
   const content = event
-    ? resolveContentCompetitionRules(tournament, { eventId: event.id })
+    ? resolveContentCompetitionRules(tournament, {
+        eventId: event.id,
+        allowSoleEventInference: false,
+      })
     : null;
   const standings = event ? buildOfficialAllGroupStandings(event, { qualifiersPerGroup }) : [];
   const champion = resolveOfficialChampion(tournament, event);
