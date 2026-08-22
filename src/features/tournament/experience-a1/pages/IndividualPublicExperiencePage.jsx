@@ -74,7 +74,7 @@ export default function IndividualPublicExperiencePage() {
   }
 
   // Slice 1A READ_GATE: guests never become clubScopeReady (ClubContext stays "idle").
-  // Do not spin forever waiting for activeClub. Guest-safe published payload is Slice 1B.
+  // Do not spin forever waiting for activeClub. Guest-safe published public read is Slice 1B.
   // While club scope is still hydrating for an authenticated user, keep the loading state.
   if (clubScopeStatus === "loading") {
     return (
