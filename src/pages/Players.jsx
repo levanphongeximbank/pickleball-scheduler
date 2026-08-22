@@ -75,23 +75,45 @@ const defaultPlayerForm = {
   level: 3.5,
 };
 
+/** Canonical clubId only — never invent or fall back to an arbitrary club. */
+function resolveExplicitClubId(clubId) {
+  const id = String(clubId || "").trim();
+  return id || null;
+}
+
+/**
+ * Shell: readiness gate must wrap club-dependent content as a child so
+ * hooks/useMemo inside do not run before readiness is established.
+ * Gate JSX alone does not protect parent-level club-scoped computations.
+ */
 export default function Players() {
+  const { user } = useAuth();
+  const platformMode = isPlatformAthleteViewer(user?.role);
+
+  return (
+    <PlatformContextReadinessGate requireClub={!platformMode} showClubSwitcher={!platformMode}>
+      <PlayersReadyContent platformMode={platformMode} />
+    </PlatformContextReadinessGate>
+  );
+}
+
+function PlayersReadyContent({ platformMode }) {
   const { activeClubId, activeClub, revision, clubs } = useClub();
   const { can, rbacEnabled, isAuthenticated, user } = useAuth();
-  const platformMode = isPlatformAthleteViewer(user?.role);
+  const explicitClubId = resolveExplicitClubId(activeClubId);
 
   const canViewClubSkillLevels =
     !rbacEnabled ||
     !isAuthenticated ||
     can(PERMISSIONS.SKILL_LEVEL_VIEW_PRIVATE, {
-      clubId: activeClubId,
+      clubId: explicitClubId,
       venueId: activeClub?.venueId || null,
     });
 
   const canViewPlayerSkill = (playerId) =>
     canViewPlayerSkillLevel(
       user,
-      { clubId: activeClubId, playerId },
+      { clubId: explicitClubId, playerId },
       { rbacEnabled }
     );
 
@@ -99,10 +121,10 @@ export default function Players() {
     !rbacEnabled ||
     !isAuthenticated ||
     can(PERMISSIONS.PLAYER_UPDATE, {
-      clubId: activeClubId,
+      clubId: explicitClubId,
       venueId: activeClub?.venueId || null,
     });
-  const [players, setPlayers] = useState(() => normalizePlayers(loadPlayersFromStorage()));
+  const [players, setPlayers] = useState(() => []);
   const [platformWarning, setPlatformWarning] = useState(null);
   const [platformLoading, setPlatformLoading] = useState(false);
   const [clubFilter, setClubFilter] = useState("all");
@@ -145,7 +167,7 @@ export default function Players() {
       return;
     }
 
-    if (!String(activeClubId || "").trim()) {
+    if (!explicitClubId) {
       setPlayers([]);
       return;
     }
@@ -153,7 +175,7 @@ export default function Players() {
     let cancelled = false;
     (async () => {
       if (isCanonicalPlayerRepositoryEnabled()) {
-        const result = await listPlayersForClubAware(activeClubId);
+        const result = await listPlayersForClubAware(explicitClubId);
         if (cancelled) return;
         if (result.ok) {
           setPlayers(normalizePlayers(result.legacyPlayers || []));
@@ -166,7 +188,7 @@ export default function Players() {
           return;
         }
       }
-      const nextPlayers = loadPlayersFromStorage(activeClubId);
+      const nextPlayers = loadPlayersFromStorage(explicitClubId);
       if (!cancelled) {
         setPlayers(normalizePlayers(nextPlayers));
         setPlatformWarning(null);
@@ -176,7 +198,7 @@ export default function Players() {
     return () => {
       cancelled = true;
     };
-  }, [activeClubId, revision, platformMode, loadPlatformPlayers]);
+  }, [explicitClubId, revision, platformMode, loadPlatformPlayers]);
 
   const clubFilterOptions = useMemo(() => {
     if (!platformMode) {
@@ -228,11 +250,11 @@ export default function Players() {
     if (!platformMode) {
       return players;
     }
-    if (!String(activeClubId || "").trim()) {
+    if (!explicitClubId) {
       return [];
     }
-    return loadPlayersForClub(activeClubId);
-  }, [activeClubId, platformMode, revision, players]);
+    return loadPlayersForClub(explicitClubId);
+  }, [explicitClubId, platformMode, revision, players]);
 
   const canManagePlayer = (player) => {
     if (!canManagePlayers) {
@@ -247,17 +269,20 @@ export default function Players() {
       return false;
     }
 
-    return String(player.sourceClubId || "") === String(activeClubId || "");
+    return String(player.sourceClubId || "") === String(explicitClubId || "");
   };
 
-  const checkedInIds = useMemo(
-    () => getTodayCheckedInPlayerIds(activeClubId),
-    [activeClubId, revision, players]
-  );
+  const checkedInIds = useMemo(() => {
+    if (!explicitClubId) {
+      return new Set();
+    }
+    return getTodayCheckedInPlayerIds(explicitClubId);
+  }, [explicitClubId, revision, players]);
 
-  const stats = useMemo(
-    () => computePlayerDashboardStats(scopedPlayers, platformMode ? null : activeClubId),
-    [scopedPlayers, activeClubId, platformMode]
+  const clubIdForStats = explicitClubId;
+  const stats = computePlayerDashboardStats(
+    scopedPlayers,
+    platformMode ? null : clubIdForStats
   );
 
   const filteredPlayers = useMemo(() => {
@@ -272,14 +297,19 @@ export default function Players() {
   }, [scopedPlayers, search, genderFilter, levelRange, statusFilter, checkedInIds]);
 
   const savePlayers = (updatedPlayers) => {
+    if (!explicitClubId) {
+      // Club-scoped mutation requires canonical clubId — never invent a fallback.
+      return;
+    }
+
     if (platformMode) {
-      savePlayersForClub(updatedPlayers, activeClubId);
+      savePlayersForClub(updatedPlayers, explicitClubId);
       void loadPlatformPlayers();
       return;
     }
 
     setPlayers(updatedPlayers);
-    savePlayersForClub(updatedPlayers, activeClubId);
+    savePlayersForClub(updatedPlayers, explicitClubId);
   };
 
   const updateForm = (field, value) => {
@@ -381,8 +411,7 @@ export default function Players() {
   );
 
   return (
-    <PlatformContextReadinessGate requireClub={!platformMode} showClubSwitcher={!platformMode}>
-    <Box>
+    <Box data-testid="players-ready-content">
       <AuthPageHeader
         title={platformMode ? "Vận động viên toàn hệ thống" : "Quản lý người chơi"}
         subtitle={
@@ -477,7 +506,7 @@ export default function Players() {
           <Grid key={player.id} size={{ xs: 12, sm: 6, lg: 4, xl: 3 }}>
             <PlayerCard
               player={player}
-              clubId={platformMode ? player.sourceClubId || activeClubId : activeClubId}
+              clubId={platformMode ? player.sourceClubId || explicitClubId : explicitClubId}
               players={scopedPlayers}
               checkedInIds={checkedInIds}
               canViewSkillLevel={canViewPlayerSkill(player.id)}
@@ -605,6 +634,5 @@ export default function Players() {
         onCancel={() => setDeletePlayer(null)}
       />
     </Box>
-    </PlatformContextReadinessGate>
   );
 }
