@@ -16,6 +16,8 @@ CANONICAL_THEME_CANDIDATE=src/theme/theme.js
 CANONICAL_TOKEN_CANDIDATE=src/theme/designTokens.js
 ```
 
+**Batch 2B Owner lock (implemented):** workspace primary `#3B82F6`, success `#10B981`, font Inter. See `batch-2b/OWNER_DECISIONS.md`.
+
 ---
 
 ## 1. Theme implementations

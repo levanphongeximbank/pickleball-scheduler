@@ -117,12 +117,18 @@ test("phase3 W01 — Inter font loading metadata (no remote CDN)", () => {
   assert.equal(FIGURE1_FONT_LOADING.package, "@fontsource/inter");
   assert.equal(FIGURE1_FONT_LOADING.remoteCdn, false);
   assert.equal(FIGURE1_FONT_LOADING.display, "swap");
-  assert.equal(FIGURE1_FONT_LOADING.loadStrategy, "dynamic-import-on-canonical-shell-mount");
+  // Wave 2B: Inter loads once from main.jsx; shell dynamic-import is readiness-only.
+  assert.equal(FIGURE1_FONT_LOADING.loadStrategy, "root-main-jsx-once");
   assert.ok(FIGURE1_FONT_LOADING.stack.includes("Inter"));
   const shell = readSrc("src/features/canonical-shell/components/CanonicalAppShell.jsx");
   assert.ok(shell.includes('import("../fonts/figure1Fonts.js")'));
   assert.equal(shell.includes('import "../fonts/figure1Fonts.js"'), false);
   assert.ok(shell.includes("data-figure1-font"));
+  const main = readSrc("src/main.jsx");
+  assert.ok(main.includes("@fontsource/inter/400.css"));
+  assert.equal(main.includes("@fontsource/inter/400.css") && main.split("@fontsource/inter/400.css").length === 2, true);
+  const fontsMod = readSrc("src/features/canonical-shell/fonts/figure1Fonts.js");
+  assert.equal(fontsMod.includes("@fontsource/inter/"), false);
   const pkg = JSON.parse(readSrc("package.json"));
   assert.ok(pkg.dependencies["@fontsource/inter"]);
 });

@@ -94,8 +94,8 @@ Court calendar tokens, club entity cards, finance/CRM/billing Unavailable views,
 
 ---
 
-## Owner GO before 2B
-
-1. Workspace primary: **keep `#10B981`** vs **align buttons to Figure 1 `#3B82F6`**.  
-2. Card radius on **base** theme: keep 16 vs **12** to match shell.  
-3. Font: keep **DM Sans body + Inter shell** vs unify.
+| Owner GO before 2B | Status |
+|------|--------|
+| Workspace primary: **keep `#10B981`** vs **align buttons to Figure 1 `#3B82F6`** | **LOCKED:** `#3B82F6` |
+| Card radius on **base** theme: keep 16 vs **12** to match shell | **LOCKED:** large=12 |
+| Font: keep **DM Sans body + Inter shell** vs unify | **LOCKED:** Inter for authenticated workspace |

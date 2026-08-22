@@ -640,5 +640,7 @@
   "tests/tournament-experience-wave-c.test.js",
   "tests/tournament-experience-wave-d.test.js",
   "tests/tournament-experience-wave-e.test.js",
-  "tests/tournament-experience-wave-f.test.js"
+  "tests/tournament-experience-wave-f.test.js",
+  "tests/web-app-wave2-batch2b-foundations-tokens.test.js",
+  "tests/web-app-wave2-batch2b-foundation-a11y.test.js"
 ]

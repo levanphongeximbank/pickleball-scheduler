@@ -1,7 +1,8 @@
 /**
- * Figure 1 design tokens — Canonical Navigation Phase 2.
- * Integrates with existing MUI theme via theme.canonicalNav / theme.figure1.
- * Does not replace Slate Enterprise as the default app palette when the shell flag is OFF.
+ * Figure 1 design tokens — Canonical Navigation Phase 2 (FROZEN shell overlay).
+ * Integrates with authenticated workspace theme via theme.canonicalNav / theme.figure1.
+ * Wave 2B workspace primary aligns to Figure 1 blue (#3B82F6); this file remains the
+ * shell-only token SSOT and must not be redesigned in Wave 2.
  */
 
 export const FIGURE1_DESIGN_DIRECTION = "figure1-canonical-shell";

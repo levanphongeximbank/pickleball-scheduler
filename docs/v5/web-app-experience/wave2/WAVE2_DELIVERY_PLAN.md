@@ -31,12 +31,13 @@ Docs only under `docs/v5/web-app-experience/wave2/`.
 
 ### 2B — Foundations & Tokens
 
-**In:** Extend `designTokens.js` semantic roles (info, surfaceElevated, disabled, focusRing workspace, live optional). Point `theme.js` hardcoded greys at tokens. Optional: Card radius 12 on **base** theme if Owner GO. Add `LAYOUT.contentPaddingMobile: 16`.  
+**STATUS:** IMPLEMENTED (Owner GO) — PR #464  
+**In:** Extended `designTokens.js` semantic roles; primary `#3B82F6` / success `#10B981`; Inter; focus-visible; radius scale; elevation; Wave 1 breakpoint refs.  
 **Out:** No nested extra ThemeProvider. No Figure 1 token rewrite. No Experience token merge. No public lime promotion. No breakpoint change.
 
-**Rollback:** revert two files (`designTokens.js`, `theme.js`).
+See `docs/v5/web-app-experience/wave2/batch-2b/`.
 
-**Tests:** snapshot/freeze token JSON or exported constants; Wave 1 `FIGURE1_BREAKPOINTS` tests still pass unchanged.
+**Rollback:** revert `designTokens.js`, `theme.js`, font glue files.
 
 ### 2C — Shared Primitives
 

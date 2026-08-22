@@ -66,12 +66,12 @@ test("phase2 tokens — Figure 1 navy / blue / layout dimensions", () => {
   assert.ok(FIGURE1_TOKENS.cssVars["--nav-sidebar-bg"]);
 });
 
-test("phase2 theme — figure1 tokens attached without replacing Slate default", () => {
+test("phase2 theme — figure1 tokens attached without replacing workspace default", () => {
   const themeSrc = readSrc("src/theme/theme.js");
   const design = readSrc("src/theme/designTokens.js");
   assert.ok(themeSrc.includes("canonicalNav"));
   assert.ok(themeSrc.includes("figure1"));
-  assert.ok(design.includes("slate-enterprise"));
+  assert.ok(design.includes("authenticated-workspace-v2") || design.includes("slate-enterprise"));
   assert.equal(/sidebarBg: "#0F1B2D"/.test(design), false);
 });
 
