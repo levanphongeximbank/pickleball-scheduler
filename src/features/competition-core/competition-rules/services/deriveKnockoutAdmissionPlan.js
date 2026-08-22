@@ -125,6 +125,11 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
         entrant.targetStage || admission.directKnockoutEntry.targetStage || null,
     })
   );
+  const policyTargetStage = admission.directKnockoutEntry.targetStage;
+  const unresolvedDirectSlotCount = Math.max(
+    0,
+    admission.directKnockoutEntry.count - directEntrants.length
+  );
 
   if (
     admission.directKnockoutEntry.enabled ||
@@ -147,14 +152,8 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
       );
     }
 
-    const policyTargetStage = admission.directKnockoutEntry.targetStage;
-    const unresolvedSlotCount = Math.max(
-      0,
-      admission.directKnockoutEntry.count - directEntrants.length
-    );
-
     // Unresolved slots require an unambiguous policy-level default targetStage
-    if (unresolvedSlotCount > 0) {
+    if (unresolvedDirectSlotCount > 0) {
       if (
         policyTargetStage == null ||
         !Object.values(KNOCKOUT_ENTRY_ROUND).includes(policyTargetStage)
@@ -165,7 +164,7 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
             message:
               "directKnockoutEntry.targetStage required when unresolved direct slots remain",
             details: Object.freeze({
-              unresolvedSlotCount,
+              unresolvedSlotCount: unresolvedDirectSlotCount,
               targetStage: policyTargetStage,
             }),
           })
@@ -346,6 +345,9 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
     const accountingResult = deriveLaterStageDirectSlotAccounting({
       bracketWideEntryRound: bracketEntryRound,
       entrants: resolvedDirectEntrants,
+      unresolvedDirectSlotCount,
+      unresolvedTargetStage: policyTargetStage,
+      configuredDirectSlotCount: admission.directKnockoutEntry.count,
     });
     if (!accountingResult.ok) {
       issues.push(
@@ -419,10 +421,7 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
        */
       bracketWideEntryRound: bracketEntryRound,
       entrants: Object.freeze(resolvedDirectEntrants),
-      unresolvedSlotCount: Math.max(
-        0,
-        admission.directKnockoutEntry.count - directEntrants.length
-      ),
+      unresolvedSlotCount: unresolvedDirectSlotCount,
       /**
        * Full later-stage DIRECT remains deferred.
        * First-playable (effectiveTargetStage == bracketWideEntryRound) is

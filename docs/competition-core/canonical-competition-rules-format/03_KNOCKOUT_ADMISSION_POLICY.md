@@ -102,19 +102,38 @@ laterStageDirect: {
   requiredEntrantsByStage,
   firstPlayableRequiredEntrants,
   firstPlayableDirectEntryCount,
+  firstPlayableDirectSlotCount,
   laterStageDirectEntryCount,
+  laterStageDirectSlotCount,
   resolvedDirectEntryCount,
+  unresolvedDirectSlotCount,
+  configuredDirectSlotCount,
+  reservationAccountingComplete: true,
   topologyValid,
   admissionOnly: true,
   placementIncluded: false,
 }
 ```
 
-`reservationsByStage` contains only DIRECT entrants targeting a stage strictly
-later than `bracketWideEntryRound`. A DIRECT entrant targeting the bracket-wide
-round remains first-playable DIRECT and is counted by
-`firstPlayableDirectEntryCount`. Every resolved DIRECT `entryId` is counted
-exactly once across those categories.
+`reservationsByStage` contains all configured DIRECT slots targeting a stage
+strictly later than `bracketWideEntryRound`. Resolved entrants use their
+`effectiveTargetStage`; unresolved slots use the required unambiguous policy
+`targetStage` without inventing an `entryId`. A DIRECT slot targeting the
+bracket-wide round remains first-playable and is counted by
+`firstPlayableDirectSlotCount`.
+
+The accounting invariant is:
+
+```text
+sum(later-stage reservationsByStage)
+  + firstPlayableDirectSlotCount
+  = configuredDirectSlotCount
+
+configuredDirectSlotCount
+  = resolvedDirectEntryCount + unresolvedDirectSlotCount
+```
+
+Execution continues to deny unresolved DIRECT identities.
 
 Fail-closed constraints:
 

@@ -37,7 +37,10 @@ function nominalStageCapacity(stage) {
  *
  * @param {{
  *   bracketWideEntryRound: string,
- *   entrants?: Array<{ entryId?: string, effectiveTargetStage?: string, targetStage?: string }>
+ *   entrants?: Array<{ entryId?: string, effectiveTargetStage?: string, targetStage?: string }>,
+ *   unresolvedDirectSlotCount?: number,
+ *   unresolvedTargetStage?: string|null,
+ *   configuredDirectSlotCount?: number
  * }} input
  */
 export function deriveLaterStageDirectSlotAccounting(input = {}) {
@@ -51,10 +54,34 @@ export function deriveLaterStageDirectSlotAccounting(input = {}) {
 
   const stages = KNOCKOUT_ENTRY_ROUND_ORDER.slice(bracketRank);
   const entrants = Array.isArray(input.entrants) ? input.entrants : [];
+  const unresolvedDirectSlotCount = Number(
+    input.unresolvedDirectSlotCount ?? 0
+  );
+  const configuredDirectSlotCount = Number(
+    input.configuredDirectSlotCount ??
+      entrants.length + unresolvedDirectSlotCount
+  );
+  if (
+    !Number.isInteger(unresolvedDirectSlotCount) ||
+    unresolvedDirectSlotCount < 0 ||
+    !Number.isInteger(configuredDirectSlotCount) ||
+    configuredDirectSlotCount < 0 ||
+    configuredDirectSlotCount !==
+      entrants.length + unresolvedDirectSlotCount
+  ) {
+    return fail("Configured DIRECT slot counts are inconsistent", {
+      resolvedDirectEntryCount: entrants.length,
+      unresolvedDirectSlotCount,
+      configuredDirectSlotCount,
+    });
+  }
+
   const seenEntryIds = new Set();
   const reservations = Object.fromEntries(stages.map((stage) => [stage, 0]));
   let firstPlayableDirectEntryCount = 0;
+  let firstPlayableDirectSlotCount = 0;
   let laterStageDirectEntryCount = 0;
+  let laterStageDirectSlotCount = 0;
 
   for (const entrant of entrants) {
     const entryId = String(entrant?.entryId || "").trim();
@@ -87,11 +114,45 @@ export function deriveLaterStageDirectSlotAccounting(input = {}) {
 
     if (targetStage === bracketWideEntryRound) {
       firstPlayableDirectEntryCount += 1;
+      firstPlayableDirectSlotCount += 1;
       continue;
     }
 
     reservations[targetStage] += 1;
     laterStageDirectEntryCount += 1;
+    laterStageDirectSlotCount += 1;
+  }
+
+  if (unresolvedDirectSlotCount > 0) {
+    const unresolvedTargetStage = input.unresolvedTargetStage || null;
+    if (!Object.values(KNOCKOUT_ENTRY_ROUND).includes(unresolvedTargetStage)) {
+      return fail(
+        "Valid policy targetStage required for unresolved DIRECT slot accounting",
+        { unresolvedDirectSlotCount, targetStage: unresolvedTargetStage }
+      );
+    }
+    if (
+      !isDirectEntryTargetStageCompatible(
+        unresolvedTargetStage,
+        bracketWideEntryRound
+      )
+    ) {
+      return fail(
+        "Unresolved DIRECT targetStage cannot be earlier than bracketWideEntryRound",
+        {
+          unresolvedDirectSlotCount,
+          targetStage: unresolvedTargetStage,
+          bracketWideEntryRound,
+        }
+      );
+    }
+
+    if (unresolvedTargetStage === bracketWideEntryRound) {
+      firstPlayableDirectSlotCount += unresolvedDirectSlotCount;
+    } else {
+      reservations[unresolvedTargetStage] += unresolvedDirectSlotCount;
+      laterStageDirectSlotCount += unresolvedDirectSlotCount;
+    }
   }
 
   const required = Object.fromEntries(stages.map((stage) => [stage, 0]));
@@ -144,13 +205,24 @@ export function deriveLaterStageDirectSlotAccounting(input = {}) {
     }
   }
 
+  const accountedDirectSlotCount =
+    Object.values(reservations).reduce((sum, count) => sum + count, 0) +
+    firstPlayableDirectSlotCount;
+  if (accountedDirectSlotCount !== configuredDirectSlotCount) {
+    return fail("DIRECT slot accounting must include every configured slot", {
+      accountedDirectSlotCount,
+      configuredDirectSlotCount,
+      behavior: "FAIL_CLOSED",
+    });
+  }
+
   return Object.freeze({
     ok: true,
     code: null,
     message: null,
     details: Object.freeze({}),
     accounting: Object.freeze({
-      enabled: laterStageDirectEntryCount > 0,
+      enabled: laterStageDirectSlotCount > 0,
       bracketWideEntryRound,
       accountingDirection: "BACKWARD_FROM_FINAL",
       finalRequiredSlots: FINAL_REQUIRED_SLOTS,
@@ -158,8 +230,13 @@ export function deriveLaterStageDirectSlotAccounting(input = {}) {
       requiredEntrantsByStage: freezeStageCounts(stages, required),
       firstPlayableRequiredEntrants: required[bracketWideEntryRound],
       firstPlayableDirectEntryCount,
+      firstPlayableDirectSlotCount,
       laterStageDirectEntryCount,
+      laterStageDirectSlotCount,
       resolvedDirectEntryCount: entrants.length,
+      unresolvedDirectSlotCount,
+      configuredDirectSlotCount,
+      reservationAccountingComplete: true,
       topologyValid: true,
       admissionOnly: true,
       placementIncluded: false,
