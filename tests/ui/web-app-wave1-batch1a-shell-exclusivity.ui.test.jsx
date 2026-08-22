@@ -39,6 +39,10 @@ function AuthedAppRoutes() {
       <Route element={<MainLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/tournament" element={<div data-testid="tournament-center-body">Tournament Center</div>} />
+        <Route
+          path="/coming-soon/:moduleKey"
+          element={<div data-testid="coming-soon-body">Coming Soon Placeholder</div>}
+        />
       </Route>
     </Routes>
   );
@@ -174,6 +178,44 @@ describe("Wave 1 Batch 1A — shell exclusivity", () => {
     expect(typeof access.resolveTournamentExperienceRoutePermissions).toBe("function");
     expect(access.isTournamentExperiencePublicPath("/tournament/t1/public")).toBe(true);
     expect(access.isTournamentExperienceOrganizerPath("/tournament/t1/overview")).toBe(true);
+  });
+
+  it("Coming Soon under MainLayout — flag ON canonical only, no double chrome", async () => {
+    vi.stubEnv("VITE_CANONICAL_APP_SHELL_ENABLED", "true");
+
+    render(
+      <ShellProviders initialPath="/coming-soon/tech-diagnostics">
+        <AuthedAppRoutes />
+      </ShellProviders>
+    );
+
+    expect(await screen.findByTestId("canonical-app-shell")).toBeInTheDocument();
+    expect(screen.queryByTestId("legacy-app-shell")).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("canonical-app-shell")).toHaveLength(1);
+    expect(screen.getAllByTestId("canonical-topbar")).toHaveLength(1);
+    expect(screen.getByTestId("coming-soon-body")).toBeInTheDocument();
+  });
+
+  it("Coming Soon under MainLayout — flag OFF legacy only", async () => {
+    vi.stubEnv("VITE_CANONICAL_APP_SHELL_ENABLED", "false");
+
+    render(
+      <ShellProviders initialPath="/coming-soon/tech-error-log">
+        <AuthedAppRoutes />
+      </ShellProviders>
+    );
+
+    expect(await screen.findByTestId("legacy-app-shell")).toBeInTheDocument();
+    expect(screen.queryByTestId("canonical-app-shell")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("canonical-topbar")).not.toBeInTheDocument();
+    expect(screen.getByTestId("coming-soon-body")).toBeInTheDocument();
+  });
+
+  it("Coming Soon auth contract unchanged — empty route permissions (menu-gated)", async () => {
+    const { getRouteAccessPermissions, canAccessRoute } = await import("../../src/auth/menuAccess.js");
+    expect(getRouteAccessPermissions("/coming-soon/tech-diagnostics")).toEqual([]);
+    expect(getRouteAccessPermissions("/coming-soon/anything")).toEqual([]);
+    expect(canAccessRoute(() => false, "/coming-soon/tech-diagnostics")).toBe(true);
   });
 
   it("SIMULTANEOUS_APP_SHELL_RENDER=NO on dashboard and tournament center", async () => {

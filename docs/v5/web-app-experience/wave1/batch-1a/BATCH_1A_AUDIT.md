@@ -36,24 +36,25 @@ ROLLBACK_PATH_PRESERVED=YES
 
 - Auth: `/login`, `/forgot-password`, `/reset-password`, `/change-password`
 - Access: `/403`
-- Coming soon placeholder: `/coming-soon/:moduleKey` *(chrome-less; see bypass note)*
 - Referee token: `/referee/:token`
 - Public Experience: `/tournament/:tournamentId/public`
 - Public catalog: `/`, `/home`, `/public/tournaments`, `/clubs`, `/courts`, `/rankings`, `/news`, …
 - Redirect: `/onboarding/pick-vn-rating` → skill assessment
 
+Authenticated Coming Soon placeholder is **inside** MainLayout (adjudication).
+
 ### Authenticated business routes
 
 All normal authenticated business routes nest under `<Route element={<MainLayout />}>` in `src/router.jsx` (dashboard, tournament hubs/experience, settings, billing, court-management, mobile ops, etc.).
 
-### Bypass inventory (report-only — no architecture relocate in 1A)
+### Bypass inventory (after adjudication)
 
 ```
-AUTHENTICATED_MAINLAYOUT_BYPASS_COUNT=1
-AUTHENTICATED_MAINLAYOUT_BYPASS_ROUTES=/coming-soon/:moduleKey
+AUTHENTICATED_MAINLAYOUT_BYPASS_COUNT=0
+AUTHENTICATED_MAINLAYOUT_BYPASS_ROUTES=
 ```
 
-`MASTER_ROUTE_INVENTORY` lists Coming Soon as AUTH with Layout=MainLayout, but the live router mounts it **outside** MainLayout as a chrome-less placeholder. Batch 1A does **not** move it (Owner architecture stop for IA). Flag for Batch 1B+ Owner decision if chrome should wrap it.
+`/coming-soon/:moduleKey` adjudicated **INSIDE_MAINLAYOUT** (authenticated menu placeholder). See `COMING_SOON_BYPASS_ADJUDICATION.md`.
 
 ## MainLayout exclusivity
 

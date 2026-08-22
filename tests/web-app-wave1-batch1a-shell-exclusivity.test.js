@@ -25,7 +25,6 @@ const INTENTIONAL_OUTSIDE_MAINLAYOUT = [
   "/reset-password",
   "/change-password",
   "/403",
-  "/coming-soon/:moduleKey",
   "/referee/:token",
   "/tournament/:tournamentId/public",
   "/",
@@ -111,15 +110,20 @@ test("batch1a router — authenticated business routes under MainLayout; intenti
     'path="/reset-password"',
     'path="/change-password"',
     'path="/403"',
-    'path="/coming-soon/:moduleKey"',
     'path="/referee/:token"',
     'path="/tournament/:tournamentId/public"',
   ]) {
     assert.ok(beforeMain.includes(route), `expected intentional outside: ${route}`);
   }
+  assert.equal(
+    beforeMain.includes('path="/coming-soon/:moduleKey"'),
+    false,
+    "coming-soon must not bypass MainLayout"
+  );
 
   // Core authenticated business routes must be inside MainLayout group.
   for (const route of [
+    'path="/coming-soon/:moduleKey"',
     'path="/dashboard"',
     'path="/tournament"',
     'path="/tournament/list"',
@@ -136,26 +140,26 @@ test("batch1a router — authenticated business routes under MainLayout; intenti
     );
   }
 
-  // Documented intentional outsides (includes Coming Soon as pre-existing chrome-less placeholder).
-  assert.deepEqual(
-    INTENTIONAL_OUTSIDE_MAINLAYOUT.filter((r) => r.includes("coming-soon")),
-    ["/coming-soon/:moduleKey"]
+  assert.equal(
+    INTENTIONAL_OUTSIDE_MAINLAYOUT.some((r) => r.includes("coming-soon")),
+    false
   );
 });
 
-test("batch1a authenticated MainLayout bypass inventory — Coming Soon only", () => {
-  // Inventory (MASTER_ROUTE_INVENTORY) lists Coming Soon as AUTH with Layout=MainLayout,
-  // but router mounts it outside MainLayout as a chrome-less placeholder.
-  // Batch 1A does not relocate it (architecture freeze for IA/menu). Report only.
-  const AUTHENTICATED_MAINLAYOUT_BYPASS_COUNT = 1;
-  const AUTHENTICATED_MAINLAYOUT_BYPASS_ROUTES = ["/coming-soon/:moduleKey"];
-  assert.equal(AUTHENTICATED_MAINLAYOUT_BYPASS_COUNT, 1);
-  assert.deepEqual(AUTHENTICATED_MAINLAYOUT_BYPASS_ROUTES, ["/coming-soon/:moduleKey"]);
+test("batch1a authenticated MainLayout bypass inventory — empty after Coming Soon adjudication", () => {
+  const AUTHENTICATED_MAINLAYOUT_BYPASS_COUNT = 0;
+  const AUTHENTICATED_MAINLAYOUT_BYPASS_ROUTES = [];
+  assert.equal(AUTHENTICATED_MAINLAYOUT_BYPASS_COUNT, 0);
+  assert.deepEqual(AUTHENTICATED_MAINLAYOUT_BYPASS_ROUTES, []);
 
   const router = readSrc("src/router.jsx");
   const mainIdx = router.indexOf("element={<MainLayout />}");
   const comingIdx = router.indexOf('path="/coming-soon/:moduleKey"');
-  assert.ok(comingIdx >= 0 && comingIdx < mainIdx);
+  assert.ok(comingIdx > mainIdx, "coming-soon nested under MainLayout");
+
+  // Auth contract for Coming Soon remains empty-permission (menu-gated), not redesigned.
+  const menuAccess = readSrc("src/auth/menuAccess.js");
+  assert.match(menuAccess, /pathname\.startsWith\("\/coming-soon"\)[\s\S]*?return \[\];/);
 });
 
 test("batch1a frozen Tournament Experience chrome files untouched by shell exclusivity", () => {

@@ -504,7 +504,6 @@ export default function Router() {
             <Route path="/change-password" element={<ForceChangePasswordPage />} />
 
             <Route path="/403" element={<ForbiddenPage />} />
-            <Route path="/coming-soon/:moduleKey" element={<ComingSoonPage />} />
 
             <Route path="/referee/:token" element={<RefereeScoreboard />} />
 
@@ -534,6 +533,9 @@ export default function Router() {
             />
 
             <Route element={<MainLayout />}>
+
+            {/* Batch 1A adjudication: authenticated Coming Soon placeholder uses app chrome. */}
+            <Route path="/coming-soon/:moduleKey" element={<ComingSoonPage />} />
 
             <Route path="/dashboard" element={<Dashboard />} />
             <Route
