@@ -98,7 +98,7 @@ test("wave4 mobile layout — context/org hidden; search bounded; no overflow co
   assert.equal(result.ok, true, JSON.stringify(result.collisions));
   assert.equal(result.styles.context.visible, false);
   assert.equal(result.styles.organization.visible, false);
-  assert.equal(result.styles.search.maxWidth, 160);
+  assert.equal(result.styles.search.maxWidth, 132);
   assert.equal(result.styles.toolbar.overflowX, "hidden");
 });
 

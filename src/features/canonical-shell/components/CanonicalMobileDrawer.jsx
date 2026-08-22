@@ -22,6 +22,7 @@ import {
   resolveCanonicalRouteHub,
   assertNoActivePlaceholder,
 } from "../services/resolveCanonicalRouteParams.js";
+import CanonicalMobileDrawerContext from "./CanonicalMobileDrawerContext.jsx";
 
 /**
  * Mobile drawer with Level-1 → Level-2 → Level-3 drill-down + focus restore.
@@ -188,6 +189,8 @@ export default function CanonicalMobileDrawer({ menuGroups = [] }) {
             {title}
           </Typography>
         </Box>
+
+        {stack.length === 0 ? <CanonicalMobileDrawerContext /> : null}
 
         <List
           component="nav"

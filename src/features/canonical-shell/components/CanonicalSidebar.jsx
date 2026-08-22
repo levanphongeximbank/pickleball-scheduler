@@ -33,6 +33,9 @@ export default function CanonicalSidebar({ menuGroups = [] }) {
     <Drawer
       variant="permanent"
       open
+      data-testid="canonical-sidebar"
+      data-sidebar-collapsed={sidebarCollapsed ? "true" : "false"}
+      data-sidebar-width={String(width)}
       sx={{
         width,
         flexShrink: 0,

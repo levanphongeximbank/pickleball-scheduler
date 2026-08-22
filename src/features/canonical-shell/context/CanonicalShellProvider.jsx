@@ -8,15 +8,30 @@ export default function CanonicalShellProvider({ children }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isTablet = useMediaQuery(theme.breakpoints.between("md", "lg"));
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  /**
+   * Batch 1D — sidebar collapse:
+   * - null = viewport default (tablet → rail; desktop → expanded)
+   * - boolean = session user override (no new persistence key)
+   */
+  const [sidebarCollapsedOverride, setSidebarCollapsedOverride] = useState(null);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [expandedLevel1, setExpandedLevel1] = useState(() => new Set());
   const [expandedLevel2, setExpandedLevel2] = useState(() => new Set());
   const menuTriggerRef = useRef(null);
 
+  const viewportDefaultCollapsed = Boolean(isTablet) && !isMobile;
+  const sidebarCollapsed = isMobile
+    ? false
+    : sidebarCollapsedOverride === null
+      ? viewportDefaultCollapsed
+      : sidebarCollapsedOverride;
+
   const toggleSidebarCollapsed = useCallback(() => {
-    setSidebarCollapsed((prev) => !prev);
-  }, []);
+    setSidebarCollapsedOverride((prev) => {
+      const current = prev === null ? viewportDefaultCollapsed : prev;
+      return !current;
+    });
+  }, [viewportDefaultCollapsed]);
 
   const openMobileDrawer = useCallback(() => setMobileDrawerOpen(true), []);
   const closeMobileDrawer = useCallback(() => setMobileDrawerOpen(false), []);
@@ -48,7 +63,7 @@ export default function CanonicalShellProvider({ children }) {
       isMobile,
       isTablet,
       isDesktop: !isMobile && !isTablet,
-      sidebarCollapsed: isMobile ? false : sidebarCollapsed,
+      sidebarCollapsed,
       toggleSidebarCollapsed,
       mobileDrawerOpen,
       openMobileDrawer,

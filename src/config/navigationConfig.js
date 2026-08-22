@@ -684,7 +684,7 @@ export const MOBILE_BOTTOM_NAV_PROFILES = Object.freeze({
       path: "/mobile/check-in",
       iconKey: "checkin",
       permissions: [PERMISSIONS.TOURNAMENT_VIEW],
-      excludeRoles: [ROLES.PLAYER],
+      excludeRoles: [ROLES.PLAYER, ROLES.CASHIER],
     },
     {
       key: "tournament",
