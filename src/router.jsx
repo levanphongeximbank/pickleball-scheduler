@@ -288,11 +288,13 @@ const TournamentDirectorMode = lazy(() => import("./pages/tournament/TournamentD
 
 const TournamentEnginePage = lazy(() => import("./pages/tournament/TournamentEnginePage"));
 
-const RefereeScoreboard = lazy(() => import("./pages/referee/RefereeScoreboard"));
+const LegacyRefereeTokenRetirementPage = lazy(
+  () => import("./pages/referee/LegacyRefereeTokenRetirementPage")
+);
 
 const RefereeHub = lazy(() => import("./pages/referee/RefereeHub"));
 
-const RefereeV5TeamMatchPage = lazy(() => import("./pages/referee/RefereeV5TeamMatchPage"));
+const RefereeCanonicalMatchPage = lazy(() => import("./pages/referee/RefereeCanonicalMatchPage"));
 
 const CourtEnginePage = lazy(() => import("./pages/CourtEnginePage"));
 
@@ -505,7 +507,11 @@ export default function Router() {
 
             <Route path="/403" element={<ForbiddenPage />} />
 
-            <Route path="/referee/:token" element={<RefereeScoreboard />} />
+            {/* Legacy token path: isolated — no production scoring/assignment authority */}
+            <Route
+              path="/referee/:token"
+              element={<LegacyRefereeTokenRetirementPage />}
+            />
 
             <Route element={<PublicTournamentExperienceLayout />}>
               <Route
@@ -589,7 +595,7 @@ export default function Router() {
 
             <Route path="/referee" element={<RefereeHub />} />
 
-            <Route path="/referee/match/:matchId" element={<RefereeV5TeamMatchPage />} />
+            <Route path="/referee/match/:matchId" element={<RefereeCanonicalMatchPage />} />
 
             <Route path="/courts-ops" element={<Navigate to="/court-management/courts" replace />} />
 

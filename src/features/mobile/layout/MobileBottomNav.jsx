@@ -11,6 +11,7 @@ import { filterMobileBottomNav } from "../services/mobileNavAccess.js";
 import { resolveRouteAccessScope } from "../../../auth/menuAccess.js";
 import { useMobileNav } from "../context/mobileNavContext.js";
 import { isNavItemActive } from "../../../components/nav/navPathMatchers.js";
+import { isRefereeWorkspaceRoute } from "../../referee-production-ui/application/isRefereeWorkspaceRoute.js";
 
 function isNavActive(currentPath, item) {
   if (item.action) {
@@ -46,6 +47,11 @@ export default function MobileBottomNav() {
   );
 
   if (!isMobile) {
+    return null;
+  }
+
+  // Dedicated referee workspace — do not consume match/assignment viewport.
+  if (isRefereeWorkspaceRoute(location.pathname)) {
     return null;
   }
 

@@ -14,6 +14,7 @@ import {
   REFEREE_ADAPTER_ERROR_CODE,
   REFEREE_V5_INTERNAL_COMMIT_RPC,
 } from "./constants.js";
+import { REFEREE_DURABLE_RUNTIME_ERROR_CODE } from "./durableRuntimeErrorCodes.js";
 import { failRefereeAdapter } from "./errors.js";
 import { freezeClone, hashCanonical, isNonEmptyString, matchStateId } from "./helpers.js";
 import { assertServerOnlyPrivilegedRefereeComposition } from "./privilegedCompositionBoundary.js";
@@ -64,6 +65,11 @@ function mapLiveRow(row) {
     status: row.status,
     teamAId: row.team_a_id,
     teamBId: row.team_b_id,
+    servingPlayerId: row.serving_player_id || null,
+    receivingPlayerId: row.receiving_player_id || null,
+    servingTeamId: row.serving_team_id || null,
+    serverNumber: row.server_number == null ? null : Number(row.server_number),
+    courtOrientation: row.court_orientation || null,
     statePayload: row.state_payload || null,
     stateHash: row.state_hash || null,
     updatedAt: row.updated_at || null,
@@ -275,49 +281,17 @@ export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
     return mapLiveRow(data) || (await getLiveState({ tenantId, competitionId, matchId }));
   }
 
-  async function upsertAssignment(row, actor) {
-    const actorId = requireCanonicalRefereeActor(actor);
-    const tenantId = String(row.tenantId || "").trim();
-    const competitionId = String(row.competitionId || row.tournamentId || "").trim();
-    const matchId = String(row.matchId || "").trim();
-    const refereeUserId = String(row.refereeUserId || row.refereeId || "").trim();
-    if (!tenantId || !competitionId || !matchId || !refereeUserId) {
-      failRefereeAdapter(
-        REFEREE_ADAPTER_ERROR_CODE.MALFORMED_CONTEXT,
-        "Assignment requires tenant, competition, match, refereeUserId",
-        {}
-      );
-    }
-    const status = String(row.status || "active");
-    const { data, error } = await rpcClient
-      .from(CANONICAL_REFEREE_PERSISTENCE_TABLES.ASSIGNMENTS)
-      .upsert(
-        {
-          tenant_id: tenantId,
-          tournament_id: competitionId,
-          match_id: matchId,
-          referee_user_id: refereeUserId,
-          referee_display_name: row.refereeDisplayName || "CE Adapter B Cert",
-          role: row.role || "REFEREE",
-          status,
-          assigned_by: actorId,
-          assigned_at: clockIso,
-          expires_at: row.expiresAt || null,
-          revoked_at: status === "revoked" ? clockIso : null,
-          version: Number(row.version || 1),
-        },
-        { onConflict: "tenant_id,tournament_id,match_id,role,referee_user_id" }
-      )
-      .select("*")
-      .maybeSingle();
-    if (error) {
-      failRefereeAdapter(
-        REFEREE_ADAPTER_ERROR_CODE.DURABLE_DEPENDENCY_REQUIRED,
-        error.message || "Failed to upsert referee_assignments",
-        {}
-      );
-    }
-    return mapAssignmentRow(data);
+  async function upsertAssignment() {
+    // CORE-13 is the sole assignment mutation authority. LiveRpc may READ
+    // referee_assignments for projections; product-path table DML is denied.
+    failRefereeAdapter(
+      REFEREE_DURABLE_RUNTIME_ERROR_CODE.DIRECT_ASSIGNMENT_MUTATION_FORBIDDEN,
+      "Direct referee_assignments upsert is denied — CORE-13 command authority only",
+      {
+        directAssignmentTableDml: "DENY",
+        assignmentAuthority: "CORE-13",
+      }
+    );
   }
 
   async function listByCompetition({ tenantId, competitionId }) {
@@ -415,6 +389,7 @@ export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
   }
 
   async function commitTransition(input, actor) {
+    const tPrepare0 = Date.now();
     const actorId = requireCanonicalRefereeActor(actor);
     const tenantId = String(input.tenantId || "").trim();
     const competitionId = String(input.competitionId || input.tournamentId || "").trim();
@@ -428,7 +403,7 @@ export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
       );
     }
 
-    let live = await getLiveState({ tenantId, competitionId, matchId });
+    let live = input.currentLive || (await getLiveState({ tenantId, competitionId, matchId }));
     if (!live) {
       live = await ensureLiveState(
         {
@@ -472,7 +447,9 @@ export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
         nextState: input.nextState || {},
         status: input.status || input.nextState?.status || null,
       });
+    const commitPrepareMs = Date.now() - tPrepare0;
 
+    const tRpc0 = Date.now();
     const { data, error } = await rpcClient.rpc(
       REFEREE_V5_INTERNAL_COMMIT_RPC.COMMIT_TRANSITION,
       {
@@ -497,6 +474,7 @@ export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
         p_state_before: input.stateBefore || live.statePayload || null,
       }
     );
+    const commitRpcMs = Date.now() - tRpc0;
     if (error) {
       failRefereeAdapter(
         REFEREE_ADAPTER_ERROR_CODE.DURABLE_DEPENDENCY_REQUIRED,
@@ -506,13 +484,42 @@ export function createLiveRpcCanonicalRefereeDurableDriver(options = {}) {
     }
     if (data?.ok === false) mapRpcFailure(data);
 
-    const refreshed = await getLiveState({ tenantId, competitionId, matchId });
+    // Reuse committed nextState — avoid a post-write live round-trip when CAS succeeded.
+    const committedLive = freezeClone({
+      ...(live || {}),
+      tenantId,
+      competitionId,
+      matchId,
+      status: nextState.status || live?.status || null,
+      statePayload: nextState,
+      stateVersion: Number(data?.stateVersion ?? nextVersion),
+      version: Number(data?.stateVersion ?? nextVersion),
+      lastEventSequence: Number(data?.lastEventSequence ?? nextSequence),
+    });
+
+    // Existing referee_v5_commit_match_transition RPC already folds event append,
+    // live state update, and sync mutation into one atomic network round-trip.
+    // No app-level sequential writes; do not fabricate fake atomicity.
+    const commitSubphases = Object.freeze({
+      COMMIT_PREPARE_MS: commitPrepareMs,
+      COMMIT_RPC_MS: commitRpcMs,
+      COMMIT_EVENT_WRITE_MS: 0,
+      COMMIT_LIVE_STATE_MS: 0,
+      COMMIT_RESULT_REVISION_MS: 0,
+      COMMIT_ASSIGNMENT_UPSERT_MS: 0,
+      COMMIT_SYNC_MUTATION_MS: 0,
+      COMMIT_POST_READ_MS: 0,
+      COMMIT_ATOMIC_RPC: REFEREE_V5_INTERNAL_COMMIT_RPC.COMMIT_TRANSITION,
+      NOTE: "event/live/sync folded inside existing COMMIT_TRANSITION RPC; no schema work",
+    });
+
     return freezeClone({
       ok: true,
       duplicate: Boolean(data?.duplicate),
-      live: refreshed,
+      live: committedLive,
       stateVersion: Number(data?.stateVersion ?? nextVersion),
       lastEventSequence: Number(data?.lastEventSequence ?? nextSequence),
+      commitSubphases,
       event: {
         eventType: input.eventType || "E2E04_OPS_COMMIT",
         eventSequence: Number(data?.lastEventSequence ?? nextSequence),

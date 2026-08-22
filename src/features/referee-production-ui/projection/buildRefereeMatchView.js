@@ -1,0 +1,583 @@
+/**
+ * RefereeMatchView — projection only. Not a second authority.
+ */
+
+import { MATCH_STATUS } from "../../competition-core/matches/index.js";
+import { SCORING_SYSTEM } from "../../competition-core/scoring/index.js";
+import { REFEREE_ACTION } from "../../competition-engine/operations/referee/constants.js";
+import { formatScoringPolicyLabel } from "./formatScoringPolicyLabel.js";
+import { projectCanonicalCourtView } from "./projectCanonicalCourtView.js";
+import { deriveCourtPresentation } from "./deriveCourtPresentation.js";
+import { projectResultStatus } from "./resultStatus.js";
+import { projectMatchOperationHistory } from "./projectMatchOperationHistory.js";
+import {
+  formatCompetitionDisplayName,
+  formatCompetitionModeLabel,
+  formatCourtLabel,
+  formatMatchStatusLabel,
+  formatParticipantDisplayName,
+} from "./formatRefereeUiLabels.js";
+import { resolveAuthoritativeMatchLifecycle } from "./resolveAuthoritativeMatchLifecycle.js";
+import { resolveRefereeSideDisplay } from "./resolveRefereeSideDisplay.js";
+import {
+  formatLogicalCourtPositionLabel,
+  projectCompetitionMatchFormat,
+  validateContentRosterConsistency,
+  REFEREE_MATCH_FORMAT,
+} from "./projectCompetitionMatchFormat.js";
+
+function allowed(projection, action) {
+  return (projection?.allowedActions || []).some((row) => row.action === action);
+}
+
+function readCompletedGames(scoreProjection) {
+  const fromProjection = scoreProjection?.completedGames;
+  const fromState = scoreProjection?.scoringState?.completedGames;
+  const rows = Array.isArray(fromProjection)
+    ? fromProjection
+    : Array.isArray(fromState)
+      ? fromState
+      : [];
+  return rows
+    .map((game, index) => {
+      const sideA = Number(game?.SIDE_A ?? game?.sideA ?? game?.a);
+      const sideB = Number(game?.SIDE_B ?? game?.sideB ?? game?.b);
+      if (!Number.isFinite(sideA) || !Number.isFinite(sideB)) return null;
+      return Object.freeze({
+        gameNumber: Number(game?.gameIndex ?? index) + 1,
+        sideA,
+        sideB,
+        winnerSide: game?.winnerSide || null,
+      });
+    })
+    .filter(Boolean);
+}
+
+function playerNamesForSide(side, names) {
+  return resolveRefereeSideDisplay(side, names).memberNames;
+}
+
+/**
+ * @param {{
+ *   matchId: string,
+ *   competitionMode: string,
+ *   adapterSelected: string,
+ *   competitionContext?: object|null,
+ *   matchContext?: object|null,
+ *   participants?: object|null,
+ *   scoringRules?: object|null,
+ *   lifecyclePolicy?: object|null,
+ *   capabilities?: object|null,
+ *   assignedMatch?: object|null,
+ *   operationsProjection?: object|null,
+ *   courtState?: object|null,
+ *   modeState?: object|null,
+ *   participantNames?: Record<string, string|object>,
+ *   expectedVersion?: number,
+ *   pendingCanonicalAction?: string|null,
+ *   stale?: boolean,
+ *   preStart?: object|null,
+ *   undoAvailability?: { undoAvailable?: boolean, reasonCode?: string|null, message?: string|null }|null,
+ *   scoreSession?: object|null,
+ * }} input
+ */
+export function buildRefereeMatchView(input) {
+  const assigned = input.assignedMatch || {};
+  const match = assigned.match || {};
+  const competition = input.competitionContext || {};
+  const matchContext = input.matchContext || {};
+  const scoringRules = input.scoringRules || assigned.scoreProjection?.format || null;
+  const lifecyclePolicy = input.lifecyclePolicy || {};
+  const capabilities = input.capabilities || {};
+  const projection = input.operationsProjection || {};
+  const scoreProjection = assigned.scoreProjection || null;
+  const matchStatus = resolveAuthoritativeMatchLifecycle({
+    live: input.live || null,
+    assignedMatch: assigned,
+    matchContext,
+    scoreProjection,
+  });
+  const result = projectResultStatus({
+    matchStatus,
+    validationStatus: assigned.validationStatus,
+    scoreProjection,
+  });
+  const policy = formatScoringPolicyLabel({ scoringRules, lifecyclePolicy });
+  const names = {
+    ...(input.modeState?.participantNames || {}),
+    ...(input.participantNames || {}),
+  };
+  const courtProjection = projectCanonicalCourtView({
+    participants: input.participants,
+    scoringRules,
+    currentScore: scoreProjection
+      ? {
+          points: scoreProjection.points,
+          serve: scoreProjection.serve,
+          currentGameIndex: scoreProjection.currentGameIndex,
+        }
+      : null,
+    matchContext,
+    modeState: input.modeState,
+    courtState: input.courtState || match.court || scoreProjection?.scoringState?.court || {},
+    participantNames: names,
+    lifecyclePolicy,
+  });
+
+  const canCorrect =
+    capabilities.correction === true ||
+    capabilities.correctResult === true ||
+    allowed(projection, REFEREE_ACTION.RESULT_CORRECT);
+
+  // Manual change-ends only when capability/policy explicitly allows it.
+  // Policy-required change-ends is driven by courtProjection.sideChangeRequired.
+  const canChangeEnds =
+    capabilities.changeEnds === true ||
+    capabilities.manualChangeEnds === true ||
+    capabilities.change_ends === true;
+
+  const canSwitchPositions =
+    capabilities.switchPositions === true ||
+    capabilities.switch_positions === true ||
+    (matchStatus === MATCH_STATUS.IN_PROGRESS &&
+      capabilities.switchPositions !== false &&
+      capabilities.switch_positions !== false);
+
+  // Server-derived only — never invent eligibility on the client.
+  const undoAvailability = Object.freeze(
+    input.undoAvailability ||
+      assigned.undoAvailability || {
+        undoAvailable: false,
+        reasonCode: null,
+        message: null,
+      }
+  );
+  const canUndo = undoAvailability.undoAvailable === true;
+
+  const sides = Array.isArray(input.participants?.sides) ? input.participants.sides : [];
+  const sideA = sides[0] || null;
+  const sideB = sides[1] || null;
+  const content = projectCompetitionMatchFormat({
+    competitionMode: input.competitionMode,
+    eventType: matchContext.eventType,
+    type: matchContext.type,
+    competitionContentCode: matchContext.competitionContentCode,
+    competitionContentLabel: matchContext.competitionContentLabel,
+    matchFormat: matchContext.matchFormat || courtProjection.matchFormat,
+    expectedPlayersPerSide:
+      matchContext.expectedPlayersPerSide ?? courtProjection.expectedPlayersPerSide,
+    isDreambreaker: matchContext.isDreambreaker === true || courtProjection.isDreambreaker,
+    discipline: matchContext.discipline,
+    disciplineName: matchContext.disciplineName,
+    matchType: matchContext.matchType,
+    sides,
+  });
+  const rosterValidation =
+    matchContext.rosterValidation ||
+    match?.rosterValidation ||
+    validateContentRosterConsistency({
+      competitionMode: input.competitionMode,
+      eventType: matchContext.eventType || content.competitionContentCode,
+      type: matchContext.type,
+      matchType: matchContext.matchType,
+      competitionContentCode: content.competitionContentCode,
+      matchFormat: content.matchFormat,
+      expectedPlayersPerSide: content.expectedPlayersPerSide,
+      isDreambreaker: content.matchFormat === REFEREE_MATCH_FORMAT.DREAMBREAKER,
+      sides,
+      participantIdsA: sideA?.participantIds,
+      participantIdsB: sideB?.participantIds,
+    });
+  const rosterValid = rosterValidation?.ok !== false;
+  const resolvedA = resolveRefereeSideDisplay(sideA, names, {
+    matchFormat: content.matchFormat,
+  });
+  const resolvedB = resolveRefereeSideDisplay(sideB, names, {
+    matchFormat: content.matchFormat,
+  });
+  const leftPlayers = (courtProjection.sides?.left?.activePlayers || [])
+    .map((p) => p.displayName)
+    .filter(Boolean);
+  const rightPlayers = (courtProjection.sides?.right?.activePlayers || [])
+    .map((p) => p.displayName)
+    .filter(Boolean);
+  const fallbackA = playerNamesForSide(sideA, names);
+  const fallbackB = playerNamesForSide(sideB, names);
+  const scoringSideAName =
+    courtProjection.sides?.left?.scoringSide === "SIDE_A"
+      ? courtProjection.sides?.left?.participant?.displayName
+      : courtProjection.sides?.right?.participant?.displayName;
+  const scoringSideBName =
+    courtProjection.sides?.left?.scoringSide === "SIDE_B"
+      ? courtProjection.sides?.left?.participant?.displayName
+      : courtProjection.sides?.right?.participant?.displayName;
+  const sideAName =
+    resolvedA.presentationEntryLabel ||
+    scoringSideAName ||
+    formatParticipantDisplayName(sideA?.displayName || sideA?.teamName);
+  const sideBName =
+    resolvedB.presentationEntryLabel ||
+    scoringSideBName ||
+    formatParticipantDisplayName(sideB?.displayName || sideB?.teamName);
+
+  const competitionName = formatCompetitionDisplayName({
+    competitionName:
+      competition.competitionName ||
+      input.modeState?.competitionName ||
+      null,
+    competitionId: competition.competitionId || matchContext.competitionId,
+  });
+  const courtId =
+    matchContext.courtId || assigned.courtId || match.courtAssignmentRef || null;
+  const courtLabel = formatCourtLabel({
+    courtLabel:
+      matchContext.courtLabel ||
+      (courtId && input.modeState?.courtLabels?.[courtId]) ||
+      null,
+    courtId,
+  });
+  const stageName = matchContext.stage || null;
+  const roundName = matchContext.round != null ? String(matchContext.round) : null;
+  const stageRound = [stageName, roundName ? (stageName ? roundName : `Vòng ${roundName}`) : null]
+    .filter(Boolean)
+    .join(" · ");
+  const contextRow = [
+    courtLabel,
+    competitionName,
+    formatCompetitionModeLabel(input.competitionMode),
+    content.competitionContentLabel,
+    stageRound || null,
+  ]
+    .filter(Boolean)
+    .join(" | ");
+
+  const points = scoreProjection?.points || null;
+  const previousGames = readCompletedGames(scoreProjection);
+  const courtEntries = Object.entries(courtProjection.court || {});
+  const findSlotPlayer = (playerId) => {
+    const id = String(playerId || "").trim();
+    if (!id) return { player: null, slot: null };
+    for (const [slot, player] of courtEntries) {
+      if (player && String(player.playerId) === id) {
+        return { player, slot };
+      }
+    }
+    return { player: null, slot: null };
+  };
+  const servingResolved = findSlotPlayer(courtProjection.serving?.serverPlayerId);
+  const receivingResolved = findSlotPlayer(courtProjection.serving?.receiverPlayerId);
+  const servingPlayer = servingResolved.player;
+  const receivingPlayer = receivingResolved.player;
+  const servingCourtSlot =
+    courtProjection.serving?.servingCourtSlot || servingResolved.slot;
+  const receivingCourtSlot =
+    courtProjection.serving?.receivingCourtSlot || receivingResolved.slot;
+  const serviceCourt = courtProjection.serving?.serviceCourt || null;
+  const receiverCourt = courtProjection.serving?.receiverCourt || null;
+
+  const operationHistory = projectMatchOperationHistory({
+    scoreProjection,
+    scoreSession: input.scoreSession || assigned.scoreSession || null,
+    courtState: input.courtState || match.court || {},
+    matchStatus,
+  });
+
+  const hasCourtPlayers =
+    (courtProjection.sides?.left?.activePlayers || []).length > 0 ||
+    (courtProjection.sides?.right?.activePlayers || []).length > 0;
+  const lineupConfigured =
+    courtProjection.lineupConfigured === true ||
+    Boolean(courtProjection.serving?.serverPlayerId);
+  const hasActiveScore =
+    Boolean(scoreProjection?.serve) ||
+    (points &&
+      (Number(points.SIDE_A || 0) > 0 || Number(points.SIDE_B || 0) > 0));
+  const canStartBase =
+    !hasActiveScore &&
+    matchStatus !== MATCH_STATUS.IN_PROGRESS &&
+    matchStatus !== MATCH_STATUS.PAUSED &&
+    matchStatus !== MATCH_STATUS.SUSPENDED &&
+    matchStatus !== MATCH_STATUS.COMPLETED &&
+    matchStatus !== MATCH_STATUS.CANCELLED &&
+    (matchStatus === MATCH_STATUS.READY_TO_START ||
+      matchStatus === MATCH_STATUS.SCHEDULED ||
+      matchStatus === MATCH_STATUS.READY ||
+      !matchStatus);
+  const lineupRequired =
+    hasCourtPlayers &&
+    !lineupConfigured &&
+    (canStartBase ||
+      matchStatus === MATCH_STATUS.IN_PROGRESS ||
+      matchStatus === MATCH_STATUS.SUSPENDED ||
+      matchStatus === MATCH_STATUS.PAUSED);
+
+  const scoringSystem = String(
+    scoringRules?.scoringSystem || scoreProjection?.format?.scoringSystem || ""
+  )
+    .trim()
+    .toUpperCase();
+  const isSideOut = scoringSystem === SCORING_SYSTEM.SIDE_OUT;
+  const isRally = scoringSystem === SCORING_SYSTEM.RALLY;
+  const changeEndDue = courtProjection.sideChangeRequired === true;
+  const canScoreBase =
+    matchStatus === MATCH_STATUS.IN_PROGRESS &&
+    capabilities.scoring !== false &&
+    assigned.scoreEntryReady !== false &&
+    (!hasCourtPlayers || lineupConfigured) &&
+    !changeEndDue &&
+    rosterValid;
+  const servingSideNow = courtProjection.serving?.servingSide || scoreProjection?.serve?.servingSide || null;
+  const receivingSideNow =
+    servingSideNow === "SIDE_B" ? "SIDE_A" : servingSideNow === "SIDE_A" ? "SIDE_B" : null;
+
+  const currentScore = scoreProjection
+    ? Object.freeze({
+        points: scoreProjection.points || null,
+        serve: scoreProjection.serve || null,
+        gamesWon: scoreProjection.gamesWonInCurrentSet || null,
+        setsWon: scoreProjection.setsWon || null,
+        currentGameIndex: scoreProjection.currentGameIndex ?? 0,
+      })
+    : null;
+
+  const participantDisplay = Object.freeze({
+    sideA: Object.freeze({
+      entryId: resolvedA.entryId,
+      entryLabel: resolvedA.presentationEntryLabel,
+      durableEntryLabel: resolvedA.entryLabel,
+      label: sideAName,
+      members: Object.freeze(
+        (resolvedA.members || []).map((row, index) => {
+          const fromCourt = (
+            courtProjection.sides?.left?.scoringSide === "SIDE_A"
+              ? courtProjection.sides?.left?.activePlayers
+              : courtProjection.sides?.right?.activePlayers
+          )?.find((p) => p.playerId === row.participantId);
+          return Object.freeze({
+            ...row,
+            logicalPosition:
+              fromCourt?.logicalPosition ||
+              (index === 0 ? "RIGHT" : index === 1 ? "LEFT" : null),
+            logicalPositionLabel:
+              fromCourt?.logicalPositionLabel ||
+              (index === 0 ? "Phải" : index === 1 ? "Trái" : null),
+          });
+        })
+      ),
+      playerNames: Object.freeze(
+        courtProjection.sides?.left?.scoringSide === "SIDE_A"
+          ? leftPlayers.length
+            ? leftPlayers
+            : fallbackA
+          : rightPlayers.length
+            ? rightPlayers
+            : fallbackA
+      ),
+    }),
+    sideB: Object.freeze({
+      entryId: resolvedB.entryId,
+      entryLabel: resolvedB.presentationEntryLabel,
+      durableEntryLabel: resolvedB.entryLabel,
+      label: sideBName,
+      members: Object.freeze(
+        (resolvedB.members || []).map((row, index) => {
+          const fromCourt = (
+            courtProjection.sides?.left?.scoringSide === "SIDE_B"
+              ? courtProjection.sides?.left?.activePlayers
+              : courtProjection.sides?.right?.activePlayers
+          )?.find((p) => p.playerId === row.participantId);
+          return Object.freeze({
+            ...row,
+            logicalPosition:
+              fromCourt?.logicalPosition ||
+              (index === 0 ? "RIGHT" : index === 1 ? "LEFT" : null),
+            logicalPositionLabel:
+              fromCourt?.logicalPositionLabel ||
+              (index === 0 ? "Phải" : index === 1 ? "Trái" : null),
+          });
+        })
+      ),
+      playerNames: Object.freeze(
+        courtProjection.sides?.left?.scoringSide === "SIDE_B"
+          ? leftPlayers.length
+            ? leftPlayers
+            : fallbackB
+          : rightPlayers.length
+            ? rightPlayers
+            : fallbackB
+      ),
+    }),
+  });
+
+  const courtPresentation = deriveCourtPresentation({
+    courtProjection,
+    currentScore,
+    participantDisplay,
+  });
+
+  return Object.freeze({
+    matchId: String(input.matchId || "").trim(),
+    competitionId: String(
+      competition.competitionId || matchContext.competitionId || ""
+    ).trim(),
+    competitionMode: String(input.competitionMode || "").trim(),
+    competitionModeLabel: formatCompetitionModeLabel(input.competitionMode),
+    competitionName,
+    competitionContentCode: content.competitionContentCode,
+    competitionContentLabel: content.competitionContentLabel,
+    matchFormat: content.matchFormat,
+    expectedPlayersPerSide: content.expectedPlayersPerSide,
+    isSingles: content.matchFormat === REFEREE_MATCH_FORMAT.SINGLES,
+    isDoubles:
+      content.matchFormat === REFEREE_MATCH_FORMAT.DOUBLES ||
+      (content.matchFormat === REFEREE_MATCH_FORMAT.TEAM_SUBMATCH &&
+        content.expectedPlayersPerSide === 2),
+    isDreamBreaker: content.matchFormat === REFEREE_MATCH_FORMAT.DREAMBREAKER,
+    adapterSelected: String(input.adapterSelected || input.competitionMode || "").trim(),
+    stageName,
+    roundName,
+    stageRoundLabel: stageRound || null,
+    contextRow,
+    courtId,
+    courtLabel,
+    participants: input.participants || { sides: [] },
+    participantDisplay,
+    scoringRules,
+    lifecyclePolicy,
+    rulesPanel: Object.freeze({
+      title: "LUẬT TRẬN",
+      rows: policy.rulesRows,
+      scoringMethod: policy.scoringMethodLabel,
+      targetScore: policy.pointsToWin,
+      winBy: policy.winBy,
+      cap: policy.cap,
+      capLabel: policy.capLabel,
+      changeEndAt: policy.changeEndAtLabel,
+      bestOf: policy.bestOfGames,
+    }),
+    refereeCapabilities: Object.freeze({
+      ...capabilities,
+      correction: canCorrect,
+      scoring: capabilities.scoring !== false,
+      suspend: capabilities.suspend !== false,
+      resume: capabilities.resume !== false,
+      changeEnds: canChangeEnds,
+      switchPositions: canSwitchPositions,
+      changeCourt: false,
+      physicalChangeCourtImplemented: false,
+    }),
+    currentScore,
+    gameSummary: Object.freeze({
+      currentGame: (scoreProjection?.currentGameIndex ?? 0) + 1,
+      gamesWon: scoreProjection?.gamesWonInCurrentSet || null,
+      bestOf: policy.bestOfGames,
+      targetScore: policy.pointsToWin,
+      winBy: policy.winBy,
+      cap: policy.cap,
+      changeEndPolicy: policy.changeEndPolicyLabel,
+      scorePolicyLine: policy.scorePolicyLine,
+      currentGamePoints: points
+        ? Object.freeze({
+            sideA: Number(points.SIDE_A || 0),
+            sideB: Number(points.SIDE_B || 0),
+          })
+        : null,
+      previousGames: Object.freeze(previousGames),
+    }),
+    matchStatus,
+    matchStatusLabel: formatMatchStatusLabel(matchStatus),
+    resultStatus: result.resultStatus,
+    resultStatusLabel: result.label,
+    officialWinner: result.officialWinner,
+    calculatedWinnerSide: result.calculatedWinnerSide,
+    acceptedOfficialResult: result.acceptedOfficialResult,
+    expectedVersion: Number(input.expectedVersion ?? 0),
+    courtProjection,
+    courtPresentation,
+    servingState: courtProjection.serving,
+    servingStatus: Object.freeze({
+      servingTeamName:
+        courtProjection.serving?.servingSide === "SIDE_B"
+          ? sideBName
+          : courtProjection.serving?.servingSide === "SIDE_A"
+            ? sideAName
+            : null,
+      servingPlayerName: servingPlayer?.displayName || null,
+      servingPlayerId: courtProjection.serving?.serverPlayerId || null,
+      receivingPlayerName: receivingPlayer?.displayName || null,
+      receivingPlayerId: courtProjection.serving?.receiverPlayerId || null,
+      receivingTeamName:
+        receivingSideNow === "SIDE_B"
+          ? sideBName
+          : receivingSideNow === "SIDE_A"
+            ? sideAName
+            : null,
+      serviceTurn:
+        isSideOut && content.expectedPlayersPerSide === 2
+          ? courtProjection.serving?.serviceTurn ?? null
+          : isSideOut
+            ? courtProjection.serving?.serviceTurn ?? null
+            : null,
+      showServiceTurn:
+        isSideOut === true && Number(content.expectedPlayersPerSide) === 2,
+      servingCourtSlot,
+      receivingCourtSlot,
+      serviceCourt,
+      receiverCourt,
+      serviceCourtLabel: formatLogicalCourtPositionLabel(serviceCourt),
+      receiverCourtLabel: formatLogicalCourtPositionLabel(receiverCourt),
+      serviceDirection:
+        courtProjection.serving?.diagonalDirection ||
+        (servingCourtSlot && receivingCourtSlot
+          ? `${servingCourtSlot} → ${receivingCourtSlot}`
+          : null),
+      diagonalDirection: courtProjection.serving?.diagonalDirection || null,
+      gameLabel: policy.bestOfGames
+        ? `${(scoreProjection?.currentGameIndex ?? 0) + 1} / Best of ${policy.bestOfGames}`
+        : String((scoreProjection?.currentGameIndex ?? 0) + 1),
+      changeEndAt: policy.changeEndAtLabel || null,
+    }),
+    operationHistory,
+    scoringSystem,
+    isSideOut,
+    isRally,
+    servingSideNow,
+    receivingSideNow,
+    canPointSideA:
+      canScoreBase && (!isSideOut || servingSideNow === "SIDE_A"),
+    canPointSideB:
+      canScoreBase && (!isSideOut || servingSideNow === "SIDE_B"),
+    canChangeServe:
+      isSideOut &&
+      canScoreBase &&
+      Boolean(receivingSideNow),
+    diagnostics: Object.freeze({
+      expectedVersion: Number(input.expectedVersion ?? 0),
+    }),
+    pendingCanonicalAction: input.pendingCanonicalAction || null,
+    stale: input.stale === true,
+    preStart: input.preStart || null,
+    lineupConfigured,
+    lineupRequired,
+    rosterValidation,
+    rosterValid,
+    canStart: canStartBase && (!hasCourtPlayers || lineupConfigured) && rosterValid,
+    canScore: canScoreBase,
+    canUndo,
+    undoAvailability,
+    canSuspend:
+      matchStatus === MATCH_STATUS.IN_PROGRESS && capabilities.suspend !== false,
+    canResume:
+      (matchStatus === MATCH_STATUS.SUSPENDED || matchStatus === MATCH_STATUS.PAUSED) &&
+      capabilities.resume !== false,
+    canChangeEnds,
+    canSwitchPositions,
+    canChangeCourt: false,
+    canComplete: Boolean(scoreProjection?.calculatedMatchComplete),
+    canCorrect,
+    usesAdapterB: true,
+    silentLegacyFallback: false,
+    productionFixtureFallback: false,
+    locationStateRequired: false,
+  });
+}

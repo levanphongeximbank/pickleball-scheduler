@@ -208,6 +208,37 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
   }
 
   async function requireAssignedMatch(command, auth, matchId) {
+    // Hot path: reuse request-local authoritative assignment + seedRecord (no second/third
+    // competition-wide assignment list). Security asserts still run.
+    if (command?.seedRecord && command?.authoritativeAssignment) {
+      const assignment = {
+        ...command.authoritativeAssignment,
+        refereeId:
+          command.authoritativeAssignment.refereeId ||
+          command.authoritativeAssignment.refereeUserId ||
+          auth.refereeId,
+        matchId:
+          command.authoritativeAssignment.matchId || matchId,
+        tenantId:
+          command.authoritativeAssignment.tenantId || command.tenantId,
+        competitionId:
+          command.authoritativeAssignment.competitionId ||
+          command.competitionId,
+        status:
+          command.authoritativeAssignment.status ||
+          command.authoritativeAssignment.opsStatus ||
+          REFEREE_ASSIGNMENT_OPS_STATUS.ASSIGNED,
+      };
+      assertRefereeAssignmentScope({
+        assignment,
+        refereeId: auth.refereeId,
+        tenantId: command.tenantId,
+        competitionId: command.competitionId,
+        venueId: command.venueId,
+        matchId,
+      });
+      return { record: command.seedRecord, assignment };
+    }
     const record = await loadRecord(command);
     const assignment = findAssignment(record, auth.refereeId, matchId);
     assertRefereeAssignmentScope({
@@ -239,6 +270,10 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         commandId: command.commandId || command.idempotencyKey || null,
         tenantId: command.tenantId || null,
         competitionId: command.competitionId || null,
+        seedRecord: command.seedRecord || null,
+        currentLive: command.currentLive || null,
+        authoritativeAssignment: command.authoritativeAssignment || null,
+        lastCommittedLive: null,
       });
     }
   }
@@ -628,8 +663,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.MATCH_SUSPEND);
       const matchId = String(cmd.matchId || "").trim();
-      await requireAssignedMatch(cmd, auth, matchId);
-      const record = await loadRecord(cmd);
+      const { record } = await requireAssignedMatch(cmd, auth, matchId);
       const match = record.matches?.[matchId];
       if (!match) {
         failReferee(REFEREE_ERROR_CODE.MISSING_MATCH, "Match snapshot missing", {
@@ -665,8 +699,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.MATCH_RESUME);
       const matchId = String(cmd.matchId || "").trim();
-      await requireAssignedMatch(cmd, auth, matchId);
-      const record = await loadRecord(cmd);
+      const { record } = await requireAssignedMatch(cmd, auth, matchId);
       const match = record.matches?.[matchId];
       if (!match) {
         failReferee(REFEREE_ERROR_CODE.MISSING_MATCH, "Match snapshot missing", {
@@ -702,8 +735,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.SCORE_SESSION);
       const matchId = String(cmd.matchId || "").trim();
-      await requireAssignedMatch(cmd, auth, matchId);
-      const record = await loadRecord(cmd);
+      const { record } = await requireAssignedMatch(cmd, auth, matchId);
       const match = record.matches?.[matchId];
       if (!match || String(match.status).toUpperCase() !== MATCH_STATUS.IN_PROGRESS) {
         failReferee(
@@ -810,8 +842,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.SCORE_SUBMIT);
       const matchId = String(cmd.matchId || "").trim();
-      await requireAssignedMatch(cmd, auth, matchId);
-      const record = await loadRecord(cmd);
+      const { record } = await requireAssignedMatch(cmd, auth, matchId);
       const match = record.matches?.[matchId];
       if (!match || String(match.status).toUpperCase() !== MATCH_STATUS.IN_PROGRESS) {
         failReferee(
@@ -941,20 +972,58 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
           ledgerEntry,
         ]),
       });
+
       await store.update(cmd.tenantId, cmd.competitionId, (draft) => {
         draft.scoreSessions[matchId] = nextSession;
         draft.courtsByMatch = draft.courtsByMatch || {};
         draft.courtsByMatch[matchId] = nextCourt;
       });
-      const nextRecord = await loadRecord(cmd);
+      const committedLive =
+        typeof store.getLastCommittedLive === "function"
+          ? store.getLastCommittedLive()
+          : null;
+      const commitSubphases =
+        typeof store.getCommitSubphases === "function"
+          ? store.getCommitSubphases()
+          : null;
+      const liveInfo = committedLive
+        ? {
+            live: committedLive,
+            expectedVersion: Number(
+              committedLive.stateVersion ?? committedLive.version ?? 0
+            ),
+            courtState:
+              committedLive?.statePayload?.canonical?.court ||
+              committedLive?.statePayload?.court ||
+              nextCourt,
+          }
+        : null;
+      let expectedVersion = liveInfo?.expectedVersion;
+      if (expectedVersion == null) {
+        const nextRecord = await loadRecord(cmd);
+        expectedVersion = Number(nextRecord.revision || 0);
+      }
+      const undoAvailability = evaluateUndoAvailability({
+        match,
+        session: nextSession,
+        validation: record.validationByMatch?.[matchId] || null,
+        court: nextCourt,
+        actualVersion: expectedVersion,
+        targetEvent: findLastEligibleScoringEvent(nextSession.state),
+        ledger: nextSession.actionLedger,
+      });
       return deepFreeze({
         ok: true,
         scoreProjection: projection,
         court: nextCourt,
+        live: committedLive,
+        liveInfo,
+        commitSubphases,
         matchComplete: Boolean(state.matchComplete),
         calculatedWinnerSide: state.calculatedWinnerSide || null,
         winnerInferenceByFacade: false,
-        expectedVersion: Number(nextRecord.revision || 0),
+        expectedVersion,
+        undoAvailability,
         fingerprint: computeOrganizerFingerprint(
           { matchId, projection, court: nextCourt },
           "e2e04-ref-score"
@@ -1019,13 +1088,16 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
             : session.state?.format?.sideSwitchAt != null
               ? Number(session.state.format.sideSwitchAt)
               : null;
+      const priorOrientation = String(
+        current.courtOrientation || current.orientation || "STANDARD"
+      ).toUpperCase();
       const nextOrientation =
-        String(current.orientation || "STANDARD").toUpperCase() === "SWAPPED"
-          ? "STANDARD"
-          : "SWAPPED";
+        priorOrientation === "SWAPPED" ? "STANDARD" : "SWAPPED";
       const nextCourt = Object.freeze({
         ...current,
+        // Production UI projects courtOrientation; E2E-04 also reads orientation.
         orientation: nextOrientation,
+        courtOrientation: nextOrientation,
         sideChangeRequired: false,
         sideChangeThreshold: current.sideChangeThreshold ?? ackThreshold,
         sideChangeAcknowledgedAtThreshold: ackThreshold,
@@ -1051,10 +1123,22 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
         draft.courtsByMatch[matchId] = nextCourt;
       });
       const nextRecord = await loadRecord(cmd);
+      const undoAvailability = evaluateUndoAvailability({
+        match: nextRecord.matches?.[matchId],
+        session: nextRecord.scoreSessions?.[matchId],
+        validation: nextRecord.validationByMatch?.[matchId] || null,
+        court: nextRecord.courtsByMatch?.[matchId] || nextCourt,
+        actualVersion: nextRecord.revision,
+        targetEvent: findLastEligibleScoringEvent(
+          nextRecord.scoreSessions?.[matchId]?.state
+        ),
+        ledger: nextRecord.scoreSessions?.[matchId]?.actionLedger,
+      });
       return deepFreeze({
         ok: true,
         court: nextCourt,
         expectedVersion: Number(nextRecord.revision || 0),
+        undoAvailability,
         fingerprint: computeOrganizerFingerprint(
           { matchId, court: nextCourt },
           "e2e04-ref-change-ends"
@@ -1319,8 +1403,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.RESULT_SUBMIT);
       const matchId = String(cmd.matchId || "").trim();
-      const { assignment } = await requireAssignedMatch(cmd, auth, matchId);
-      const record = await loadRecord(cmd);
+      const { assignment, record } = await requireAssignedMatch(cmd, auth, matchId);
       const session = record.scoreSessions?.[matchId];
       if (!session?.projection) {
         failReferee(
@@ -1480,8 +1563,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.RESULT_READ);
       const matchId = String(cmd.matchId || "").trim();
-      await requireAssignedMatch(cmd, auth, matchId);
-      const record = await loadRecord(cmd);
+      const { record } = await requireAssignedMatch(cmd, auth, matchId);
       const validation = record.validationByMatch?.[matchId] || null;
       return deepFreeze({
         ok: true,
@@ -1502,8 +1584,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.RESULT_CORRECT);
       const matchId = String(cmd.matchId || "").trim();
-      await requireAssignedMatch(cmd, auth, matchId);
-      const record = await loadRecord(cmd);
+      const { record } = await requireAssignedMatch(cmd, auth, matchId);
       const validation = record.validationByMatch?.[matchId];
       if (
         !validation ||
@@ -1527,8 +1608,7 @@ export function createRefereeCompetitionOperationsFacade(deps = {}) {
     return run(command, async (cmd) => {
       const auth = await authorize(cmd, REFEREE_ACTION.RESULT_READ);
       const matchId = String(cmd.matchId || "").trim();
-      await requireAssignedMatch(cmd, auth, matchId);
-      const record = await loadRecord(cmd);
+      const { record } = await requireAssignedMatch(cmd, auth, matchId);
       const validation = record.validationByMatch?.[matchId] || {
         status: REFEREE_VALIDATION_OPS_STATUS.NONE,
         validatedResult: null,

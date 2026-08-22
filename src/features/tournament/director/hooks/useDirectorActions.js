@@ -39,6 +39,10 @@ import {
   persistDailyRefereeMetadata,
 } from "../services/dailyRefereeMetadataPatch.js";
 import {
+  assignDailyRefereeViaCore13,
+  buildDailyCore13AssignmentProjection,
+} from "../services/dailyCore13AssignmentTransport.js";
+import {
   DAILY_PLAY_CODE,
   DAILY_PLAY_MESSAGES,
   validateScoreInput,
@@ -220,26 +224,53 @@ export function useDirectorActions(state) {
 
       let persisted;
       if (isDaily) {
-        const metadataPatch = buildDailyMatchRefereeAssignmentPatch(
-          assignedMatch.id,
-          referee
-        );
-        persisted = await persistDailyReferee(metadataPatch);
-      } else {
-        const patch = patchRefereeInTournament(currentTournament, {
-          eventId: currentEvent?.id,
-          matchId: assignedMatch.id,
-          referee,
-          isDaily: false,
+        const refereeUserId = String(
+          referee?.canonicalUserId || referee?.id || referee?.rosterId || ""
+        ).trim();
+        const core13 = await assignDailyRefereeViaCore13({
+          tenantId: String(tenantId || activeClubId || "").trim(),
+          tournamentId: String(tournamentId || "").trim(),
+          matchId: String(assignedMatch.id || "").trim(),
+          refereeUserId,
         });
-        if (!patch) {
-          return { ok: false, error: "Không cập nhật được trận." };
+        if (!core13?.ok) {
+          return {
+            ok: false,
+            error:
+              core13?.error ||
+              core13?.code ||
+              "Phân công Daily phải qua CORE-13 (cần UUID trọng tài).",
+          };
         }
-        const nextEvent = (patch.events || []).find(
-          (event) => String(event.id) === String(currentEvent?.id)
-        );
-        persisted = nextEvent ? await persistEvent(nextEvent) : false;
+        const metadataPatch =
+          buildDailyCore13AssignmentProjection(assignedMatch.id, referee, core13) ||
+          buildDailyMatchRefereeAssignmentPatch(assignedMatch.id, referee);
+        persisted = await persistDailyReferee(metadataPatch);
+        if (!persisted) {
+          return { ok: false, error: "Không lưu được projection trọng tài." };
+        }
+        // Daily assignment authority is CORE-13 only — do not mint token live rows.
+        return {
+          ok: true,
+          assignmentAuthority: "CORE-13",
+          canonicalHref: `/referee/match/${encodeURIComponent(String(assignedMatch.id))}`,
+          dailyWriterAsAssignmentAuthority: "DENY",
+        };
       }
+
+      const patch = patchRefereeInTournament(currentTournament, {
+        eventId: currentEvent?.id,
+        matchId: assignedMatch.id,
+        referee,
+        isDaily: false,
+      });
+      if (!patch) {
+        return { ok: false, error: "Không cập nhật được trận." };
+      }
+      const nextEvent = (patch.events || []).find(
+        (event) => String(event.id) === String(currentEvent?.id)
+      );
+      persisted = nextEvent ? await persistEvent(nextEvent) : false;
 
       if (!persisted) {
         return { ok: false, error: "Không lưu được thông tin trọng tài." };
@@ -275,6 +306,7 @@ export function useDirectorActions(state) {
       persistDailyReferee,
       persistEvent,
       state.players,
+      tenantId,
       tournamentId,
       tournamentRef,
       activeEventRef,

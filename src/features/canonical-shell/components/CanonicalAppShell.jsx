@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import { ThemeProvider, useTheme } from "@mui/material/styles";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 
 import CanonicalSidebar from "./CanonicalSidebar.jsx";
 import CanonicalTopBar from "./CanonicalTopBar.jsx";
@@ -20,14 +20,20 @@ import OfflineBanner from "../../mobile/components/OfflineBanner.jsx";
 import PwaInstallPrompt from "../../mobile/components/PwaInstallPrompt.jsx";
 import MobileBottomNav from "../../mobile/layout/MobileBottomNav.jsx";
 import { MobileNavProvider } from "../../mobile/context/MobileNavProvider.jsx";
+import { isRefereeWorkspaceRoute } from "../../referee-production-ui/application/isRefereeWorkspaceRoute.js";
+import RefereeCompactChrome from "../../referee-production-ui/components/RefereeCompactChrome.jsx";
+import "../../referee-production-ui/styles/referee-production.css";
 
 function CanonicalAppShellInner() {
   const auth = useAuth();
+  const location = useLocation();
   const baseTheme = useTheme();
   const shellTheme = useMemo(() => createFigure1ShellTheme(baseTheme), [baseTheme]);
   const { palette, layout, isMobile, isTablet, openMobileDrawer, sidebarCollapsed } =
     useCanonicalShell();
   const [fontsReady, setFontsReady] = useState(false);
+  const refereeWorkspace = isRefereeWorkspaceRoute(location.pathname);
+  const matchScreen = String(location.pathname || "").startsWith("/referee/match/");
 
   // W01: load Inter only when the canonical shell actually mounts (flag ON).
   // Avoid static CSS side-effects that would apply under the legacy shell.
@@ -64,6 +70,7 @@ function CanonicalAppShellInner() {
           data-testid="canonical-app-shell"
           data-canonical-shell="figure1"
           data-figure1-font={fontsReady ? "inter" : "pending"}
+          data-referee-workspace={refereeWorkspace ? "true" : "false"}
           style={FIGURE1_CSS_VARS}
           sx={{
             display: "flex",
@@ -72,8 +79,8 @@ function CanonicalAppShellInner() {
             fontFamily: FIGURE1_TYPOGRAPHY.fontFamily,
           }}
         >
-          <CanonicalSidebar menuGroups={menuGroups} />
-          <CanonicalMobileDrawer menuGroups={menuGroups} />
+          {!refereeWorkspace && <CanonicalSidebar menuGroups={menuGroups} />}
+          {!refereeWorkspace && <CanonicalMobileDrawer menuGroups={menuGroups} />}
 
           <Box
             sx={{
@@ -82,23 +89,36 @@ function CanonicalAppShellInner() {
               display: "flex",
               flexDirection: "column",
               minHeight: "100dvh",
-              width: { md: `calc(100% - ${contentOffset}px)` },
+              width: {
+                md: refereeWorkspace ? "100%" : `calc(100% - ${contentOffset}px)`,
+              },
             }}
           >
-            <CanonicalTopBar />
+            {refereeWorkspace && !matchScreen ? (
+              <RefereeCompactChrome title="Trọng tài của tôi" showBack={false} />
+            ) : !refereeWorkspace ? (
+              <CanonicalTopBar />
+            ) : null}
 
             <Box
               component="main"
               id="canonical-main"
               sx={{
                 flexGrow: 1,
-                p: {
-                  xs: `${layout.contentPaddingMobile / 16}rem`,
-                  md: `${layout.contentPaddingDesktop / 16}rem`,
+                p: refereeWorkspace
+                  ? { xs: 0, md: "12px" }
+                  : {
+                      xs: `${layout.contentPaddingMobile / 16}rem`,
+                      md: `${layout.contentPaddingDesktop / 16}rem`,
+                    },
+                pb: {
+                  xs: refereeWorkspace ? 2 : 9,
+                  md: refereeWorkspace
+                    ? "12px"
+                    : `${layout.contentPaddingDesktop / 16}rem`,
                 },
-                pb: { xs: 9, md: `${layout.contentPaddingDesktop / 16}rem` },
                 minWidth: 0,
-                maxWidth: layout.contentMaxWidth,
+                maxWidth: refereeWorkspace ? 480 : layout.contentMaxWidth,
                 width: "100%",
                 mx: "auto",
                 bgcolor: palette.workspaceSurface,
@@ -107,8 +127,8 @@ function CanonicalAppShellInner() {
               <RouteAccessGate>
                 <TenantGate>
                   <OfflineBanner />
-                  <PwaInstallPrompt />
-                  <SubscriptionBanner />
+                  {!refereeWorkspace && <PwaInstallPrompt />}
+                  {!refereeWorkspace && <SubscriptionBanner />}
                   <OperationalRouteGate>
                     <Outlet />
                   </OperationalRouteGate>
@@ -116,7 +136,7 @@ function CanonicalAppShellInner() {
               </RouteAccessGate>
             </Box>
 
-            {isMobile && <MobileBottomNav />}
+            {isMobile && !refereeWorkspace && <MobileBottomNav />}
           </Box>
         </Box>
       </MobileNavProvider>

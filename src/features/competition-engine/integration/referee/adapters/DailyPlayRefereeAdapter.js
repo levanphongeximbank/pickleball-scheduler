@@ -28,6 +28,7 @@ import {
   buildStandardLifecyclePolicy,
 } from "./shared/policyBuilders.js";
 import { mapModeScoringRulesToCore16 } from "./shared/scoringRulesMapper.js";
+import { projectCompetitionMatchFormat } from "./shared/competitionContentProjection.js";
 
 function assertDailyPlayStateSafe(state) {
   if (!isPlainObject(state)) {
@@ -104,8 +105,18 @@ export function createDailyPlayRefereeAdapter(options = {}) {
         { matchId: match.matchId }
       );
     }
+    const content = projectCompetitionMatchFormat({
+      competitionMode,
+      matchType: match.matchType || state.matchType || state.session?.matchType,
+      teamAPlayerIds: match.teamAPlayerIds,
+      teamBPlayerIds: match.teamBPlayerIds,
+      expectedPlayersPerSide: match.expectedPlayersPerSide,
+      matchFormat: match.matchFormat,
+    });
     return mapModeScoringRulesToCore16(raw, {
       allowDailyPlayDefault: raw == null,
+      matchFormat: content.matchFormat,
+      expectedPlayersPerSide: content.expectedPlayersPerSide,
     });
   }
 
@@ -124,6 +135,7 @@ export function createDailyPlayRefereeAdapter(options = {}) {
         competitionId,
         competitionMode,
         competitionType: competitionTypeForMode(competitionMode),
+        competitionName: state.competitionName || null,
         venueId: state.venueId || req.venueId || null,
         clubId: state.clubId || req.clubId || null,
         sessionId: session.sessionId || competitionId,
@@ -147,6 +159,20 @@ export function createDailyPlayRefereeAdapter(options = {}) {
     },
     getMatchContext(request) {
       const { match, tenantId, competitionId, state } = load(request);
+      const content = projectCompetitionMatchFormat({
+        competitionMode,
+        matchType:
+          match.matchType ||
+          (isPlainObject(state.session) && state.session.matchType) ||
+          state.matchType ||
+          null,
+        teamAPlayerIds: match.teamAPlayerIds,
+        teamBPlayerIds: match.teamBPlayerIds,
+        expectedPlayersPerSide: match.expectedPlayersPerSide,
+        matchFormat: match.matchFormat,
+        competitionContentCode: match.competitionContentCode,
+        competitionContentLabel: match.competitionContentLabel,
+      });
       return freezeClone({
         matchId: match.matchId,
         competitionId,
@@ -154,6 +180,7 @@ export function createDailyPlayRefereeAdapter(options = {}) {
         status: mapModeStatusToCore15(match.status),
         scheduledAt: match.scheduledAt || null,
         courtId: match.courtId || null,
+        courtLabel: match.courtLabel || null,
         stage: match.stage || "DAILY_PLAY",
         round: match.round ?? null,
         parentMatchId: null,
@@ -162,6 +189,10 @@ export function createDailyPlayRefereeAdapter(options = {}) {
           (isPlainObject(state.session) && state.session.sessionId) ||
           competitionId,
         matchType: match.matchType || state.matchType || null,
+        competitionContentCode: content.competitionContentCode,
+        competitionContentLabel: content.competitionContentLabel,
+        matchFormat: content.matchFormat,
+        expectedPlayersPerSide: content.expectedPlayersPerSide,
       });
     },
     getParticipants(request) {

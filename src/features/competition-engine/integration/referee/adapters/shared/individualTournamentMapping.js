@@ -20,6 +20,10 @@ import {
   buildStandardLifecyclePolicy,
 } from "./policyBuilders.js";
 import { mapModeScoringRulesToCore16 } from "./scoringRulesMapper.js";
+import {
+  projectCompetitionMatchFormat,
+  validateContentRosterConsistency,
+} from "./competitionContentProjection.js";
 
 /**
  * @param {object} options
@@ -45,6 +49,29 @@ export function createIndividualTournamentRefereeAdapterSurface({
     return { ...loaded, match };
   }
 
+  function contentForMatch(match) {
+    if (
+      match.competitionContentCode ||
+      match.matchFormat ||
+      match.expectedPlayersPerSide
+    ) {
+      return {
+        competitionContentCode: match.competitionContentCode || null,
+        competitionContentLabel: match.competitionContentLabel || null,
+        matchFormat: match.matchFormat || null,
+        expectedPlayersPerSide: match.expectedPlayersPerSide ?? null,
+      };
+    }
+    return projectCompetitionMatchFormat({
+      eventType: match.eventType || null,
+      participantIdsA: match.participantIdsA,
+      participantIdsB: match.participantIdsB,
+      competitionMode,
+      competitionContentCode: match.competitionContentCode,
+      competitionContentLabel: match.competitionContentLabel,
+    });
+  }
+
   function resolveScoringRules(match, state) {
     const raw =
       match.scoringRules ||
@@ -52,7 +79,11 @@ export function createIndividualTournamentRefereeAdapterSurface({
       state.scoringRules ||
       state.scoringFormat ||
       null;
-    return mapModeScoringRulesToCore16(raw);
+    const content = contentForMatch(match);
+    return mapModeScoringRulesToCore16(raw, {
+      matchFormat: content.matchFormat,
+      expectedPlayersPerSide: content.expectedPlayersPerSide,
+    });
   }
 
   return Object.freeze({
@@ -70,6 +101,7 @@ export function createIndividualTournamentRefereeAdapterSurface({
         competitionMode,
         competitionType:
           state.competitionType || competitionTypeForMode(competitionMode),
+        competitionName: state.competitionName || null,
         venueId: state.venueId || req.venueId || null,
         clubId: state.clubId || req.clubId || null,
         stageModel: state.stageModel || "individual_tournament",
@@ -88,6 +120,7 @@ export function createIndividualTournamentRefereeAdapterSurface({
     },
     getMatchContext(request) {
       const { match, tenantId, competitionId } = load(request);
+      const content = contentForMatch(match);
       return freezeClone({
         matchId: match.matchId,
         competitionId,
@@ -95,15 +128,24 @@ export function createIndividualTournamentRefereeAdapterSurface({
         status: mapModeStatusToCore15(match.status),
         scheduledAt: match.scheduledAt || null,
         courtId: match.courtId || null,
+        courtLabel: match.courtLabel || null,
         stage: match.stage || null,
         round: match.round ?? null,
         eventId: match.eventId || null,
+        eventType: match.eventType || content.competitionContentCode || null,
+        type: match.type || null,
+        matchType: match.matchType || null,
         groupId: match.groupId || null,
         parentMatchId: match.parentMatchId || null,
         childMatchIds: Array.isArray(match.childMatchIds)
           ? match.childMatchIds.map(String)
           : [],
         bracketMatchId: match.bracketMatchId || null,
+        competitionContentCode: content.competitionContentCode,
+        competitionContentLabel: content.competitionContentLabel,
+        matchFormat: content.matchFormat,
+        expectedPlayersPerSide: content.expectedPlayersPerSide,
+        rosterValidation: match.rosterValidation || null,
       });
     },
     getParticipants(request) {
@@ -178,6 +220,32 @@ export function createIndividualTournamentRefereeAdapterSurface({
         blockers.push({
           code: REFEREE_ADAPTER_ERROR_CODE.MALFORMED_CONTEXT,
           message: "Competition is closed",
+        });
+      }
+
+      const rosterCheck =
+        match.rosterValidation ||
+        validateContentRosterConsistency({
+          eventType: match.eventType,
+          type: match.type,
+          matchType: match.matchType,
+          competitionContentCode: match.competitionContentCode,
+          matchFormat: match.matchFormat,
+          expectedPlayersPerSide: match.expectedPlayersPerSide,
+          participantIdsA: match.participantIdsA,
+          participantIdsB: match.participantIdsB,
+          competitionMode,
+        });
+      if (rosterCheck && rosterCheck.ok === false) {
+        blockers.push({
+          code: rosterCheck.code || REFEREE_ADAPTER_ERROR_CODE.MALFORMED_CONTEXT,
+          message: rosterCheck.message || "Invalid roster for competition content",
+          details: {
+            sideACount: rosterCheck.sideACount,
+            sideBCount: rosterCheck.sideBCount,
+            expectedPlayersPerSide: rosterCheck.expectedPlayersPerSide,
+            offendingSides: rosterCheck.offendingSides,
+          },
         });
       }
 

@@ -28,22 +28,20 @@ export function applyRallyOrSideOutPoint(draft, rallyWinnerSide) {
     draft.points[rallyWinnerSide] += 1;
     hints.push(SCORING_EVENT_TYPE.POINT_RECORDED);
 
-    if (draft.serve) {
-      const prev = draft.serve.servingSide;
-      draft.serve = {
-        servingSide: rallyWinnerSide,
-        serverNumber: 1,
-      };
-      if (prev !== rallyWinnerSide) {
-        hints.push(SCORING_EVENT_TYPE.SERVE_CHANGED);
-      }
+    const prev = draft.serve?.servingSide || null;
+    draft.serve = {
+      servingSide: rallyWinnerSide,
+      serverNumber: 1,
+    };
+    if (prev !== rallyWinnerSide) {
+      hints.push(SCORING_EVENT_TYPE.SERVE_CHANGED);
     }
 
     const sideSwitchAt = format.sideSwitchAt;
     if (sideSwitchAt != null) {
-      const total =
-        draft.points[SCORING_SIDE.SIDE_A] + draft.points[SCORING_SIDE.SIDE_B];
-      if (total === sideSwitchAt) {
+      const scorerScore = draft.points[rallyWinnerSide];
+      // Team score crossed T on this transition (not A+B total).
+      if (scorerScore >= sideSwitchAt && scorerScore - 1 < sideSwitchAt) {
         hints.push("ENDS_SWITCH_MILESTONE");
       }
     }
@@ -63,6 +61,13 @@ export function applyRallyOrSideOutPoint(draft, rallyWinnerSide) {
   if (rallyWinnerSide === draft.serve.servingSide) {
     draft.points[rallyWinnerSide] += 1;
     hints.push(SCORING_EVENT_TYPE.POINT_RECORDED);
+    const sideSwitchAt = format.sideSwitchAt;
+    if (sideSwitchAt != null) {
+      const scorerScore = draft.points[rallyWinnerSide];
+      if (scorerScore >= sideSwitchAt && scorerScore - 1 < sideSwitchAt) {
+        hints.push("ENDS_SWITCH_MILESTONE");
+      }
+    }
     return { awardedPoint: true, domainHints: hints };
   }
 

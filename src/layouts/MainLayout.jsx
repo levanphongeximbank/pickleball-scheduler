@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Box from "@mui/material/Box";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
@@ -30,18 +30,25 @@ import {
   CanonicalAppShell,
   isCanonicalAppShellEnabled,
 } from "../features/canonical-shell/index.js";
+import { isRefereeWorkspaceRoute } from "../features/referee-production-ui/application/isRefereeWorkspaceRoute.js";
+import RefereeCompactChrome from "../features/referee-production-ui/components/RefereeCompactChrome.jsx";
+import "../features/referee-production-ui/styles/referee-production.css";
 
 function LegacyMainLayoutContent() {
   const isMobile = useIsMobile();
+  const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const refereeWorkspace = isRefereeWorkspaceRoute(location.pathname);
+  const matchScreen = String(location.pathname || "").startsWith("/referee/match/");
 
   return (
     <MobileNavProvider openDrawer={() => setDrawerOpen(true)}>
       <Box
         data-testid="legacy-app-shell"
+        data-referee-workspace={refereeWorkspace ? "true" : "false"}
         sx={{ display: "flex", minHeight: "100dvh", bgcolor: SHELL_COLORS.pageBg }}
       >
-        {!isMobile && <Sidebar />}
+        {!isMobile && !refereeWorkspace && <Sidebar />}
 
         <Box
           sx={{
@@ -52,24 +59,33 @@ function LegacyMainLayoutContent() {
             minHeight: "100dvh",
           }}
         >
-          <Header onMenuClick={() => setDrawerOpen(true)} />
-          {isMobile && <AppContextBar />}
-          <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+          {refereeWorkspace && !matchScreen ? (
+            <RefereeCompactChrome title="Trọng tài của tôi" showBack={false} />
+          ) : !refereeWorkspace ? (
+            <Header onMenuClick={() => setDrawerOpen(true)} />
+          ) : null}
+          {isMobile && !refereeWorkspace && <AppContextBar />}
+          {isMobile && !refereeWorkspace ? (
+            <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+          ) : null}
 
           <Box
             component="main"
             sx={{
               flexGrow: 1,
-              p: { xs: 1.5, sm: 2, md: "24px" },
-              pb: { xs: 9, md: "24px" },
+              p: refereeWorkspace ? { xs: 0, sm: 0, md: "16px" } : { xs: 1.5, sm: 2, md: "24px" },
+              pb: {
+                xs: refereeWorkspace ? 2 : 9,
+                md: refereeWorkspace ? "16px" : "24px",
+              },
               minWidth: 0,
             }}
           >
             <RouteAccessGate>
               <TenantGate>
                 <OfflineBanner />
-                <PwaInstallPrompt />
-                <SubscriptionBanner />
+                {!refereeWorkspace && <PwaInstallPrompt />}
+                {!refereeWorkspace && <SubscriptionBanner />}
                 <OperationalRouteGate>
                   <Outlet />
                 </OperationalRouteGate>
@@ -77,7 +93,7 @@ function LegacyMainLayoutContent() {
             </RouteAccessGate>
           </Box>
 
-          {isMobile && <MobileBottomNav />}
+          {isMobile && !refereeWorkspace && <MobileBottomNav />}
         </Box>
       </Box>
     </MobileNavProvider>

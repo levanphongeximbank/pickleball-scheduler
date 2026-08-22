@@ -203,29 +203,9 @@ export function createDurableRefereeOperationsStore(options = {}) {
       draft.revision = Number(draft.revision || 0) + 1;
       draft.updatedAt = clockIso;
       const actor = currentActor();
-      if (actor) {
-        for (const row of draft.assignments || []) {
-          await resolve(
-            driver.upsertAssignment(
-              {
-                tenantId,
-                competitionId,
-                matchId: row.matchId,
-                refereeUserId: row.refereeId,
-                opsStatus: row.status,
-                status:
-                  row.status === REFEREE_ASSIGNMENT_OPS_STATUS.RELEASED ||
-                  row.status === REFEREE_ASSIGNMENT_OPS_STATUS.REASSIGNED
-                    ? "revoked"
-                    : "active",
-                venueId: row.venueId || draft.venueId,
-                courtId: row.courtId || null,
-              },
-              actor
-            )
-          );
-        }
-      }
+      // Assignment rows are read-only projections here. Scoring/lifecycle must
+      // NEVER re-upsert referee_assignments — CORE-13 owns assignment mutation.
+      draft.assignments = before.assignments || [];
       const matchIds = new Set([
         ...Object.keys(before.matches || {}),
         ...Object.keys(draft.matches || {}),
@@ -264,6 +244,20 @@ export function createDurableRefereeOperationsStore(options = {}) {
     async upsertAssignments(tenantId, competitionId, assignments, meta = {}) {
       const actor = meta.actor || currentActor();
       requireCanonicalRefereeActor(actor);
+      // Schema-faithful / test doubles may still expose upsertAssignment.
+      // LiveRpc production driver denies direct table DML (CORE-13 only).
+      if (typeof driver.upsertAssignment !== "function") {
+        throw Object.assign(
+          new Error(
+            "Assignment mutation requires CORE-13 command authority — durable store cannot upsert"
+          ),
+          {
+            code: "DIRECT_ASSIGNMENT_MUTATION_FORBIDDEN",
+            directAssignmentTableDml: "DENY",
+            assignmentAuthority: "CORE-13",
+          }
+        );
+      }
       for (const raw of assignments || []) {
         const matchId = String(raw.matchId || "").trim();
         const refereeUserId = String(raw.refereeId || raw.assigneeId || "").trim();

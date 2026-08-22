@@ -16,6 +16,7 @@ import {
   COMPETITION_REFEREE_ADAPTER_INTEGRATION,
   GENERIC_REFEREE_ROLE_PERMISSIONS,
   REFEREE_ADAPTER_ERROR_CODE,
+  REFEREE_DURABLE_RUNTIME_ERROR_CODE,
   REFEREE_ERROR_CODE,
   createCanonicalRefereePersistenceRuntime,
   createCompetitionRefereeProductionRuntime,
@@ -684,7 +685,7 @@ function createMockLiveRpcClient() {
   };
 }
 
-test("live RPC driver — assignment/CAS/idempotency/stale via mock rpcClient", async () => {
+test("live RPC driver — assignment upsert denied; CAS/idempotency/stale via mock rpcClient", async () => {
   const rpcClient = createMockLiveRpcClient();
   const driver = createLiveRpcCanonicalRefereeDurableDriver({
     rpcClient,
@@ -694,14 +695,34 @@ test("live RPC driver — assignment/CAS/idempotency/stale via mock rpcClient", 
   assert.equal(driver.durable, true);
   assert.equal(driver.usesRefereeV5ScoringEngine, false);
 
-  await driver.upsertAssignment(
-    {
-      ...SCOPE,
-      refereeUserId: ACTOR.actorId,
-      status: "active",
-    },
-    ACTOR
+  await expectAdapterCode(
+    () =>
+      driver.upsertAssignment(
+        {
+          ...SCOPE,
+          refereeUserId: ACTOR.actorId,
+          status: "active",
+        },
+        ACTOR
+      ),
+    REFEREE_DURABLE_RUNTIME_ERROR_CODE.DIRECT_ASSIGNMENT_MUTATION_FORBIDDEN
   );
+  // Simulate CORE-13 persistence already wrote the assignment row (read path only).
+  await rpcClient
+    .from(CANONICAL_REFEREE_PERSISTENCE_TABLES.ASSIGNMENTS)
+    .upsert({
+      tenant_id: SCOPE.tenantId,
+      tournament_id: SCOPE.competitionId,
+      match_id: SCOPE.matchId,
+      referee_user_id: ACTOR.actorId,
+      role: "REFEREE",
+      status: "active",
+      assigned_by: ACTOR.actorId,
+      assigned_at: CLOCK,
+      version: 1,
+    })
+    .select()
+    .maybeSingle();
   await driver.ensureLiveState(
     {
       ...SCOPE,
