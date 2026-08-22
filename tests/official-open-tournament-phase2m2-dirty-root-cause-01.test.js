@@ -288,7 +288,8 @@ describe("official-open-tournament-phase2m2-dirty-root-cause-01", () => {
     assert.match(club, /TOKEN_REFRESHED must not clear clubs/);
     assert.doesNotMatch(club, /saveClubData\(/);
     assert.doesNotMatch(pickVn, /saveClubData\(/);
-    assert.match(storage, /saveClubData\(clubId, next, options\)/);
+    // Current saveAIData signature forwards options into saveClubData (dirty policy).
+    assert.match(storage, /saveClubData\(\s*resolvedClubId,\s*next,\s*options\s*\)/);
     assert.equal(__getClubCloudPushScheduleCountForTests(CLUB_ID), 0);
   });
 

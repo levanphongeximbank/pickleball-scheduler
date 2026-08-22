@@ -414,11 +414,17 @@ describe("official-open-tournament-phase2k-canonical-court-booking-01", () => {
     const officialBranch = commandSrc.slice(officialStart, officialStart + 900);
     assert.doesNotMatch(officialBranch, /loadCourtsForClub/);
     assert.doesNotMatch(officialBranch, /syncClubToCloud/);
-    const providedStart = commandSrc.indexOf("if (courtsProvided)");
+    const providedStart = commandSrc.indexOf(
+      '} else if (Object.prototype.hasOwnProperty.call(options, "courts"))'
+    );
     const providedEnd = commandSrc.indexOf("} else {", providedStart);
+    assert.ok(providedStart >= 0, "provided-courts branch missing");
+    assert.ok(providedEnd > providedStart, "legacy else branch missing");
     const providedBranch = commandSrc.slice(providedStart, providedEnd);
     assert.match(providedBranch, /readCanonicalClubCourtBookingSnapshot/);
     assert.match(providedBranch, /authorizeProvidedTournamentCourts/);
+    // CI-R1: provided-courts booking sync must await the async bridge (no Promise-as-result).
+    assert.match(providedBranch, /await syncTournamentCourtBookings\s*\(/);
     assert.doesNotMatch(providedBranch, /loadCourtsForClub/);
   });
 

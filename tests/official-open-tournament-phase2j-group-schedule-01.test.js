@@ -369,9 +369,17 @@ describe("official-open-tournament-phase2j-group-schedule-01", () => {
     );
 
     const setupSrc = src("src/pages/tournament/OfficialTournamentSetup.jsx");
-    assert.match(setupSrc, /listCanonicalClubCourtsForFormatVenue/);
+    // Official UI reads courts via Adapter B → Competition Court Contract (not Team inventory).
+    assert.match(setupSrc, /listOfficialOpenEligibleCourts/);
     assert.match(setupSrc, /setCourts\(\[\]\)/);
     assert.doesNotMatch(setupSrc, /loadCourtsForClub/);
+    assert.doesNotMatch(setupSrc, /localStorage\.getItem/);
+    const adapterCourtSrc = src(
+      "src/features/tournament/official-open-adapter-b/court.js"
+    );
+    assert.match(adapterCourtSrc, /createOfficialOpenAdapterB/);
+    assert.match(adapterCourtSrc, /listEligibleCourts/);
+    assert.doesNotMatch(adapterCourtSrc, /loadCourtsForClub/);
   });
 
   it("booking overlap fail-closed; zero selected courts do not mutate", () => {

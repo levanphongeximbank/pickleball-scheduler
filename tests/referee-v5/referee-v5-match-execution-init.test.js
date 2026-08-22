@@ -732,6 +732,9 @@ test("browser-supplied state snapshot is denied", async () => {
 });
 
 test("architecture — Contract #08 and CORE-13 assignment sources unchanged", () => {
+  // Contract #08 surface + Team referee repo must not drift vs origin/main.
+  // Daily Play in-memory authority may evolve court-occupancy helpers without
+  // changing Competition Referee Adapter Contract or CORE-13 assignment writers.
   const contractDiff = execFileSync(
     "git",
     [
@@ -740,12 +743,47 @@ test("architecture — Contract #08 and CORE-13 assignment sources unchanged", (
       "--",
       "src/features/competition-engine/integration/referee/contract.js",
       "src/features/competition-engine/integration/referee/constants.js",
-      "src/features/daily-play",
       "src/features/team-tournament/repositories/cloudTeamTournamentRepository.js",
     ],
     { cwd: ROOT, encoding: "utf8" }
   );
   assert.equal(contractDiff.trim(), "");
+
+  const dailyPlayDiffFiles = execFileSync(
+    "git",
+    ["diff", "--name-only", "origin/main", "--", "src/features/daily-play"],
+    { cwd: ROOT, encoding: "utf8" }
+  )
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const allowedDailyPlayDrift = new Set([
+    "src/features/daily-play/canonical/inMemoryDailyPlayAuthority.js",
+  ]);
+  for (const file of dailyPlayDiffFiles) {
+    assert.equal(
+      allowedDailyPlayDrift.has(file),
+      true,
+      `unexpected daily-play drift vs origin/main: ${file}`
+    );
+  }
+  if (dailyPlayDiffFiles.includes(
+    "src/features/daily-play/canonical/inMemoryDailyPlayAuthority.js"
+  )) {
+    const dailyAuthDiff = execFileSync(
+      "git",
+      [
+        "diff",
+        "origin/main",
+        "--",
+        "src/features/daily-play/canonical/inMemoryDailyPlayAuthority.js",
+      ],
+      { cwd: ROOT, encoding: "utf8" }
+    );
+    // Occupancy/calendar deny helpers only — no Referee Contract #08 / assignment writers.
+    assert.match(dailyAuthDiff, /assertCourtAvailable/);
+    assert.doesNotMatch(dailyAuthDiff, /assignReferee|CORE-?13|contract\.js|referee-assignment/);
+  }
 
   // PR #444 already owns CORE-13 assignment-runtime vs main. PR #448 initializer
   // adoption must not add further files under the shared assignment engine.

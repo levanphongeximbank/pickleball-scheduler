@@ -41,11 +41,17 @@ describe("official-open-tournament-phase2j-shared-booking-guard-01", () => {
 
     const commandSrc = src("src/features/tournament/services/tournamentCommands.js");
     assert.match(commandSrc, /hasOwnProperty\.call\(options, "courts"\)/);
-    const providedStart = commandSrc.indexOf("if (courtsProvided)");
+    const providedStart = commandSrc.indexOf(
+      '} else if (Object.prototype.hasOwnProperty.call(options, "courts"))'
+    );
     const providedEnd = commandSrc.indexOf("} else {", providedStart);
+    assert.ok(providedStart >= 0, "provided-courts branch missing");
+    assert.ok(providedEnd > providedStart, "legacy else branch missing");
     const providedBranch = commandSrc.slice(providedStart, providedEnd);
     assert.match(providedBranch, /authorizeProvidedTournamentCourts/);
+    assert.match(providedBranch, /readCanonicalClubCourtBookingSnapshot/);
     assert.doesNotMatch(providedBranch, /loadCourtsForClub/);
+    assert.doesNotMatch(providedBranch, /localStorage\.getItem/);
   });
 
   it("C. wrong-tenant or wrong-club provided court fail closed", () => {
