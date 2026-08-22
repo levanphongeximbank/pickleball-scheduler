@@ -262,9 +262,9 @@ function formatRatingRange(eligibility) {
 function seedingLabel(policy) {
   const map = {
     NONE: "Không seed",
-    MANUAL: "Thủ công",
-    RANKING: "Theo xếp hạng",
-    RATING: "Theo rating",
+    MANUAL: "Thủ công (chưa sẵn sàng)",
+    RANKING: "Theo xếp hạng (chưa sẵn sàng)",
+    RATING: "Theo rating (chưa sẵn sàng)",
   };
   return map[policy] || policy || "Không seed";
 }
@@ -1023,12 +1023,13 @@ export default function OfficialContentFormatSettingsPanel({
                   label="Seeding"
                   value={draft.seedingPolicy || "NONE"}
                   disabled={disabled}
+                  helperText="Chỉ lưu chính sách Nội dung. Không dùng cho ghép cặp / chia bảng. KO placement chưa sẵn sàng."
                   onChange={(e) => patch("seedingPolicy", e.target.value)}
                 >
                   <MenuItem value="NONE">Không seed</MenuItem>
-                  <MenuItem value="MANUAL">Thủ công</MenuItem>
-                  <MenuItem value="RANKING">Theo xếp hạng</MenuItem>
-                  <MenuItem value="RATING">Theo rating</MenuItem>
+                  <MenuItem value="MANUAL">Thủ công (chưa sẵn sàng)</MenuItem>
+                  <MenuItem value="RANKING">Theo xếp hạng (chưa sẵn sàng)</MenuItem>
+                  <MenuItem value="RATING">Theo rating (chưa sẵn sàng)</MenuItem>
                 </TextField>
               </Grid>
             </Grid>

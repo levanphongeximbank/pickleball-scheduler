@@ -6,6 +6,9 @@
  * (shared OPEN_RANDOM for Open + AI Balance per resolveOfficialGroupDrawDispatch).
  * Lock/publish: publishDrawEngine (settings.draw).
  *
+ * Content seedingPolicy MUST NOT sort/rank units for this draw
+ * (see assertContentSeedingNotGroupDrawAuthority / CONTENT_SEEDING_SCOPE).
+ *
  * O5 persistence boundary: event.groups + settings.draw only.
  * Does NOT write schedule matches / scores / knockout.
  */
@@ -24,6 +27,7 @@ import {
   OFFICIAL_REGISTRATION_MODE,
 } from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
 import {
+  assertContentSeedingNotGroupDrawAuthority,
   resolveContentGroupCount,
   resolveContentRegistrationMode,
 } from "../../individual-tournament/engines/officialContentCompetitionRules.js";
@@ -413,6 +417,9 @@ export function resolveOfficialGroupDrawDownstreamGuards(tournament, event) {
 }
 
 export function projectOfficialGroupDraw(tournament, { selectedEventId } = {}) {
+  // Soft scope lock: Content seeding must never rank Official Open/AI Balance group draw.
+  assertContentSeedingNotGroupDrawAuthority("projectOfficialGroupDraw");
+
   const events = listTournamentEvents(tournament);
   const eventId = trim(selectedEventId);
   const needsEventChoice = events.length > 1 && !eventId;
@@ -504,6 +511,9 @@ export function projectOfficialGroupDraw(tournament, { selectedEventId } = {}) {
  * Strips plan.matches — O5 does not generate schedule matches.
  */
 export function buildOfficialCreateGroupDrawPatch(tournament, options = {}) {
+  // Soft scope lock: Content seeding must never rank Official Open/AI Balance group draw.
+  assertContentSeedingNotGroupDrawAuthority("buildOfficialCreateGroupDrawPatch");
+
   const selectedEventId = trim(options.selectedEventId || options.eventId);
   const events = listTournamentEvents(tournament);
   if (events.length > 1 && !selectedEventId) {

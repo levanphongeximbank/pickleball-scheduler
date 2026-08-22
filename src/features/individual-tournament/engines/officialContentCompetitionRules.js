@@ -79,16 +79,183 @@ export const CONTENT_CAPACITY_RUNTIME_UNIT = Object.freeze({
 });
 
 /**
- * Seeding policy is Content-persisted metadata. It must NOT drive Open
- * individual pair formation, fixed-pair re-pairing, or Open/AI Balance
- * group-draw ranking. Bracket/KO placement wiring is a later wave.
+ * Seeding policy is Content-persisted POLICY metadata only.
+ * It is NOT pair-formation, group-draw, rating, or ranking authority.
+ *
+ * Allowed future Official/Open consumer (when a canonical KO placer exists):
+ *   KNOCKOUT_PLACEMENT
+ *
+ * Forbidden consumers (hard scope lock):
+ *   Open individual pair formation
+ *   Open fixed-pair re-pairing
+ *   AI Balance pair formation
+ *   Open/AI Balance group-draw ranking
+ *
+ * PR #459 knockout admission (GROUP_STAGE_BYPASS / DIRECT_KNOCKOUT_ENTRY /
+ * KNOCKOUT_BYE) is a separate admission concept — not seeding/placement.
  */
+export const CONTENT_SEEDING_POLICY = Object.freeze({
+  NONE: "NONE",
+  MANUAL: "MANUAL",
+  RANKING: "RANKING",
+  RATING: "RATING",
+});
+
 export const CONTENT_SEEDING_SCOPE = Object.freeze({
   OPEN_INDIVIDUAL_PAIR_FORMATION: false,
   OPEN_FIXED_PAIR_REPAIRING: false,
+  AI_BALANCE_PAIR_FORMATION: false,
   OPEN_OR_AI_BALANCE_GROUP_DRAW_RANKING: false,
   BRACKET_OR_KO_PLACEMENT: "DEFERRED",
 });
+
+export const CONTENT_SEEDING_RUNTIME_STATUS = Object.freeze({
+  SUPPORTED: "SUPPORTED",
+  PARTIAL: "PARTIAL",
+  DEFERRED: "DEFERRED",
+  NOT_APPLICABLE: "NOT_APPLICABLE",
+});
+
+/** PR #459 admission concepts — never treat as seeding/placement. */
+export const CONTENT_SEEDING_VS_ADMISSION = Object.freeze({
+  GROUP_STAGE_BYPASS: "ADMISSION_NOT_SEEDING",
+  DIRECT_KNOCKOUT_ENTRY: "ADMISSION_NOT_SEEDING",
+  KNOCKOUT_BYE: "ADMISSION_NOT_SEEDING",
+  note: "Knockout admission ≠ bracket seeding/placement.",
+});
+
+function normalizeContentSeedingPolicy(value) {
+  const raw = String(value || CONTENT_SEEDING_POLICY.NONE)
+    .trim()
+    .toUpperCase();
+  if (
+    raw === CONTENT_SEEDING_POLICY.NONE ||
+    raw === CONTENT_SEEDING_POLICY.MANUAL ||
+    raw === CONTENT_SEEDING_POLICY.RANKING ||
+    raw === CONTENT_SEEDING_POLICY.RATING
+  ) {
+    return raw;
+  }
+  return CONTENT_SEEDING_POLICY.NONE;
+}
+
+/**
+ * Central Content seeding scope resolution (G1-D).
+ * Policy authority only — no pair formation / group draw / KO execution.
+ * KO allowedScopes stay empty until a proven Official/Open placer exists.
+ */
+export function resolveContentSeedingScope(tournament, options = {}) {
+  const eventId = trim(options.eventId);
+  let policy = normalizeContentSeedingPolicy(options.seedingPolicy);
+  let source = "OPTION";
+
+  if (options.seedingPolicy == null && (tournament || eventId)) {
+    const group1 = resolveContentGroup1Settings(tournament, {
+      eventId: eventId || undefined,
+      allowSoleEventInference: options.allowSoleEventInference,
+    });
+    if (group1.ok) {
+      policy = normalizeContentSeedingPolicy(group1.seedingPolicy);
+      source = group1.source;
+      return finalizeSeedingScope(policy, source, group1.eventId);
+    }
+  }
+
+  return finalizeSeedingScope(policy, source, eventId || null);
+}
+
+function finalizeSeedingScope(policy, source, eventId) {
+  // No Official/Open KO placement consumer is wired to Content seedingPolicy yet.
+  // MANUAL has no persisted manual seed-order structure in this wave.
+  // RANKING/RATING would need Ranking/Rating adapters as evidence only — still deferred.
+  const enumStatus =
+    policy === CONTENT_SEEDING_POLICY.NONE
+      ? CONTENT_SEEDING_RUNTIME_STATUS.NOT_APPLICABLE
+      : CONTENT_SEEDING_RUNTIME_STATUS.DEFERRED;
+
+  return Object.freeze({
+    ok: true,
+    eventId: eventId || null,
+    policy,
+    source,
+    authority: CONTENT_GROUP1_FIELD_AUTHORITY.seedingPolicy,
+    allowedScopes: Object.freeze([]), // KO placer not proven — keep empty (fail-closed)
+    forbiddenScopes: Object.freeze([
+      "OPEN_INDIVIDUAL_PAIR_FORMATION",
+      "OPEN_FIXED_PAIR_REPAIRING",
+      "AI_BALANCE_PAIR_FORMATION",
+      "OPEN_OR_AI_BALANCE_GROUP_DRAW_RANKING",
+    ]),
+    scopeLock: CONTENT_SEEDING_SCOPE,
+    enumStatus,
+    koRuntime: CONTENT_SEEDING_SCOPE.BRACKET_OR_KO_PLACEMENT,
+    manualSeedPersistenceExists: false,
+    rankingAuthority: "CANONICAL_RANKING_ADAPTER",
+    ratingAuthority: "CANONICAL_RATING_ADAPTER",
+    admissionSeparateFromSeeding: CONTENT_SEEDING_VS_ADMISSION,
+    pairFormationAuthority: false,
+    groupDrawAuthority: false,
+  });
+}
+
+/**
+ * Seeding is not an Open/AI Balance pair-formation authority.
+ */
+export function isContentSeedingAllowedForPairFormation() {
+  return (
+    CONTENT_SEEDING_SCOPE.OPEN_INDIVIDUAL_PAIR_FORMATION === true ||
+    CONTENT_SEEDING_SCOPE.OPEN_FIXED_PAIR_REPAIRING === true ||
+    CONTENT_SEEDING_SCOPE.AI_BALANCE_PAIR_FORMATION === true
+  );
+}
+
+export function assertContentSeedingNotPairFormationAuthority(consumer = "") {
+  if (isContentSeedingAllowedForPairFormation()) return { ok: true };
+  const label = trim(consumer) || "caller";
+  // Soft guard — does not throw (would change pair-formation runtime if thrown today).
+  return {
+    ok: false,
+    code: "SEEDING_NOT_PAIR_FORMATION_AUTHORITY",
+    error: `seedingPolicy must not drive pair formation (${label}). Open individual = RANDOM; fixed pair = registered pair; AI Balance = existing engine.`,
+    scope: CONTENT_SEEDING_SCOPE,
+  };
+}
+
+/**
+ * Seeding is not Open/AI Balance group-draw ranking authority.
+ */
+export function isContentSeedingAllowedForGroupDraw() {
+  return CONTENT_SEEDING_SCOPE.OPEN_OR_AI_BALANCE_GROUP_DRAW_RANKING === true;
+}
+
+export function assertContentSeedingNotGroupDrawAuthority(consumer = "") {
+  if (isContentSeedingAllowedForGroupDraw()) return { ok: true };
+  const label = trim(consumer) || "caller";
+  return {
+    ok: false,
+    code: "SEEDING_NOT_GROUP_DRAW_AUTHORITY",
+    error: `seedingPolicy must not sort/rank units for Official Open/AI Balance group draw (${label}). Group draw remains rating-neutral RANDOM.`,
+    scope: CONTENT_SEEDING_SCOPE,
+  };
+}
+
+/**
+ * Future KO/bracket placement gate. Returns ok:false until a proven consumer exists.
+ * Does not implement placement.
+ */
+export function assertContentSeedingKnockoutPlacementReady(consumer = "") {
+  if (CONTENT_SEEDING_SCOPE.BRACKET_OR_KO_PLACEMENT === true) {
+    return { ok: true };
+  }
+  const label = trim(consumer) || "caller";
+  return {
+    ok: false,
+    code: "SEEDING_KO_RUNTIME_DEFERRED",
+    error: `Content seedingPolicy KO/bracket placement is deferred (${label}). Admission (PR #459) ≠ seeding.`,
+    scope: CONTENT_SEEDING_SCOPE,
+    admissionSeparateFromSeeding: CONTENT_SEEDING_VS_ADMISSION,
+  };
+}
 
 function trim(value) {
   return value != null ? String(value).trim() : "";
@@ -246,26 +413,6 @@ export function evaluateContentRegistrationCapacity(tournament, event, options =
       resolved.capacityUnit === CONTENT_CAPACITY_RUNTIME_UNIT.PAIR
         ? "PAIR"
         : "PARTICIPANT",
-  };
-}
-
-/**
- * Seeding is not an Open pair-formation authority. Returns false always for
- * Open/AI Balance pair formation and registered-pair re-pairing callers.
- */
-export function isContentSeedingAllowedForPairFormation() {
-  return CONTENT_SEEDING_SCOPE.OPEN_INDIVIDUAL_PAIR_FORMATION === true;
-}
-
-export function assertContentSeedingNotPairFormationAuthority(consumer = "") {
-  if (isContentSeedingAllowedForPairFormation()) return;
-  const label = trim(consumer) || "caller";
-  // Soft guard for future callers — does not throw (would change runtime if thrown today).
-  return {
-    ok: false,
-    code: "SEEDING_NOT_PAIR_FORMATION_AUTHORITY",
-    error: `seedingPolicy must not drive pair formation (${label}). Open individual = RANDOM; fixed pair = registered pair.`,
-    scope: CONTENT_SEEDING_SCOPE,
   };
 }
 
@@ -484,9 +631,7 @@ export function normalizeContentCompetitionRules(input = {}, options = {}) {
       maxPairs: toPositiveInt(input?.capacity?.maxPairs ?? input?.maxPairs, null),
     }),
     seedingPolicy: (() => {
-      const raw = String(input?.seedingPolicy || "NONE").trim().toUpperCase();
-      if (["NONE", "MANUAL", "RANKING", "RATING"].includes(raw)) return raw;
-      return "NONE";
+      return normalizeContentSeedingPolicy(input?.seedingPolicy);
     })(),
     matchScoring,
     stageOverrides: stage.byStage,

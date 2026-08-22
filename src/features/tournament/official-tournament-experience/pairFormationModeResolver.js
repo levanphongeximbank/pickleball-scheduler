@@ -1,8 +1,9 @@
 /**
  * Wave O3 — Official Pair Formation mode resolver (Screen 06).
  * Pair Formation ≠ Draw. Resolves from officialMode + registrationMode only.
+ *
  * seedingPolicy is NOT an input — Content seeding metadata must not drive
- * Open individual / fixed-pair formation (see CONTENT_SEEDING_SCOPE).
+ * Open individual / fixed-pair / AI Balance formation (CONTENT_SEEDING_SCOPE).
  */
 
 import { OFFICIAL_MODE } from "../../../models/tournament/constants.js";
@@ -14,7 +15,10 @@ import {
   OFFICIAL_REGISTRATION_MODE,
   getOfficialCompetitionSettings,
 } from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
-import { resolveContentRegistrationMode } from "../../individual-tournament/engines/officialContentCompetitionRules.js";
+import {
+  assertContentSeedingNotPairFormationAuthority,
+  resolveContentRegistrationMode,
+} from "../../individual-tournament/engines/officialContentCompetitionRules.js";
 
 export const PAIR_FORMATION_MODE = Object.freeze({
   RANDOM_PAIRING: "RANDOM_PAIRING",
@@ -38,6 +42,9 @@ export const PAIR_FORMATION_MODE = Object.freeze({
  * }}
  */
 export function resolveOfficialPairFormationMode(tournament, options = {}) {
+  // Soft scope lock: Content seeding must never become pair-formation authority.
+  assertContentSeedingNotPairFormationAuthority("resolveOfficialPairFormationMode");
+
   const officialMode = tournament?.officialMode || null;
   const eventId = String(options.eventId || options.selectedEventId || "").trim();
   let registrationMode;
@@ -62,6 +69,7 @@ export function resolveOfficialPairFormationMode(tournament, options = {}) {
       officialMode,
       code: "REGISTRATION_MODE_UNRESOLVED",
       error: "Chưa xác định chế độ đăng ký (cá nhân / cặp).",
+      seedingIgnored: true,
     };
   }
 
@@ -81,6 +89,7 @@ export function resolveOfficialPairFormationMode(tournament, options = {}) {
       officialMode,
       code: dispatch.code || "PAIR_FORMATION_NOT_SUPPORTED",
       error: dispatch.error || "Chế độ ghép cặp không được hỗ trợ.",
+      seedingIgnored: true,
     };
   }
 
@@ -93,6 +102,7 @@ export function resolveOfficialPairFormationMode(tournament, options = {}) {
       pairingInvoked: false,
       registrationMode: OFFICIAL_REGISTRATION_MODE.PAIR,
       officialMode,
+      seedingIgnored: true,
     };
   }
 
@@ -105,6 +115,7 @@ export function resolveOfficialPairFormationMode(tournament, options = {}) {
       pairingInvoked: true,
       registrationMode: OFFICIAL_REGISTRATION_MODE.INDIVIDUAL,
       officialMode: OFFICIAL_MODE.AI_BALANCE,
+      seedingIgnored: true,
     };
   }
 
@@ -116,5 +127,6 @@ export function resolveOfficialPairFormationMode(tournament, options = {}) {
     pairingInvoked: true,
     registrationMode: OFFICIAL_REGISTRATION_MODE.INDIVIDUAL,
     officialMode: OFFICIAL_MODE.OPEN,
+    seedingIgnored: true,
   };
 }

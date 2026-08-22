@@ -313,7 +313,16 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
       tournamentRuleInheritance: false,
       lifecycleEvidence: options.lifecycleEvidence || null,
       pr459AdmissionDeferred: true,
+      // G1-D: Content seeding is policy metadata only — not pair/group-draw authority.
+      // KO/bracket placement consumer is deferred (admission ≠ seeding).
       officialSeedingPolicy: rules.seedingPolicy || "NONE",
+      officialSeedingScope: {
+        pairFormationAuthority: false,
+        groupDrawAuthority: false,
+        koPlacementRuntime: "DEFERRED",
+        admissionSeparateFromSeeding: true,
+        manualSeedPersistenceExists: false,
+      },
       officialSubstitution: rules.substitution || null,
       officialEligibility: rules.eligibility || null,
       // Non-authoritative Content capacity truth (registration runtime uses Content resolver).
