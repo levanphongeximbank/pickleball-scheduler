@@ -692,7 +692,8 @@ export async function setTournamentCourtScheduleCommand(
       }
       courts = authorized.courts;
       priorOccupancyBookings = cloneJson(working.bookings || []);
-      syncResult = syncTournamentCourtBookings(pending, scope.clubId, courts, {
+      // Canonical booking sync is async — must settle before inspecting ok/code/message.
+      syncResult = await syncTournamentCourtBookings(pending, scope.clubId, courts, {
         canonicalOccupancy: true,
         occupancyBookings: working.bookings,
         persistSnapshot: working.clubData,

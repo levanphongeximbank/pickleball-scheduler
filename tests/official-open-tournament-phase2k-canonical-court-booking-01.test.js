@@ -126,7 +126,7 @@ afterEach(() => {
 });
 
 describe("official-open-tournament-phase2k-canonical-court-booking-01", () => {
-  it("A. split-brain: canonical courts present, localStorage courts empty, booking does not return Không tìm thấy sân", () => {
+  it("A. split-brain: canonical courts present, localStorage courts empty, booking does not return Không tìm thấy sân", async () => {
     assert.equal(loadCourtsForClub(CLUB_ID).length, 0);
 
     const legacy = saveBooking(
@@ -149,7 +149,7 @@ describe("official-open-tournament-phase2k-canonical-court-booking-01", () => {
     assert.equal(legacy.ok, false);
     assert.equal(legacy.message, "Không tìm thấy sân.");
 
-    const canonical = createBooking(
+    const canonical = await createBooking(
       {
         id: buildTournamentBookingId(TOURNAMENT_ID, "tt412-court-01", "2026-08-14"),
         bookingType: "tournament",
@@ -172,9 +172,9 @@ describe("official-open-tournament-phase2k-canonical-court-booking-01", () => {
     assert.equal(canonical.booking.courtId, "tt412-court-01");
   });
 
-  it("B. free canonical courts → Official reservation succeeds without legacy court lookup", () => {
+  it("B. free canonical courts → Official reservation succeeds without legacy court lookup", async () => {
     assert.equal(loadCourtsForClub(CLUB_ID).length, 0);
-    const result = syncTournamentCourtBookings(
+    const result = await syncTournamentCourtBookings(
       officialTournament(),
       CLUB_ID,
       CANONICAL_COURTS,
@@ -197,7 +197,7 @@ describe("official-open-tournament-phase2k-canonical-court-booking-01", () => {
     );
   });
 
-  it("C. overlapping canonical occupancy is blocked", () => {
+  it("C. overlapping canonical occupancy is blocked", async () => {
     const foreign = {
       id: "normal-booking-1",
       bookingType: "single",
@@ -208,7 +208,7 @@ describe("official-open-tournament-phase2k-canonical-court-booking-01", () => {
       endTime: "16:00",
       bookingStatus: "confirmed",
     };
-    const result = syncTournamentCourtBookings(
+    const result = await syncTournamentCourtBookings(
       officialTournament(),
       CLUB_ID,
       CANONICAL_COURTS,
@@ -235,8 +235,8 @@ describe("official-open-tournament-phase2k-canonical-court-booking-01", () => {
     assert.equal(result.code, PROVIDED_COURT_AUTH_CODE.COURT_TENANT_FORBIDDEN);
   });
 
-  it("E. court removed between read and write fails closed with zero mutation", () => {
-    const result = syncTournamentCourtBookings(
+  it("E. court removed between read and write fails closed with zero mutation", async () => {
+    const result = await syncTournamentCourtBookings(
       officialTournament(["tt412-court-01", "tt412-court-02"]),
       CLUB_ID,
       [CANONICAL_COURTS[1]],
@@ -251,8 +251,8 @@ describe("official-open-tournament-phase2k-canonical-court-booking-01", () => {
     assert.equal(loadBookingsForClub(CLUB_ID).length, 0);
   });
 
-  it("F. repeat same Official reservation is idempotent", () => {
-    const first = syncTournamentCourtBookings(
+  it("F. repeat same Official reservation is idempotent", async () => {
+    const first = await syncTournamentCourtBookings(
       officialTournament(),
       CLUB_ID,
       CANONICAL_COURTS,
@@ -260,7 +260,7 @@ describe("official-open-tournament-phase2k-canonical-court-booking-01", () => {
     );
     assert.equal(first.ok, true, first.message);
     const occupancy = loadBookingsForClub(CLUB_ID);
-    const second = syncTournamentCourtBookings(
+    const second = await syncTournamentCourtBookings(
       officialTournament(),
       CLUB_ID,
       CANONICAL_COURTS,
@@ -278,8 +278,8 @@ describe("official-open-tournament-phase2k-canonical-court-booking-01", () => {
     assert.equal(new Set(stored.map((item) => item.id)).size, 2);
   });
 
-  it("G. no selected courts → zero mutation", () => {
-    const result = syncTournamentCourtBookings(
+  it("G. no selected courts → zero mutation", async () => {
+    const result = await syncTournamentCourtBookings(
       officialTournament([]),
       CLUB_ID,
       CANONICAL_COURTS,
@@ -290,8 +290,8 @@ describe("official-open-tournament-phase2k-canonical-court-booking-01", () => {
     assert.equal(loadBookingsForClub(CLUB_ID).length, 0);
   });
 
-  it("H. missing canonical occupancy snapshot fails closed", () => {
-    const result = syncTournamentCourtBookings(
+  it("H. missing canonical occupancy snapshot fails closed", async () => {
+    const result = await syncTournamentCourtBookings(
       officialTournament(),
       CLUB_ID,
       CANONICAL_COURTS,
@@ -309,9 +309,9 @@ describe("official-open-tournament-phase2k-canonical-court-booking-01", () => {
     assert.equal(loadBookingsForClub(CLUB_ID).length, 0);
   });
 
-  it("I. inactive canonical court fails closed", () => {
+  it("I. inactive canonical court fails closed", async () => {
     const inactive = [{ ...CANONICAL_COURTS[0], active: false }, CANONICAL_COURTS[1]];
-    const result = syncTournamentCourtBookings(
+    const result = await syncTournamentCourtBookings(
       officialTournament(["tt412-court-01"]),
       CLUB_ID,
       inactive,
@@ -331,8 +331,8 @@ describe("official-open-tournament-phase2k-canonical-court-booking-01", () => {
     assert.equal(loadBookingsForClub(CLUB_ID).length, 0);
   });
 
-  it("J. F5-equivalent: persisted canonical bookings reload from club blob", () => {
-    const result = syncTournamentCourtBookings(
+  it("J. F5-equivalent: persisted canonical bookings reload from club blob", async () => {
+    const result = await syncTournamentCourtBookings(
       officialTournament(),
       CLUB_ID,
       CANONICAL_COURTS,
@@ -439,7 +439,7 @@ describe("official-open-tournament-phase2k-canonical-court-booking-01", () => {
     );
   });
 
-  it("N. maintenance occupancy in canonical bookings blocks Official reservation", () => {
+  it("N. maintenance occupancy in canonical bookings blocks Official reservation", async () => {
     const maintenance = {
       id: "maint-1",
       bookingType: "maintenance",
@@ -450,7 +450,7 @@ describe("official-open-tournament-phase2k-canonical-court-booking-01", () => {
       endTime: "15:00",
       bookingStatus: "confirmed",
     };
-    const result = syncTournamentCourtBookings(
+    const result = await syncTournamentCourtBookings(
       officialTournament(),
       CLUB_ID,
       CANONICAL_COURTS,
