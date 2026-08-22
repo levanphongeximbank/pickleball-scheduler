@@ -14,6 +14,7 @@ import {
   generateDirectorSuggestions,
 } from "../../utils/courtHelpers.js";
 import { loadPlayersForClub } from "../../domain/clubStorage.js";
+import { AuthPageHeader } from "../../features/web-app-ui/index.js";
 
 export default function CourtManagementHome() {
   const { clubId, tenantId, courts, bookings, onRefresh } = useOutletContext();
@@ -33,6 +34,10 @@ export default function CourtManagementHome() {
 
   return (
     <Box>
+      <AuthPageHeader
+        title="Vận hành sân"
+        subtitle="Theo dõi cụm sân, sân vật lý, booking hiện tại và gợi ý điều phối."
+      />
       {isCourtClustersEnabled() && <MyFacilityPanel />}
       <LiveCourtsHero />
       <CourtStats stats={stats} />

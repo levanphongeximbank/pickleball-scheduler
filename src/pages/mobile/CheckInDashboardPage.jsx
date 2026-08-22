@@ -5,7 +5,11 @@ import {
   Button,
   Card,
   CardContent,
+  FormControl,
   Grid,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   Tab,
   Tabs,
@@ -29,9 +33,17 @@ import {
 import { useOfflineStatus } from "../../features/mobile/hooks/useOfflineStatus.js";
 import { buildOfflineQueueBannerModel } from "../../features/mobile/utils/offlineQueueStatus.js";
 import CheckInStatusChip from "../../features/mobile/components/CheckInStatusChip.jsx";
-import ResponsiveDataView from "../../features/mobile/components/ResponsiveDataView.jsx";
-import { CHECKIN_STATUS } from "../../features/mobile/constants/checkInStatus.js";
-import { MOBILE_PAGE_GUTTER } from "../../components/tournament/mobileUi.js";
+import {
+  CHECKIN_STATUS,
+  CHECKIN_STATUS_LABELS,
+} from "../../features/mobile/constants/checkInStatus.js";
+import {
+  AppSnackbar,
+  AuthEmptyState,
+  AuthFilterBar,
+  AuthPageHeader,
+  AuthResponsiveDataView,
+} from "../../features/web-app-ui/index.js";
 
 export default function CheckInDashboardPage() {
   const { activeClubId } = useClub();
@@ -43,6 +55,9 @@ export default function CheckInDashboardPage() {
   const [stats, setStats] = useState({ total: 0, checkedIn: 0, pending: 0, late: 0, invalid: 0 });
   const [cacheSummary, setCacheSummary] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [syncFeedback, setSyncFeedback] = useState("");
   const [queueSummary, setQueueSummary] = useState(getOfflineQueueStatusSummary());
   const { isOffline, pendingCount, refreshPending } = useOfflineStatus();
 
@@ -52,6 +67,8 @@ export default function CheckInDashboardPage() {
   );
 
   const refresh = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError("");
     const result = await getCheckinDashboard({
       tenantId: currentTenantId,
       filters: { search, status: statusFilter || undefined },
@@ -59,7 +76,10 @@ export default function CheckInDashboardPage() {
     if (result.ok) {
       setCheckins(result.checkins);
       setStats(result.stats);
+    } else {
+      setLoadError(result.error || "Không tải được dữ liệu check-in.");
     }
+    setIsLoading(false);
   }, [currentTenantId, search, statusFilter]);
 
   useEffect(() => {
@@ -103,7 +123,9 @@ export default function CheckInDashboardPage() {
     setQueueSummary(getOfflineQueueStatusSummary());
     setIsSyncing(false);
     if (result.conflicts?.length > 0) {
-      window.alert(`Đồng bộ xong nhưng có ${result.conflicts.length} xung đột. Vui lòng kiểm tra thủ công.`);
+      setSyncFeedback(
+        `Đồng bộ xong nhưng có ${result.conflicts.length} xung đột. Vui lòng kiểm tra thủ công.`
+      );
     }
   };
 
@@ -134,13 +156,33 @@ export default function CheckInDashboardPage() {
   });
 
   return (
-    <Box sx={{ px: MOBILE_PAGE_GUTTER, pb: { xs: 10, md: 3 } }}>
-      <Typography variant="h5" fontWeight={900} gutterBottom>
-        Check-in Dashboard
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Tổng quan check-in giải / CLB / sân
-      </Typography>
+    <Box sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 10, md: 3 }, minWidth: 0 }}>
+      <AuthPageHeader
+        title="Check-in"
+        subtitle="Tổng quan check-in giải, câu lạc bộ và sân."
+        primaryAction={
+          <Button
+            component={Link}
+            to="/mobile/qr-scan"
+            variant="contained"
+            startIcon={<QrCodeScannerIcon />}
+            sx={{ minHeight: 48 }}
+          >
+            Quét QR
+          </Button>
+        }
+        secondaryActions={
+          <Button
+            component={Link}
+            to="/mobile/qr-generate"
+            variant="outlined"
+            startIcon={<QrCode2Icon />}
+            sx={{ minHeight: 48 }}
+          >
+            Tạo QR
+          </Button>
+        }
+      />
 
       {cacheSummary?.hasSnapshot && (
         <Alert severity="info" sx={{ mb: 2 }}>
@@ -214,27 +256,6 @@ export default function CheckInDashboardPage() {
         </Card>
       )}
 
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
-        <Button
-          component={Link}
-          to="/mobile/qr-scan"
-          variant="contained"
-          startIcon={<QrCodeScannerIcon />}
-          sx={{ minHeight: 48 }}
-        >
-          Quét QR
-        </Button>
-        <Button
-          component={Link}
-          to="/mobile/qr-generate"
-          variant="outlined"
-          startIcon={<QrCode2Icon />}
-          sx={{ minHeight: 48 }}
-        >
-          Tạo QR
-        </Button>
-      </Stack>
-
       <Grid container spacing={1.5} sx={{ mb: 2 }}>
         {[
           { label: "Đăng ký", value: summary.totalRegistered, color: "#0f766e", hint: "Tổng người tham gia" },
@@ -261,50 +282,70 @@ export default function CheckInDashboardPage() {
         ))}
       </Grid>
 
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mb: 2 }}>
-        <TextField
-          size="small"
-          placeholder="Tìm tên, SĐT, mã VĐV..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          fullWidth
-        />
-        <TextField
-          select
-          size="small"
-          label="Trạng thái"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          SelectProps={{ native: true }}
-          sx={{ minWidth: { sm: 160 } }}
-        >
-          <option value="">Tất cả</option>
-          {Object.values(CHECKIN_STATUS).map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </TextField>
-      </Stack>
+      <AuthFilterBar
+        search={
+          <TextField
+            size="small"
+            label="Tìm tên, SĐT hoặc mã VĐV"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            fullWidth
+          />
+        }
+        filters={
+          <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 180 } }}>
+            <InputLabel id="checkin-status-filter-label">Trạng thái</InputLabel>
+            <Select
+              labelId="checkin-status-filter-label"
+              label="Trạng thái"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+            >
+              <MenuItem value="">Tất cả</MenuItem>
+            {Object.values(CHECKIN_STATUS).map((status) => (
+              <MenuItem key={status} value={status}>
+                {CHECKIN_STATUS_LABELS[status] || status}
+              </MenuItem>
+            ))}
+            </Select>
+          </FormControl>
+        }
+        resultCount={filteredRows.length}
+        resultCountLabel="VĐV"
+      />
 
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }} variant="scrollable">
+      <Tabs
+        value={tab}
+        onChange={(_, value) => setTab(value)}
+        sx={{ mb: 2 }}
+        variant="scrollable"
+        aria-label="Nội dung check-in"
+      >
         <Tab label="Danh sách VĐV" />
         <Tab label="Lịch sử scan" />
       </Tabs>
 
       {tab === 0 && (
-        <ResponsiveDataView
+        <AuthResponsiveDataView
           columns={columns}
           rows={filteredRows}
-          getRowKey={(row) => row.player?.id}
-          emptyMessage="Chưa có VĐV đăng ký."
+          getRowId={(row) => row.player?.id || row.entity_id}
+          loading={isLoading}
+          error={Boolean(loadError)}
+          errorMessage={loadError}
+          onRetry={refresh}
+          emptyTitle="Chưa có VĐV đăng ký"
+          emptyDescription="Danh sách sẽ xuất hiện khi có VĐV trong phạm vi check-in này."
         />
       )}
 
       {tab === 1 && (
         <Stack spacing={1}>
-          {checkins.length === 0 && (
-            <Alert severity="info">Chưa có lịch sử check-in.</Alert>
+          {checkins.length === 0 && !isLoading && !loadError && (
+            <AuthEmptyState
+              title="Chưa có lịch sử check-in"
+              description="Các lượt quét và check-in sẽ xuất hiện tại đây."
+            />
           )}
           {checkins.map((c) => (
             <Card key={c.id} variant="outlined" sx={{ borderRadius: 2, borderColor: "divider" }}>
@@ -328,6 +369,13 @@ export default function CheckInDashboardPage() {
           ))}
         </Stack>
       )}
+
+      <AppSnackbar
+        open={Boolean(syncFeedback)}
+        message={syncFeedback}
+        tone="warning"
+        onClose={() => setSyncFeedback("")}
+      />
     </Box>
   );
 }

@@ -11,6 +11,7 @@ import {
 } from "../../../domain/courtBookingEngine.js";
 import { filterCourtsByCluster } from "../../../features/court-cluster/services/courtClusterService.js";
 import { isCourtClustersEnabled } from "../../../features/court-cluster/config/clusterFlags.js";
+import { AuthFilterBar } from "../../../features/web-app-ui/index.js";
 import BookingForm from "../BookingForm.jsx";
 import BookingDetail from "../BookingDetail.jsx";
 import { formatDisplayDate, todayIsoDate } from "../courtManagement.constants.js";
@@ -48,6 +49,7 @@ export default function CourtCalendarShell({
   onRefresh,
   clusters = [],
   previewMode = false,
+  adoptAuthPatterns = false,
   initialView = "day",
   initialDate = todayIsoDate(),
 }) {
@@ -165,6 +167,27 @@ export default function CourtCalendarShell({
     setDetailBooking(booking);
   };
 
+  const calendarToolbar = (
+    <CourtCalendarToolbar
+      view={view}
+      onViewChange={setView}
+      anchorDate={anchorDate}
+      dateLabel={dateLabel}
+      onPrev={handlePrev}
+      onToday={handleToday}
+      onNext={handleNext}
+      courts={filteredCourts}
+      bookings={bookings}
+      openHour={settings.openHour}
+      closeHour={settings.closeHour}
+      clusters={clusters}
+      activeClusterId={activeClusterId}
+      onClusterChange={setActiveClusterId}
+      onCreateBooking={() => openCreateForm()}
+      kpiDate={kpiDate}
+    />
+  );
+
   return (
     <Box>
       {previewMode && (
@@ -178,24 +201,11 @@ export default function CourtCalendarShell({
         </Alert>
       )}
 
-      <CourtCalendarToolbar
-        view={view}
-        onViewChange={setView}
-        anchorDate={anchorDate}
-        dateLabel={dateLabel}
-        onPrev={handlePrev}
-        onToday={handleToday}
-        onNext={handleNext}
-        courts={filteredCourts}
-        bookings={bookings}
-        openHour={settings.openHour}
-        closeHour={settings.closeHour}
-        clusters={clusters}
-        activeClusterId={activeClusterId}
-        onClusterChange={setActiveClusterId}
-        onCreateBooking={() => openCreateForm()}
-        kpiDate={kpiDate}
-      />
+      {adoptAuthPatterns ? (
+        <AuthFilterBar filters={calendarToolbar} sx={{ mb: 0 }} />
+      ) : (
+        calendarToolbar
+      )}
 
       {view === "month" ? (
         <CourtCalendarMonthBoard

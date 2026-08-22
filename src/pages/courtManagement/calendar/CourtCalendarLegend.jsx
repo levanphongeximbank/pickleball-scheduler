@@ -4,7 +4,12 @@ import { CALENDAR_CELL_TONES, CALENDAR_LEGEND_ITEMS } from "./courtCalendarToken
 
 export default function CourtCalendarLegend() {
   return (
-    <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2 }}>
+    <Stack
+      direction="row"
+      spacing={1}
+      useFlexGap
+      sx={{ mt: 2, flexWrap: "wrap", minWidth: 0 }}
+    >
       {CALENDAR_LEGEND_ITEMS.map((tone) => {
         const token = CALENDAR_CELL_TONES[tone];
         return (
