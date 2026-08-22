@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { auditSql } from "./helpers/wave5-sql-dollar-quote-audit.js";
 
 const SQL_DIR = path.join(
   process.cwd(),
@@ -1074,6 +1075,10 @@ test("Round 8 canonical mutation surface is shared and does not drift", () => {
   assert.match(readPkg("00_README.md"), /CANONICAL_MUTATION_RPC_COUNT=14/);
   assert.match(readPkg("00_README.md"), /LEGACY_COMPAT_MUTATION_RPC_COUNT=1/);
   assert.match(readPkg("00_README.md"), /TOTAL_QUIESCE_TARGET_COUNT=15/);
+  assert.match(
+    readPkg("07B_DRAIN_VERIFY.sql"),
+    /CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql/
+  );
 });
 
 test("Round 8 A. Q1B rechecks unknown overloads", () => {
@@ -1955,6 +1960,54 @@ test("Round 11 E. post-APPLY VERIFY failure keeps service_role quiesced", () => 
   assert.match(runbook, /KEEP_WRITES_QUIESCED|POST_APPLY_VERIFY_FAILURE/);
   assert.match(restore, /POST_APPLY_LEGACY_ACL_RESTORE=DENIED/);
   assert.match(restore, /APPLIED|VERIFIED/);
+});
+
+function executableSqlSurface(sql) {
+  return uncommented(sql)
+    .replace(/'(?:''|[^'])*'/g, " ")
+    .replace(/"(?:""|[^"])*"/g, " ");
+}
+
+test("07B drain verify raw SQL has no executable JS packaging leakage", () => {
+  const src = readPkg("07B_DRAIN_VERIFY.sql");
+  assert.match(src, /CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql/);
+  const surface = executableSqlSurface(src);
+  assert.doesNotMatch(surface, /assert\.match\s*\(/);
+  assert.doesNotMatch(surface, /readPkg\s*\(/);
+});
+
+test("Wave5 sql-design artifacts contain no executable JS packaging leakage", () => {
+  for (const name of PACKAGE_FILES.filter((n) => n.endsWith(".sql"))) {
+    const surface = executableSqlSurface(readPkg(name));
+    assert.doesNotMatch(surface, /assert\.match\s*\(/, name);
+    assert.doesNotMatch(surface, /assert\.equal\s*\(/, name);
+    assert.doesNotMatch(surface, /readPkg\s*\(/, name);
+    assert.doesNotMatch(surface, /\brequire\s*\(/, name);
+    assert.doesNotMatch(surface, /\bconsole\.log\s*\(/, name);
+    assert.doesNotMatch(surface, /\bdescribe\s*\(/, name);
+  }
+});
+
+test("07B drain verify raw SQL static validation remains intact", () => {
+  const src = readPkg("07B_DRAIN_VERIFY.sql");
+  const body = uncommented(src);
+  const parsed = auditSql(src, "07B_DRAIN_VERIFY.sql");
+  assert.equal(parsed.parseRisk, "NONE");
+  assert.equal(parsed.doBlockCount, 1);
+  assert.equal(parsed.unbalanced.length, 0);
+  assert.match(src, /CANONICAL_MUTATION_SURFACE_REF=09_CANONICAL_MUTATION_SURFACE.sql/);
+  assert.doesNotMatch(src, /assert\.match\s*\(\s*readPkg\s*\(/);
+  assert.match(body, /\bDO\s+\$\$/);
+  assert.match(body, /wave5\.cutover_batch_id/);
+  assert.match(body, /cutover_batch_id required/);
+  assert.match(body, /expected QUIESCED or DRAINED/);
+  assert.match(body, /quiesce_visible_at missing/);
+  assert.match(body, /b\.quiesce_visible_at/);
+  assert.match(body, /has_function_privilege\('authenticated'/);
+  assert.match(body, /has_function_privilege\('anon'/);
+  assert.match(body, /PRE_QUIESCE_ALL_USER_TRANSACTION_BARRIER/);
+  assert.match(src, /PRE_QUIESCE_ALL_USER_TRANSACTION_BARRIER=YES/);
+  assert.match(body, /WAVE5_DRAIN_PASS/);
 });
 
 
