@@ -31,7 +31,11 @@ import {
   resolveDashboardAccess,
   resolveDashboardClubOperationsGate,
 } from "../features/dashboard-analytics/index.js";
-import { buildDashboardSummary } from "./dashboard.logic";
+import {
+  buildDashboardSummary,
+  hasExplicitDashboardClubId,
+  loadClubOperationsDashboardSummary,
+} from "./dashboard.logic";
 import { loadCourtsFromStorage, loadPlayersFromStorage } from "./selectPlayers.data";
 
 function StatCard({ label, value, hint }) {
@@ -59,7 +63,7 @@ function ClubOperationsSection() {
   const { activeSeason, activeLeague } = useSeasonLeague();
 
   const operationallyReady =
-    Boolean(activeClubId) &&
+    hasExplicitDashboardClubId(activeClubId) &&
     Boolean(activeClubReady) &&
     activeClub?.id === activeClubId;
 
@@ -74,20 +78,19 @@ function ClubOperationsSection() {
         leagueId: null,
       });
     }
-    const aiData = loadAIData(activeClubId);
-    const sessions = aiData.sessions || [];
-    const players = loadPlayersFromStorage(activeClubId);
-    const courts = loadCourtsFromStorage(activeClubId);
-    const rounds = loadRoundsForClub(activeClubId);
-
-    return buildDashboardSummary({
-      sessions,
-      players,
-      courts,
-      rounds,
+    const loaded = loadClubOperationsDashboardSummary({
+      clubId: String(activeClubId).trim(),
       seasonId: activeSeason?.id || null,
       leagueId: activeLeague?.id || null,
+      loadAIData,
+      loadPlayers: loadPlayersFromStorage,
+      loadCourts: loadCourtsFromStorage,
+      loadRounds: loadRoundsForClub,
     });
+    if (!loaded.ok || !loaded.summary) {
+      return buildDashboardSummary({});
+    }
+    return loaded.summary;
   }, [
     operationallyReady,
     activeClubId,

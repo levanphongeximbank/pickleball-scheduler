@@ -7,10 +7,11 @@ export const BATCH_C_ACTION_MATRIX = Object.freeze([
     screen: "07",
     action: "Điều hành / Trình chiếu",
     referenceAction: "Điều hành / Trình chiếu",
-    currentProductionAuthority: "Visual layout only",
+    currentProductionAuthority:
+      "Official: buildOfficialPresentPairDraw → PairingReveal (presentation only)",
     class: "A",
     enabled: true,
-    why: "Chỉ đổi bố cục xem. Không ghi hồ sơ.",
+    why: "Trình chiếu cặp đã hình thành. Không ghi hồ sơ.",
     mutationPath: null,
   },
   {

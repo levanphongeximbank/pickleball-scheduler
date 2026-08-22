@@ -203,6 +203,7 @@ export default function TournamentDirectorMode() {
         onCloseRefereeDialog={() => setRefereeDialogMatch(null)}
         onCloseAuditDialog={() => setAuditHistoryMatch(null)}
         onRefereeAssign={handleRefereeAssign}
+        requireCanonicalIdentity={!isDaily}
       />
 
       <DirectorScorePanel

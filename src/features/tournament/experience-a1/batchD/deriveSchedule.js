@@ -1,5 +1,7 @@
 import { isSchedulePublished } from "../../../../tournament/engines/publishScheduleEngine.js";
 import { eventDisplayName, resolveBatchBEvent } from "../batchB/eventScope.js";
+import { isOfficialOpenFamily } from "../deriveOverview.js";
+import { projectOfficialSchedule } from "../../official-tournament-experience/operationsProjection.js";
 import {
   courtLabel,
   courtsByIdMap,
@@ -63,7 +65,33 @@ function buildGrid(matches, courts, courtsMap) {
   });
 }
 
-export function deriveScheduleModel(tournament, { selectedEventId, stage = "group", groupId = "", day = "" } = {}) {
+export function deriveScheduleModel(tournament, options = {}) {
+  const base = deriveScheduleModelBase(tournament, options);
+  if (!isOfficialOpenFamily(tournament) && !tournament?.officialMode) {
+    return base;
+  }
+  const projection = projectOfficialSchedule(tournament, {
+    selectedEventId: options.selectedEventId,
+  });
+  return {
+    ...base,
+    official: true,
+    assignScheduleEnabled: projection.assignEnabled === true,
+    publishScheduleEnabled: projection.publishEnabled === true,
+    clusterUsedAsPhysicalCourt: projection.clusterUsedAsPhysicalCourt === true,
+    courtAuthority: projection.courtAuthority,
+    blocker: projection.blocker || (base.needsEventChoice ? { code: "EVENT_REQUIRED", error: "Chọn nội dung." } : null),
+    courtEngineForbidden: false,
+    publishHint: projection.publishEnabled
+      ? "Công bố lịch (settings.schedule) — không tạo trận mới."
+      : base.publishHint,
+    allocationHint: projection.assignEnabled
+      ? "Gán giờ/sân qua scheduleOfficialGroupMatches (sân vật lý)."
+      : base.allocationHint,
+  };
+}
+
+function deriveScheduleModelBase(tournament, { selectedEventId, stage = "group", groupId = "", day = "" } = {}) {
   const scope = resolveBatchBEvent(tournament, selectedEventId);
   const event = scope.event;
   const entries = resolveEntries(event);
@@ -167,6 +195,9 @@ export function deriveScheduleModel(tournament, { selectedEventId, stage = "grou
     grid: buildGrid(matches, courts, courtsMap),
     cards,
     courtEngineForbidden: true,
+    official: false,
+    assignScheduleEnabled: false,
+    publishScheduleEnabled: false,
   };
 }
 

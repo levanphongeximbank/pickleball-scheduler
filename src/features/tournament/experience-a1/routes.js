@@ -7,6 +7,10 @@ import {
   isIndividualTournament,
   isTeamTournament,
 } from "../../../config/tournamentRoutes.js";
+import {
+  officialLegacySetupPath,
+  resolveOfficialCanonicalOpenPath,
+} from "../official-tournament-experience/officialOpenPaths.js";
 
 function legacySetupPath(tournament) {
   const id = String(tournament?.id || "").trim();
@@ -15,7 +19,7 @@ function legacySetupPath(tournament) {
     return `/tournament/internal/${id}`;
   }
   if (tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) {
-    return `/tournament/official/${id}`;
+    return officialLegacySetupPath(id);
   }
   if (tournament.mode === TOURNAMENT_MODE.TEAM_TOURNAMENT) {
     return `/tournament/team/${id}`;
@@ -164,6 +168,9 @@ export function a1LegacyHubPath() {
 
 export function resolveA1OpenPath(tournament) {
   if (!tournament?.id) return "/tournament";
+  if (tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) {
+    return resolveOfficialCanonicalOpenPath(tournament);
+  }
   if (isIndividualTournament(tournament)) {
     return individualOverviewPath(tournament.id);
   }

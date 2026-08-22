@@ -1,5 +1,7 @@
 import { writeAuditLog } from "../../features/identity/services/auditService.js";
 import { PERMISSIONS } from "../../features/identity/constants/permissions.js";
+import { isOfficialOpenTournament } from "../../features/tournament/official-open-adapter-b/activation.js";
+import { createOfficialOpenAdapterB } from "../../features/tournament/official-open-adapter-b/createOfficialOpenAdapterB.js";
 
 export const DRAW_PUBLISH_STATUS = {
   DRAFT: "draft",
@@ -16,6 +18,23 @@ export const DRAW_AUDIT_ACTIONS = Object.freeze({
 });
 
 const AUDIT_LOG_CAP = 50;
+
+function appendDrawIdentityAudit(tournament, payload) {
+  if (isOfficialOpenTournament(tournament)) {
+    const adapter = createOfficialOpenAdapterB({
+      tournament,
+      currentTenantId: payload.tenantId || tournament.tenantId,
+      actor: payload.actor,
+    });
+    void adapter.appendAudit(payload.action, {
+      actorId: payload.actor?.id,
+      clubId: payload.clubId,
+      entityRef: payload.resourceId,
+    });
+    return;
+  }
+  void writeAuditLog(payload).catch(() => {});
+}
 
 function patchDrawSettings(tournament, drawPatch) {
   return {
@@ -109,19 +128,20 @@ function appendDrawAuditEntry(tournament, entry, options = {}) {
     auditLog,
   });
 
-  void writeAuditLog({
+  appendDrawIdentityAudit(tournament, {
     action: entry.action,
     resourceType: "tournament",
     resourceId: tournament?.id || "",
     clubId: options.clubId || tournament?.clubId || null,
     actor: entry.actor || null,
+    tenantId: options.tenantId || tournament?.tenantId || null,
     metadata: {
       drawAction: entry.action,
       before: entry.before,
       after: entry.after,
       reason: entry.reason || "",
     },
-  }).catch(() => {});
+  });
 
   return { tournament: next, auditEntry };
 }

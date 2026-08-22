@@ -1,3 +1,65 @@
+/**
+ * Dashboard club-operations gate — never call club-scoped loaders without this.
+ * Preference / first-club / tenantId-as-clubId are not legal substitutes.
+ * @param {unknown} clubId
+ * @returns {boolean}
+ */
+export function hasExplicitDashboardClubId(clubId) {
+  return Boolean(String(clubId || "").trim());
+}
+
+/**
+ * Load club-operations summary only when an explicit canonical clubId is present.
+ * Callers must not invoke club-scoped storage during React render without this gate.
+ *
+ * @param {{
+ *   clubId: unknown,
+ *   seasonId?: string|null,
+ *   leagueId?: string|null,
+ *   loadAIData: (clubId: string) => { sessions?: unknown[] },
+ *   loadPlayers: (clubId: string) => unknown[],
+ *   loadCourts: (clubId: string) => unknown[],
+ *   loadRounds: (clubId: string) => unknown[],
+ * }} args
+ */
+export function loadClubOperationsDashboardSummary({
+  clubId,
+  seasonId = null,
+  leagueId = null,
+  loadAIData,
+  loadPlayers,
+  loadCourts,
+  loadRounds,
+}) {
+  if (!hasExplicitDashboardClubId(clubId)) {
+    return {
+      ok: false,
+      code: "CLUB_REQUIRED",
+      queried: false,
+      summary: null,
+    };
+  }
+
+  const resolvedClubId = String(clubId).trim();
+  const aiData = loadAIData(resolvedClubId);
+  const summary = buildDashboardSummary({
+    sessions: aiData?.sessions || [],
+    players: loadPlayers(resolvedClubId) || [],
+    courts: loadCourts(resolvedClubId) || [],
+    rounds: loadRounds(resolvedClubId) || [],
+    seasonId,
+    leagueId,
+  });
+
+  return {
+    ok: true,
+    code: null,
+    queried: true,
+    clubId: resolvedClubId,
+    summary,
+  };
+}
+
 export function buildDashboardSummary({
   sessions = [],
   players = [],

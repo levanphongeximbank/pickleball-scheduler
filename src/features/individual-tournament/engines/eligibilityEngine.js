@@ -3,7 +3,7 @@
  * Blob: tournament.settings.eligibilityRules
  * Does not modify team eligibilityEngine.
  */
-import { getPlayerGenderKey, getPlayerRatingInternal } from "../../../models/player.js";
+import { getPlayerGenderKey } from "../../../models/player.js";
 import { writeAuditLog } from "../../identity/services/auditService.js";
 import { isCountableRegistrationEntry } from "../../../models/tournament/entry.js";
 
@@ -14,8 +14,11 @@ export const ELIGIBILITY_VIOLATION = {
   GENDER_NOT_ALLOWED: "gender_not_allowed",
   SKILL_TOO_LOW: "skill_too_low",
   SKILL_TOO_HIGH: "skill_too_high",
+  SKILL_UNKNOWN: "skill_unknown",
   RATING_TOO_LOW: "rating_too_low",
   RATING_TOO_HIGH: "rating_too_high",
+  RATING_UNKNOWN: "rating_unknown",
+  INVALID_ELIGIBILITY_POLICY: "invalid_eligibility_policy",
   CLUB_REQUIRED: "club_membership_required",
   INVITE_ONLY: "invite_only",
   NOT_ON_WHITELIST: "not_on_whitelist",
@@ -45,8 +48,35 @@ function patchTournamentSettings(tournament, patch) {
   };
 }
 
+/**
+ * Canonical optional numeric bound.
+ * null / undefined / blank → unset (null).
+ * Number(null) and Number("") are 0 in JS — must NOT become a max=0 trap.
+ */
 function toNullableNumber(value) {
-  return Number.isFinite(Number(value)) ? Number(value) : null;
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/**
+ * Official/individual skill and rating 0 is the proven empty-input sentinel
+ * (Number(null)===0 / Number("")===0), not a product floor or ceiling.
+ * Hidden min=0 must not activate missing-data fail-closed.
+ * Age bounds are not rewritten here.
+ */
+function toNullableSkillRatingBound(value) {
+  const parsed = toNullableNumber(value);
+  return parsed === 0 ? null : parsed;
+}
+
+function toNullableMaxBound(value) {
+  return toNullableSkillRatingBound(value);
+}
+
+function toNullableMinBound(value) {
+  return toNullableSkillRatingBound(value);
 }
 
 export function normalizeEligibilityRules(rules = {}) {
@@ -76,16 +106,24 @@ export function normalizeEligibilityRules(rules = {}) {
         ? gender.allowedGenders.map((value) => String(value).trim()).filter(Boolean)
         : [...DEFAULT_ELIGIBILITY_RULES.gender.allowedGenders],
     },
-    skill: {
-      enabled: skill.enabled === true,
-      minLevel: toNullableNumber(skill.minLevel),
-      maxLevel: toNullableNumber(skill.maxLevel),
-    },
-    rating: {
-      enabled: rating.enabled === true,
-      minRating: toNullableNumber(rating.minRating),
-      maxRating: toNullableNumber(rating.maxRating),
-    },
+    skill: (() => {
+      const minLevel = toNullableMinBound(skill.minLevel);
+      const maxLevel = toNullableMaxBound(skill.maxLevel);
+      return {
+        enabled: skill.enabled === true && (minLevel != null || maxLevel != null),
+        minLevel,
+        maxLevel,
+      };
+    })(),
+    rating: (() => {
+      const minRating = toNullableMinBound(rating.minRating);
+      const maxRating = toNullableMaxBound(rating.maxRating);
+      return {
+        enabled: rating.enabled === true && (minRating != null || maxRating != null),
+        minRating,
+        maxRating,
+      };
+    })(),
     clubMembership: {
       enabled: clubMembership.enabled === true,
       requireActiveClub: clubMembership.requireActiveClub !== false,
@@ -111,6 +149,31 @@ export function normalizeEligibilityRules(rules = {}) {
 
 export function getEligibilityRules(tournament) {
   return normalizeEligibilityRules(tournament?.settings?.eligibilityRules || {});
+}
+
+/**
+ * Official Settings exposes only max skill/rating ceilings.
+ * Hidden min bounds must not survive an Official save.
+ */
+export function patchOfficialVisibleEligibilityLimits(tournament, input = {}) {
+  const maxLevel = Object.prototype.hasOwnProperty.call(input, "maxLevel")
+    ? toNullableMaxBound(input.maxLevel)
+    : null;
+  const maxRating = Object.prototype.hasOwnProperty.call(input, "maxRating")
+    ? toNullableMaxBound(input.maxRating)
+    : null;
+  return updateEligibilityRules(tournament, {
+    skill: {
+      enabled: maxLevel != null,
+      minLevel: null,
+      maxLevel,
+    },
+    rating: {
+      enabled: maxRating != null,
+      minRating: null,
+      maxRating,
+    },
+  });
 }
 
 export function updateEligibilityRules(tournament, patch = {}) {
@@ -162,12 +225,17 @@ export function getPlayerDisplayRating(player) {
   return null;
 }
 
-function isRatingV5FlagOn() {
-  try {
-    return String(import.meta.env?.VITE_PICK_VN_RATING_V5_ENABLED ?? "false").toLowerCase() === "true";
-  } catch {
-    return false;
-  }
+/** Skill/level for eligibility only — never invent 0 or 3.5. */
+function getPlayerSkillLevel(player) {
+  if (!player) return null;
+  const raw =
+    player.ratingInternal ??
+    player.skillLevel ??
+    player.level ??
+    player.rating;
+  if (raw == null || raw === "") return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export function checkPlayerEligibility(player, rules, options = {}) {
@@ -237,64 +305,102 @@ export function checkPlayerEligibility(player, rules, options = {}) {
     }
   }
 
-  if (normalized.skill.enabled) {
-    const level = getPlayerRatingInternal(player);
-    if (normalized.skill.minLevel != null && level < normalized.skill.minLevel) {
+  const skillMin = normalized.skill.minLevel;
+  const skillMax = normalized.skill.maxLevel;
+  if (skillMin != null || skillMax != null) {
+    const level = getPlayerSkillLevel(player);
+    if (level == null) {
       violations.push({
-        code: ELIGIBILITY_VIOLATION.SKILL_TOO_LOW,
-        message: `Trình độ ${level} thấp hơn mức tối thiểu ${normalized.skill.minLevel}.`,
+        code: ELIGIBILITY_VIOLATION.SKILL_UNKNOWN,
+        message: "Thiếu trình độ để kiểm tra điều kiện trình độ.",
       });
-    }
-    if (normalized.skill.maxLevel != null && level > normalized.skill.maxLevel) {
-      violations.push({
-        code: ELIGIBILITY_VIOLATION.SKILL_TOO_HIGH,
-        message: `Trình độ ${level} vượt mức tối đa ${normalized.skill.maxLevel}.`,
-      });
+    } else {
+      if (skillMin != null && level < skillMin) {
+        violations.push({
+          code: ELIGIBILITY_VIOLATION.SKILL_TOO_LOW,
+          message: `Trình độ ${level} thấp hơn mức tối thiểu ${skillMin}.`,
+        });
+      }
+      if (skillMax != null && level > skillMax) {
+        violations.push({
+          code: ELIGIBILITY_VIOLATION.SKILL_TOO_HIGH,
+          message: `Trình độ ${level} vượt mức tối đa ${skillMax}.`,
+        });
+      }
     }
   }
 
-  if (normalized.rating.enabled) {
-    const display = getPlayerDisplayRating(player);
+  const ratingMin = normalized.rating.minRating;
+  const ratingMax = normalized.rating.maxRating;
+  if (ratingMin != null || ratingMax != null) {
+    const canonicalRating = options.ratingEvidence?.data?.ratingValue;
+    const display =
+      options.requireCanonicalRatingEvidence === true
+        ? canonicalRating != null && Number.isFinite(Number(canonicalRating))
+          ? Number(canonicalRating)
+          : null
+        : getPlayerDisplayRating(player);
     if (display == null) {
-      if (options.requireRatingValue === true || isRatingV5FlagOn()) {
-        violations.push({
-          code: ELIGIBILITY_VIOLATION.RATING_TOO_LOW,
-          message: "Thiếu rating để kiểm tra khoảng rating.",
-        });
-      }
+      violations.push({
+        code: ELIGIBILITY_VIOLATION.RATING_UNKNOWN,
+        message: "Thiếu rating để kiểm tra điều kiện rating.",
+      });
     } else {
-      if (normalized.rating.minRating != null && display < normalized.rating.minRating) {
+      if (ratingMin != null && display < ratingMin) {
         violations.push({
           code: ELIGIBILITY_VIOLATION.RATING_TOO_LOW,
-          message: `Rating ${display} thấp hơn mức tối thiểu ${normalized.rating.minRating}.`,
+          message: `Rating ${display} thấp hơn mức tối thiểu ${ratingMin}.`,
         });
       }
-      if (normalized.rating.maxRating != null && display > normalized.rating.maxRating) {
+      if (ratingMax != null && display > ratingMax) {
         violations.push({
           code: ELIGIBILITY_VIOLATION.RATING_TOO_HIGH,
-          message: `Rating ${display} vượt mức tối đa ${normalized.rating.maxRating}.`,
+          message: `Rating ${display} vượt mức tối đa ${ratingMax}.`,
         });
       }
     }
   }
 
   if (normalized.clubMembership.enabled) {
-    const clubId = String(player.clubId || player.homeClubId || options.clubId || "");
-    if (normalized.clubMembership.requireActiveClub && !clubId) {
-      violations.push({
-        code: ELIGIBILITY_VIOLATION.CLUB_REQUIRED,
-        message: "Yêu cầu thành viên CLB để đăng ký.",
-      });
-    }
-    if (
-      normalized.clubMembership.allowedClubIds.length > 0 &&
-      clubId &&
-      !normalized.clubMembership.allowedClubIds.includes(clubId)
-    ) {
-      violations.push({
-        code: ELIGIBILITY_VIOLATION.CLUB_REQUIRED,
-        message: "CLB của VĐV không nằm trong danh sách được phép.",
-      });
+    if (options.requireCanonicalMembershipEvidence === true) {
+      const evidence = options.membershipEvidence;
+      const member = evidence?.data?.isMember === true || evidence?.isMember === true;
+      const evidenceClubId = String(
+        evidence?.data?.clubId || evidence?.clubId || ""
+      );
+      if (!member) {
+        violations.push({
+          code: ELIGIBILITY_VIOLATION.CLUB_REQUIRED,
+          message: "Thiếu bằng chứng thành viên CLB canonical — không suy từ player.clubId.",
+        });
+      } else if (
+        normalized.clubMembership.allowedClubIds.length > 0 &&
+        evidenceClubId &&
+        !normalized.clubMembership.allowedClubIds.includes(evidenceClubId)
+      ) {
+        violations.push({
+          code: ELIGIBILITY_VIOLATION.CLUB_REQUIRED,
+          message: "CLB của VĐV không nằm trong danh sách được phép.",
+        });
+      }
+    } else {
+      const clubId = String(player.clubId || player.homeClubId || options.clubId || "");
+      if (normalized.clubMembership.requireActiveClub && !clubId) {
+        violations.push({
+          code: ELIGIBILITY_VIOLATION.CLUB_REQUIRED,
+          message: "Yêu cầu thành viên CLB để đăng ký.",
+        });
+      }
+      if (
+        normalized.clubMembership.allowedClubIds.length > 0 &&
+        clubId &&
+        !normalized.clubMembership.allowedClubIds.includes(clubId)
+      ) {
+        violations.push({
+          code: ELIGIBILITY_VIOLATION.CLUB_REQUIRED,
+          message: "CLB của VĐV không nằm trong danh sách được phép.",
+        });
+      }
     }
   }
 
@@ -343,7 +449,10 @@ export function findCrossEventDuplicates(tournament, playerIds = [], excludeEntr
 }
 
 export function checkEntryPlayersEligibility(tournament, playerIds = [], players = [], options = {}) {
-  const rules = getEligibilityRules(tournament);
+  // Prefer injected rules (Content-scoped Official path). Fallback: tournament legacy blob.
+  const rules = options.rules
+    ? normalizeEligibilityRules(options.rules)
+    : getEligibilityRules(tournament);
   const playerMap = new Map(players.map((player) => [String(player.id), player]));
   const results = [];
   const violations = [];
@@ -353,6 +462,9 @@ export function checkEntryPlayersEligibility(tournament, playerIds = [], players
     const result = checkPlayerEligibility(player, rules, {
       ...options,
       clubId: options.clubId || tournament?.clubId,
+      membershipEvidence:
+        options.membershipEvidenceByPlayerId?.[playerId] || options.membershipEvidence,
+      ratingEvidence: options.ratingEvidenceByPlayerId?.[playerId] || options.ratingEvidence,
     });
     results.push(result);
     for (const violation of result.violations) {
@@ -423,7 +535,7 @@ export function auditEligibilityDecision(tournament, decision, options = {}) {
     eligibilityAuditLog: [...log, entry].slice(-100),
   });
 
-  void writeAuditLog({
+  const auditPayload = {
     action: entry.action,
     resourceType: "tournament",
     resourceId: tournament?.id || "",
@@ -434,7 +546,13 @@ export function auditEligibilityDecision(tournament, decision, options = {}) {
       violations: entry.violations,
       reason: options.reason || "",
     },
-  }).catch(() => {});
+  };
+
+  if (typeof options.appendAudit === "function") {
+    void Promise.resolve(options.appendAudit(auditPayload)).catch(() => {});
+  } else {
+    void writeAuditLog(auditPayload).catch(() => {});
+  }
 
   return { tournament: nextTournament, auditEntry: entry };
 }

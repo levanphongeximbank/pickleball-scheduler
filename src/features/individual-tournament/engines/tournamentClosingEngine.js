@@ -2,7 +2,7 @@
  * S1-G — Tournament closing: lock results, freeze standings/brackets, summary.
  */
 
-import { TOURNAMENT_STATUS } from "../../../models/tournament/constants.js";
+import { TOURNAMENT_STATUS, TOURNAMENT_MODE } from "../../../models/tournament/constants.js";
 import {
   RESULTS_OPS_AUDIT,
   appendResultsOpsAudit,
@@ -89,6 +89,15 @@ export function buildTournamentSummary(tournament) {
  * Close tournament: lock results, freeze standings/brackets, optional auto awards, summary.
  */
 export function closeTournament(tournament, options = {}) {
+  if (
+    tournament?.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT &&
+    options.allowOfficialJsClose !== true
+  ) {
+    return {
+      ok: false,
+      error: "Official/Open phải đóng bằng lệnh complete_tournament trên server.",
+    };
+  }
   const check = canCloseTournament(tournament);
   if (!check.ok) return check;
 

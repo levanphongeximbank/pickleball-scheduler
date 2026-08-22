@@ -1,6 +1,12 @@
 /**
  * Individual tournament entry fees (S1-C).
  * Blob: tournament.settings.entryFee
+ *
+ * Architecture: Competition may own entry-fee policy. Finance domain owns
+ * payment truth. Official/Open Adapter B consumes Finance Contract evidence.
+ * Until Finance runtime is bound to Tournament, entryPayments remains a
+ * legacy compatibility store (SHARED_CONTRACT_CAPABILITY_GAP). Do not treat
+ * it as competing SSOT once Finance getPaymentStatus is injected.
  */
 export const PAYMENT_STATUS = {
   UNPAID: "unpaid",
@@ -277,5 +283,38 @@ export function getEntryFeeSummary(tournament) {
     totalCollected,
     unpaidCount,
     allPaid: !fee.enabled || unpaidCount === 0,
+  };
+}
+
+/**
+ * Official/Open payment read. Finance Contract evidence wins when bound.
+ * SHARED_CONTRACT_CAPABILITY_GAP keeps legacy entryPayments until Finance
+ * runtime is injected. Does not invent transactions.
+ */
+export function getCanonicalEntryPaymentEvidence(tournament, entryId, adapterResult = null) {
+  if (adapterResult?.ok && adapterResult.data) {
+    return {
+      ok: true,
+      source: "finance-contract",
+      gap: false,
+      payment: adapterResult.data,
+    };
+  }
+  if (adapterResult?.code === "SHARED_CONTRACT_CAPABILITY_GAP") {
+    return {
+      ok: true,
+      source: "TEMPORARY_COMPATIBILITY_NONCANONICAL",
+      canonical: false,
+      gap: true,
+      payment: getEntryPayment(tournament, entryId),
+    };
+  }
+  return {
+    ok: false,
+    source: "unavailable",
+    gap: Boolean(adapterResult?.code),
+    code: adapterResult?.code || "PAYMENT_EVIDENCE_UNAVAILABLE",
+    error: adapterResult?.error || "Không đọc được bằng chứng thanh toán.",
+    payment: getEntryPayment(tournament, entryId),
   };
 }

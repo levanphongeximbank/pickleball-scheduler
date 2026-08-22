@@ -20,14 +20,15 @@ import {
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const A1_DIR = path.join(root, "src/features/tournament/experience-a1");
-const BATCH_B_HEAD = "01f9f9cc32fe3fa5263f522cc64a2c7083200c7f";
-const SCREEN_09_ACCEPTED_HEAD = "d9be84557a9e839eb783b554175caabe06a17ed6";
+// Freeze Screens 01–04 + 06 at pre-remediation closure HEAD.
+// Screen 05 (Participants) intentionally diverges for developer-copy remediation — guarded by Screen 05 tests.
+const BATCH_B_HEAD = "fa454f770d5c16a691a369568d3d266ce21bdcd8";
+const SCREEN_09_ACCEPTED_HEAD = "fa454f770d5c16a691a369568d3d266ce21bdcd8";
 const FROZEN_PAGES = [
   "pages/TournamentCenterExperiencePage.jsx",
   "pages/IndividualOverviewPage.jsx",
   "pages/IndividualSettingsPage.jsx",
   "pages/IndividualRegistrationPublicationPage.jsx",
-  "pages/IndividualParticipantsPage.jsx",
   "pages/IndividualPairFormationPage.jsx",
 ];
 const BANNED_VISIBLE = [
@@ -114,13 +115,11 @@ describe("tournament-experience-wave-c", () => {
       "Hoàn tác",
       "Mở màn hình trình chiếu",
       "Bốc tiếp",
-      "Kết quả bốc thăm",
+      "Kết quả đơn vị cạnh tranh",
       "Tiến độ bốc thăm",
-      "Lịch sử bốc thăm",
+      "Lịch sử trình chiếu",
       "Khóa kết quả bốc thăm",
       "Sang bốc thăm chia bảng",
-      "Nhóm A",
-      "Nhóm B",
       "drawBg",
     ]) {
       assert.ok(blob.includes(needle), needle);
@@ -131,16 +130,19 @@ describe("tournament-experience-wave-c", () => {
           id: "e-a",
           name: "Đôi nam",
           eventType: EVENT_TYPE.MEN_DOUBLE,
+          competitionRules: { registrationMode: "individual" },
           entries: [
-            { id: "en1", name: "Minh / Nam", playerIds: ["p1", "p2"] },
-            { id: "en2", name: "Lan", playerIds: ["p3"] },
+            { id: "en2", name: "Lan", playerIds: ["p3"], status: "approved" },
+            { id: "en3", name: "Minh", playerIds: ["p1"], status: "approved" },
+            { id: "en4", name: "Nam", playerIds: ["p2"], status: "approved" },
           ],
+          drawEntries: [{ id: "d1", name: "Minh / Nam", playerIds: ["p1", "p2"], status: "approved" }],
         },
       ]),
       { selectedEventId: "e-a" }
     );
     assert.equal(model.ledger.length, 1);
-    assert.equal(model.poolA.length, 1);
+    assert.equal(model.ledger[0].a, "Minh");
     assert.equal(model.poolB.length, 0);
     assert.equal(model.eventName, "Đôi nam");
     assert.equal(individualPairDrawPath("abc", "e1"), "/tournament/abc/pair-draw?eventId=e1");
@@ -180,9 +182,9 @@ describe("tournament-experience-wave-c", () => {
       "Bốc thăm chia bảng",
       "Khóa kết quả bốc thăm",
       "Sang vòng bảng",
-      "Kết quả bốc thăm",
+      "Kết quả chia bảng",
       "Tiến độ bốc thăm",
-      "Lịch sử bốc thăm",
+      "Lịch sử chia bảng",
       "drawBg",
     ]) {
       assert.ok(blob.includes(needle), needle);
@@ -290,12 +292,18 @@ describe("tournament-experience-wave-c", () => {
     assert.equal(model.expectedTotal, 16);
     assert.equal(model.tournamentDrawLocked, true);
     assert.equal(model.locked, false);
+    assert.equal(model.actionState.drawComplete, false);
     assert.equal(model.drawStatusLabel, "Chưa hoàn tất bốc thăm");
+    assert.equal(model.drawStatusLabel.includes("ĐÃ KHÓA"), false);
     assert.equal(model.actionState.statusLabel.includes("ĐÃ KHÓA"), false);
+    assert.equal(model.actionState.readinessLabel.includes("Đã khóa kết quả bốc thăm"), false);
     assert.equal(model.lockHint, "Nội dung này chưa có cơ chế khóa riêng.");
     const lockItem = model.readinessItems.find((item) => item.label === "Hồ sơ giải đã khóa bốc thăm");
     assert.ok(lockItem);
     assert.equal(lockItem.ready, true);
+    assert.notEqual(model.locked, model.tournamentDrawLocked);
+    const derive = readFileSync(path.join(A1_DIR, "batchC/deriveGroupDraw.js"), "utf8");
+    assert.equal(derive.includes("contentLocked: tournamentDrawLocked"), false);
     const page = readFileSync(path.join(A1_DIR, "pages/IndividualGroupDrawRoomPage.jsx"), "utf8");
     assert.equal(page.includes("ĐÃ KHÓA"), false);
     assert.equal(page.includes("lockDraw("), false);

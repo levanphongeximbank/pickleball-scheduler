@@ -14,6 +14,7 @@ import {
   upsertRefereeRosterEntry,
   createRefereeRosterEntry,
   findRefereeRosterEntry,
+  findRosterEntryByCanonicalUserId,
   normalizeRefereeRoster,
 } from "../../../models/tournament/refereeRoster.js";
 import {
@@ -113,6 +114,8 @@ export function normalizeAssignmentEntry(raw = {}, matchId = "") {
     matchId: String(raw.matchId || matchId).trim(),
     eventId: raw.eventId ? String(raw.eventId).trim() : "",
     rosterId,
+    canonicalUserId: String(raw.canonicalUserId || raw.refereeUserId || "").trim(),
+    refereeEmail: String(raw.refereeEmail || raw.email || "").trim(),
     refereeName: refereeName || rosterId,
     token: raw.token ? String(raw.token) : "",
     status,
@@ -141,6 +144,8 @@ export function getRefereeAssignments(tournament) {
             {
               matchId,
               rosterId,
+              canonicalUserId: entry?.canonicalUserId || entry?.refereeUserId || "",
+              refereeEmail: entry?.email || "",
               refereeName: entry?.name || rosterId,
               status: REFEREE_ASSIGN_STATUS.ASSIGNED,
             },
@@ -158,7 +163,8 @@ export function getRefereeAssignments(tournament) {
     }, {});
   })();
 
-  // CORE-13 canonical blob projection (authority); legacy map is display fallback only.
+  // CORE-13 blob projection (PROJECTION_ONLY — durable referee_assignments is SSOT).
+  // Prefer projection over legacy map when present.
   const core13 = tournament?.settings?.core13RefereeAssignments?.byScope;
   if (!core13 || typeof core13 !== "object") {
     return fromLegacy;
@@ -169,12 +175,19 @@ export function getRefereeAssignments(tournament) {
     const matchId = String(row.matchId || "");
     if (!matchId) continue;
     const roster = getRefereeSettings(tournament).roster;
-    const entry = findRefereeRosterEntry(roster, row.refereeId);
+    const entry =
+      findRosterEntryByCanonicalUserId(roster, row.refereeId) ||
+      findRefereeRosterEntry(roster, row.rosterId || row.refereeId);
+    const canonicalUserId = String(
+      row.refereeId || entry?.canonicalUserId || entry?.refereeUserId || ""
+    ).trim();
     merged[matchId] = normalizeAssignmentEntry(
       {
         matchId,
-        rosterId: row.refereeId,
-        refereeName: entry?.name || row.refereeId,
+        rosterId: entry?.id || row.rosterId || canonicalUserId,
+        canonicalUserId,
+        refereeEmail: entry?.email || "",
+        refereeName: entry?.name || row.refereeDisplayName || canonicalUserId,
         status: REFEREE_ASSIGN_STATUS.ASSIGNED,
         assignedAt: row.assignedAt || null,
         assignedBy: row.assignedBy || "",
@@ -366,13 +379,19 @@ export function assignRefereeToIndividualMatch(tournament, matchId, rosterId, op
   const { match: matchedWithRef, referee: tokenReferee, token } = assignRefereeToMatch(
     match,
     referee.name,
-    { rosterId: referee.id }
+    {
+      rosterId: referee.id,
+      rosterEntry: referee,
+      canonicalUserId: referee.canonicalUserId || "",
+    }
   );
 
   const assignment = normalizeAssignmentEntry({
     matchId,
     eventId: match.eventId || options.eventId || "",
     rosterId: referee.id,
+    canonicalUserId: referee.canonicalUserId || "",
+    refereeEmail: referee.email || "",
     refereeName: referee.name,
     token: token || tokenReferee?.token || "",
     status: REFEREE_ASSIGN_STATUS.ASSIGNED,
@@ -628,9 +647,11 @@ export function buildIndividualRefereeAssignmentTable(tournament, options = {}) 
       stageLabel: labels.stageLabel,
       status: match.status,
       rosterId: assignment?.rosterId || "",
+      canonicalUserId: assignment?.canonicalUserId || "",
       refereeName: assignment?.refereeName || "",
       token: assignment?.token || match.referee?.token || "",
       assigned: Boolean(assignment),
+      assignedAt: assignment?.assignedAt || null,
       conflicts,
       availableReferees: referees,
     };

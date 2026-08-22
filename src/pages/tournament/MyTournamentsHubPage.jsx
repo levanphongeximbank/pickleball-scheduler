@@ -1,4 +1,5 @@
-import { Link as RouterLink } from "react-router-dom";
+import { useState } from "react";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 import {
   Alert,
@@ -15,8 +16,9 @@ import TournamentPageHeader from "../../components/tournament/TournamentPageHead
 import { TournamentStatusChip } from "../../components/tournament/TournamentStatusChip.jsx";
 import { useMyTournamentDashboards } from "../../features/team-tournament/my-dashboards/useMyTournamentDashboards.js";
 import { roleLabelsVi } from "../../features/team-tournament/my-dashboards/myDashboardsModel.js";
+import { openMyOfficialRefereeMatchCommand } from "../../features/tournament/official-lifecycle/officialOpenLifecycleCommands.js";
 
-function TournamentCard({ item }) {
+function TournamentCard({ item, onOpenOfficial, opening }) {
   const roles = roleLabelsVi(item.roles || []);
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
@@ -29,6 +31,9 @@ function TournamentCard({ item }) {
         </Stack>
 
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          {item.competitionTypeLabel ? (
+            <Chip size="small" color="primary" variant="outlined" label={item.competitionTypeLabel} />
+          ) : null}
           {roles.map((label) => (
             <Chip key={label} size="small" label={label} />
           ))}
@@ -51,6 +56,24 @@ function TournamentCard({ item }) {
           </Typography>
         ) : null}
 
+        {item.assignmentMatch ? (
+          <Stack spacing={0.5}>
+            <Typography variant="body2" color="text.secondary">
+              Trận được phân công: {item.assignmentMatch.teamAName} vs{" "}
+              {item.assignmentMatch.teamBName}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {[
+                item.assignmentMatch.groupLabel,
+                item.assignmentMatch.scheduledStart,
+                item.assignmentMatch.courtLabel,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </Typography>
+          </Stack>
+        ) : null}
+
         {item.openTaskCount > 0 ? (
           <Typography variant="body2">
             Việc cần làm: {item.openTaskCount}
@@ -58,14 +81,16 @@ function TournamentCard({ item }) {
         ) : null}
 
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <Button
-            component={RouterLink}
-            to={item.href}
-            variant="contained"
-            size="small"
-          >
-            Vào giải
-          </Button>
+          {item.href ? (
+            <Button
+              component={RouterLink}
+              to={item.href}
+              variant="contained"
+              size="small"
+            >
+              Vào giải
+            </Button>
+          ) : null}
           {item.captainPortalHref && item.openTaskCount > 0 ? (
             <Button
               component={RouterLink}
@@ -86,6 +111,17 @@ function TournamentCard({ item }) {
               Chấm trận
             </Button>
           ) : null}
+          {item.requiresSecureOpen ? (
+            <Button
+              type="button"
+              variant="contained"
+              size="small"
+              disabled={opening}
+              onClick={() => onOpenOfficial(item)}
+            >
+              {opening ? "Đang mở..." : "Chấm trận"}
+            </Button>
+          ) : null}
         </Stack>
       </Stack>
     </Paper>
@@ -94,9 +130,27 @@ function TournamentCard({ item }) {
 
 export default function MyTournamentsHubPage() {
   const { isAuthenticated } = useAuth();
-  const { loading, error, tournaments } = useMyTournamentDashboards({
+  const navigate = useNavigate();
+  const [openingId, setOpeningId] = useState("");
+  const [openError, setOpenError] = useState("");
+  const { loading, error, warning, tournaments } = useMyTournamentDashboards({
     enabled: Boolean(isAuthenticated),
   });
+
+  async function handleOpenOfficial(item) {
+    setOpeningId(item.id);
+    setOpenError("");
+    const result = await openMyOfficialRefereeMatchCommand({
+      tournamentId: item.tournamentId,
+      matchId: item.matchId,
+    });
+    setOpeningId("");
+    if (!result?.ok || !result.routeToken) {
+      setOpenError(result?.error || "Không thể mở trận Official/Open.");
+      return;
+    }
+    navigate(`/referee/${encodeURIComponent(result.routeToken)}`);
+  }
 
   if (!isAuthenticated) {
     return <Alert severity="warning">Đăng nhập để xem giải của bạn.</Alert>;
@@ -111,6 +165,8 @@ export default function MyTournamentsHubPage() {
 
       {loading ? <Alert severity="info">Đang tải giải của tôi...</Alert> : null}
       {error ? <Alert severity="error">{error}</Alert> : null}
+      {warning ? <Alert severity="warning">{warning}</Alert> : null}
+      {openError ? <Alert severity="error">{openError}</Alert> : null}
 
       {!loading && !error && tournaments.length === 0 ? (
         <Alert severity="info">
@@ -121,7 +177,12 @@ export default function MyTournamentsHubPage() {
 
       <Stack spacing={2} sx={{ mt: 2 }}>
         {tournaments.map((item) => (
-          <TournamentCard key={item.id} item={item} />
+          <TournamentCard
+            key={item.id}
+            item={item}
+            opening={openingId === item.id}
+            onOpenOfficial={handleOpenOfficial}
+          />
         ))}
       </Stack>
     </Box>

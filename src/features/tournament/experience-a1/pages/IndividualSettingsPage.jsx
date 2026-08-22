@@ -45,6 +45,25 @@ import {
 } from "../deriveOverview.js";
 import { individualOverviewPath } from "../routes.js";
 import {
+  OFFICIAL_MATCH_FORMAT,
+  OFFICIAL_REGISTRATION_MODE,
+  OFFICIAL_SCORING_METHOD,
+} from "../../../individual-tournament/engines/officialTournamentSettingsEngine.js";
+import {
+  resolveTournamentExperienceAdapter,
+  isOfficialTournamentExperience,
+} from "../experienceModeResolver.js";
+import OfficialContentFormatSettingsPanel from "../components/OfficialContentFormatSettingsPanel.jsx";
+import {
+  buildOfficialSettingsSavePatch,
+  projectOfficialSettings,
+} from "../../official-tournament-experience/officialExperienceCommands.js";
+import {
+  normalizeContentCompetitionRules,
+  CONTENT_RULES_SOURCE,
+} from "../../../individual-tournament/engines/officialContentCompetitionRules.js";
+import { formatContentRulesBootstrapSource } from "../../../individual-tournament/engines/contentRulesSourceLabels.js";
+import {
   buildAddOfficialEventPatch,
   buildIdentityPatch,
   buildUpdateEventPatch,
@@ -173,13 +192,26 @@ export default function IndividualSettingsPage() {
   const { activeClub, refreshClubs } = useClub();
   const { tournament, loading, error, update } = useCanonicalTournament(activeClub, tournamentId);
   const [scope, setScope] = useState(searchParams.get("eventId") ? "event" : "tournament");
-  const [tab, setTab] = useState("info");
+  const initialTab = (() => {
+    const raw = String(searchParams.get("tab") || "").trim();
+    return TABS.some((row) => row.id === raw) ? raw : "info";
+  })();
+  const [tab, setTab] = useState(initialTab);
   const [name, setName] = useState("");
   const [hostClubName, setHostClubName] = useState("");
   const [officialMode, setOfficialMode] = useState(OFFICIAL_MODE.OPEN);
   const [eventType, setEventType] = useState(EVENT_TYPE.MEN_DOUBLE);
   const [addEventType, setAddEventType] = useState(EVENT_TYPE.MEN_DOUBLE);
+  const [addEventName, setAddEventName] = useState("");
+  const [addRegistrationMode, setAddRegistrationMode] = useState(
+    OFFICIAL_REGISTRATION_MODE.INDIVIDUAL
+  );
   const [eventName, setEventName] = useState("");
+  const [contentRulesDraft, setContentRulesDraft] = useState(() =>
+    normalizeContentCompetitionRules({})
+  );
+  const [rulesBootstrapSource, setRulesBootstrapSource] = useState(null);
+  const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -190,22 +222,130 @@ export default function IndividualSettingsPage() {
   const internal = isInternalCompatibilityFamily(tournament);
   const competitionLocked = Boolean(selectedEvent && eventHasStartedCompetition(selectedEvent));
   const formatSteps = deriveFormatSteps(selectedEvent);
+  const officialAdapter =
+    tournament && isOfficialTournamentExperience(tournament)
+      ? resolveTournamentExperienceAdapter(tournament, { selectedEventId })
+      : null;
+  const officialSettingsProjection =
+    tournament && official
+      ? projectOfficialSettings(tournament, { selectedEventId })
+      : null;
+  const scoringCaps = officialSettingsProjection?.scoringCapabilities || {};
+  const rulesAdoption = officialSettingsProjection?.rulesAdoption || null;
 
   useEffect(() => {
-    if (!tournament) return;
+    if (!tournament || dirty) return;
     setName(tournament.name || "");
     setHostClubName(tournament.hostClubName || "");
     setOfficialMode(tournament.officialMode || OFFICIAL_MODE.OPEN);
-  }, [tournament]);
+    if (!isOfficialOpenFamily(tournament)) return;
+
+    const projected = projectOfficialSettings(tournament, {
+      selectedEventId,
+    });
+    const draft = projected?.rulesAdoption?.formDraft;
+    const competition = projected?.competition;
+    if (!competition && !draft && !selectedEventId) {
+      setRulesBootstrapSource(null);
+      return;
+    }
+
+    setContentRulesDraft(
+      normalizeContentCompetitionRules({
+        registrationMode:
+          draft?.registrationMode ||
+          competition?.registrationMode ||
+          OFFICIAL_REGISTRATION_MODE.INDIVIDUAL,
+        matchScoring: {
+          scoringMethod:
+            draft?.scoringMethod ||
+            competition?.scoringMethod ||
+            OFFICIAL_SCORING_METHOD.RALLY,
+          matchFormat:
+            draft?.matchFormat ||
+            competition?.matchFormat ||
+            OFFICIAL_MATCH_FORMAT.BEST_OF_1,
+          targetPoints: draft?.targetPoints ?? competition?.roundTargets?.group ?? 11,
+          winCondition: {
+            winByEnabled: draft?.winByEnabled !== false,
+            winByMargin: draft?.winByMargin ?? competition?.winByMargin ?? 2,
+            pointCapEnabled: draft?.pointCapEnabled === true,
+            pointCap: draft?.pointCap ?? competition?.pointCap ?? null,
+          },
+          changeEnd: {
+            changeEndsEnabled: draft?.changeEndsEnabled === true,
+            changeEndsAtPoints: draft?.changeEndsAtPoints ?? null,
+            changeEndsBetweenGames: true,
+            decidingGameChangeEndsAt: null,
+          },
+        },
+        stageOverrides: draft?.stageOverrides || competition?.stageOverrides,
+        roundTargets: draft?.roundTargets || competition?.roundTargets,
+        groupStage: {
+          groupCount: draft?.groupCount ?? competition?.groupCount ?? 4,
+          groupStageEnabled: draft?.groupStageEnabled !== false,
+          maxUnitsPerGroup: draft?.maxUnitsPerGroup ?? null,
+          allowUnevenGroups: draft?.allowUnevenGroups !== false,
+        },
+        qualification: {
+          directQualifiersPerGroup:
+            draft?.qualifiersPerGroup ?? competition?.qualifiersPerGroup ?? 2,
+          totalQualifiers: draft?.totalQualifiers ?? null,
+        },
+        knockout: {
+          knockoutEnabled: draft?.knockoutEnabled !== false,
+          pairingPolicy: draft?.pairingPolicy,
+          avoidSameGroupFirstRound: draft?.avoidSameGroupFirstRound,
+        },
+        eligibility: {
+          minLevel: draft?.minLevel ?? projected?.eligibility?.minLevel ?? null,
+          maxLevel: draft?.maxLevel ?? projected?.eligibility?.maxLevel ?? null,
+          minRating: draft?.minRating ?? projected?.eligibility?.minRating ?? null,
+          maxRating: draft?.maxRating ?? projected?.eligibility?.maxRating ?? null,
+        },
+        capacity: draft?.capacity,
+        seedingPolicy: draft?.seedingPolicy,
+        inGroupTieBreak: draft?.inGroupTieBreak,
+        crossGroupRanking: draft?.crossGroupRanking,
+        walkover: draft?.walkover,
+        checkIn: draft?.checkIn,
+        substitution: draft?.substitution,
+        scheduleConstraints: draft?.scheduleConstraints,
+        courtRequirement: draft?.courtRequirement,
+        refereeRequirement: draft?.refereeRequirement || competition?.refereeRequirement,
+        publication: draft?.publication,
+      })
+    );
+    setRulesBootstrapSource(
+      formatContentRulesBootstrapSource(
+        draft?.source || competition?.source || CONTENT_RULES_SOURCE.CANONICAL_SYSTEM_DEFAULT
+      )
+    );
+  }, [tournament, dirty, selectedEventId]);
 
   useEffect(() => {
+    if (dirty) return;
     if (selectedEvent) {
       setEventName(selectedEvent.name || "");
       setEventType(selectedEvent.eventType || EVENT_TYPE.MEN_DOUBLE);
     } else {
       setEventName("");
     }
-  }, [selectedEvent]);
+  }, [selectedEvent, dirty]);
+
+  useEffect(() => {
+    // Isolate form draft when switching Nội dung — do not leak edits across events.
+    setDirty(false);
+  }, [selectedEventId]);
+
+  useEffect(() => {
+    const raw = String(searchParams.get("tab") || "").trim();
+    const nextTab = TABS.some((row) => row.id === raw) ? raw : "info";
+    setTab(nextTab);
+    if (nextTab === "format" && selectedEventId) {
+      setScope("event");
+    }
+  }, [searchParams, selectedEventId]);
 
   const persist = async (patch, successText) => {
     setBusy(true);
@@ -216,12 +356,70 @@ export default function IndividualSettingsPage() {
       setMessage({ type: "error", text: result.error || "Không lưu được." });
       return false;
     }
+    setDirty(false);
     refreshClubs();
     setMessage({ type: "success", text: successText });
     return true;
   };
 
+  const buildOfficialDraftPayload = () => {
+    const normalized = normalizeContentCompetitionRules(contentRulesDraft);
+    return {
+      name,
+      hostClubName,
+      officialMode,
+      eventId: selectedEventId,
+      selectedEventId,
+      contentRules: normalized,
+      registrationMode: normalized.registrationMode,
+      groupCount: normalized.groupStage.groupCount,
+      qualifiersPerGroup: normalized.qualification.directQualifiersPerGroup,
+      totalQualifiers: normalized.qualification.totalQualifiers,
+      scoringMethod: normalized.matchScoring.scoringMethod,
+      matchFormat: normalized.matchScoring.matchFormat,
+      targetPoints: normalized.matchScoring.targetPoints,
+      roundTargets: normalized.roundTargets,
+      stageOverrides: normalized.stageOverrides,
+      winByEnabled: normalized.matchScoring.winCondition.winByEnabled,
+      winByMargin: normalized.matchScoring.winCondition.winByMargin,
+      pointCapEnabled: normalized.matchScoring.winCondition.pointCapEnabled,
+      pointCap: normalized.matchScoring.winCondition.pointCap,
+      changeEndsEnabled: normalized.matchScoring.changeEnd.changeEndsEnabled,
+      changeEndsAtPoints: normalized.matchScoring.changeEnd.changeEndsAtPoints,
+      maxLevel: normalized.eligibility.maxLevel,
+      maxRating: normalized.eligibility.maxRating,
+      minLevel: normalized.eligibility.minLevel,
+      minRating: normalized.eligibility.minRating,
+    };
+  };
+
+  const setContentDraft = (updater) => {
+    setDirty(true);
+    setContentRulesDraft((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      return normalizeContentCompetitionRules(next);
+    });
+  };
+
+  const setSettingsTab = (nextTab) => {
+    setTab(nextTab);
+    const next = new URLSearchParams(searchParams);
+    if (nextTab && nextTab !== "info") next.set("tab", nextTab);
+    else next.delete("tab");
+    setSearchParams(next, { replace: true });
+  };
+
   const handleSaveIdentity = async () => {
+    if (official) {
+      // Tournament scope: identity only — no competition-rules mutation.
+      const patch = buildIdentityPatch({
+        name,
+        hostClubName,
+        officialMode,
+      });
+      await persist(patch, "Đã lưu thông tin giải (không gồm luật Nội dung).");
+      return;
+    }
     const patch = buildIdentityPatch({
       name,
       hostClubName,
@@ -232,12 +430,23 @@ export default function IndividualSettingsPage() {
 
   const handleAddEvent = async () => {
     if (!official) return;
-    const { patch, event } = buildAddOfficialEventPatch(tournament, addEventType);
-    if (await persist(patch, "Đã thêm nội dung.")) {
+    const built = buildAddOfficialEventPatch(tournament, {
+      eventType: addEventType,
+      name: addEventName,
+      registrationMode: addRegistrationMode,
+    });
+    if (!built.ok) {
+      setMessage({ type: "error", text: built.error || "Không thêm được nội dung." });
+      return;
+    }
+    if (await persist(built.patch, "Đã thêm nội dung.")) {
       const next = new URLSearchParams(searchParams);
-      next.set("eventId", event.id);
+      next.set("eventId", built.event.id);
       setSearchParams(next);
       setScope("event");
+      setAddEventName("");
+      setEventName(built.event.name || "");
+      setEventType(built.event.eventType || addEventType);
     }
   };
 
@@ -253,6 +462,28 @@ export default function IndividualSettingsPage() {
     if (!result.ok) {
       setMessage({ type: "error", text: result.error });
       return;
+    }
+    // Format / competition rules always Content-owned when Official + event selected.
+    if (official && (tab === "format" || tab === "info")) {
+      if (tab === "format") {
+        const draft = buildOfficialDraftPayload();
+        const settingsBuilt =
+          officialAdapter?.commands?.saveSettings?.(tournament, draft) ||
+          buildOfficialSettingsSavePatch(tournament, draft);
+        if (!settingsBuilt.ok) {
+          setMessage({ type: "error", text: settingsBuilt.error || "Không lưu được thể thức." });
+          return;
+        }
+        await persist(
+          {
+            ...result.patch,
+            events: settingsBuilt.patch.events,
+            settings: settingsBuilt.patch.settings,
+          },
+          "Đã lưu Nội dung + luật Content-owned (event.competitionRules)."
+        );
+        return;
+      }
     }
     await persist(result.patch, "Đã lưu nội dung đang chọn.");
   };
@@ -272,7 +503,7 @@ export default function IndividualSettingsPage() {
   const headerActions = (
     <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: "wrap" }}>
       <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => navigate(individualOverviewPath(tournamentId))} sx={outlinedActionSx}>
-        Tổng quan
+        {tab === "format" && official ? "Quay lại" : "Tổng quan"}
       </Button>
       {competitionLocked && scope === "event" ? (
         <Button variant="outlined" size="small" disabled sx={outlinedActionSx}>
@@ -365,6 +596,7 @@ export default function IndividualSettingsPage() {
 
       <TournamentExperienceWorkspace
         rail={
+          tab === "format" && official && selectedEvent ? null : (
           <>
             <CenterRightRailCard title="Phạm vi cấu hình">
               <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted, mb: 0.75 }}>
@@ -421,8 +653,10 @@ export default function IndividualSettingsPage() {
               </Typography>
             </CenterRightRailCard>
           </>
+          )
         }
       >
+        {!(tab === "format" && official && selectedEvent) ? (
         <ExperienceChipRow
           value={scope}
           onChange={(next) => {
@@ -437,7 +671,8 @@ export default function IndividualSettingsPage() {
             { id: "event", label: "Nội dung" },
           ]}
         />
-        {scope === "event" ? (
+        ) : null}
+        {scope === "event" && !(tab === "format" && official && selectedEvent) ? (
           <>
             <Typography sx={{ fontSize: 12, fontWeight: 700, mb: 0.5 }}>Chọn nội dung</Typography>
             {internal ? (
@@ -446,9 +681,81 @@ export default function IndividualSettingsPage() {
               </Alert>
             ) : null}
             {events.length === 0 ? (
-              <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.textMuted, mb: 1 }}>
-                Chưa có nội dung trên hồ sơ.
-              </Typography>
+              <Stack spacing={1.25} sx={{ mb: 1.5 }} data-testid="official-empty-event-state">
+                <Alert severity="info">
+                  Chưa có nội dung thi đấu.
+                  <br />
+                  Tạo nội dung đầu tiên để cấu hình đăng ký và thể thức.
+                </Alert>
+                {official ? (
+                  <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
+                    <Stack spacing={1.25} data-testid="official-add-event-form">
+                      <TextField
+                        size="small"
+                        fullWidth
+                        label="Tên nội dung"
+                        value={addEventName}
+                        onChange={(event) => setAddEventName(event.target.value)}
+                        placeholder="VD: Đôi nam"
+                      />
+                      <TextField
+                        size="small"
+                        fullWidth
+                        select
+                        label="Loại nội dung"
+                        value={addEventType}
+                        onChange={(event) => {
+                          setAddEventType(event.target.value);
+                          if (!addEventName.trim()) {
+                            setAddEventName(EVENT_TYPE_LABELS[event.target.value] || "");
+                          }
+                        }}
+                      >
+                        {EVENT_TYPE_OPTIONS.map((option) => (
+                          <MenuItem key={option.value} value={option.value}>
+                            {option.label}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                      <TextField
+                        size="small"
+                        fullWidth
+                        select
+                        label="Chế độ đăng ký"
+                        value={addRegistrationMode}
+                        onChange={(event) => setAddRegistrationMode(event.target.value)}
+                        disabled={officialMode === OFFICIAL_MODE.AI_BALANCE}
+                        helperText={
+                          officialMode === OFFICIAL_MODE.AI_BALANCE
+                            ? "AI Balance: chỉ đăng ký cá nhân."
+                            : undefined
+                        }
+                      >
+                        <MenuItem value={OFFICIAL_REGISTRATION_MODE.INDIVIDUAL}>Cá nhân</MenuItem>
+                        <MenuItem
+                          value={OFFICIAL_REGISTRATION_MODE.PAIR}
+                          disabled={officialMode === OFFICIAL_MODE.AI_BALANCE}
+                        >
+                          Cặp cố định
+                        </MenuItem>
+                      </TextField>
+                      <Button
+                        variant="contained"
+                        disabled={busy}
+                        onClick={handleAddEvent}
+                        sx={primaryActionSx}
+                        data-testid="official-add-event-cta"
+                      >
+                        + Thêm nội dung
+                      </Button>
+                    </Stack>
+                  </PermissionGate>
+                ) : (
+                  <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.textMuted }}>
+                    Chưa có nội dung trên hồ sơ.
+                  </Typography>
+                )}
+              </Stack>
             ) : (
               <ExperienceChipRow
                 value={selectedEvent?.id || ""}
@@ -462,6 +769,7 @@ export default function IndividualSettingsPage() {
           </>
         ) : null}
 
+        {!(tab === "format" && official && selectedEvent) ? (
         <ExperienceOperatorCard sx={{ mb: 1.5, bgcolor: TOURNAMENT_COLOR.primarySurface, borderColor: TOURNAMENT_COLOR.primary }}>
           <Typography sx={{ fontSize: 11, fontWeight: 700, color: TOURNAMENT_COLOR.primary, letterSpacing: 0.4 }}>
             {scope === "tournament" ? "PHẠM VI GIẢI ĐẤU" : "NỘI DUNG THI ĐẤU"}
@@ -475,10 +783,11 @@ export default function IndividualSettingsPage() {
               : eventMeta}
           </Typography>
         </ExperienceOperatorCard>
+        ) : null}
 
         <Tabs
           value={tab}
-          onChange={(_e, value) => setTab(value)}
+          onChange={(_e, value) => setSettingsTab(value)}
           variant="scrollable"
           allowScrollButtonsMobile
           sx={{ mb: 1.5, minHeight: 36, "& .MuiTab-root": { textTransform: "none", minHeight: 36 } }}
@@ -492,7 +801,16 @@ export default function IndividualSettingsPage() {
           <Stack spacing={1.25}>
             <Grid container spacing={1.25}>
               <Grid size={{ xs: 12, md: 8 }}>
-                <TextField size="small" fullWidth label="Tên giải đấu" value={name} onChange={(event) => setName(event.target.value)} />
+                <TextField
+                  size="small"
+                  fullWidth
+                  label="Tên giải đấu"
+                  value={name}
+                  onChange={(event) => {
+                    setDirty(true);
+                    setName(event.target.value);
+                  }}
+                />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
                 <TextField size="small" fullWidth label="Loại giải" value={typeLabel} disabled />
@@ -503,7 +821,10 @@ export default function IndividualSettingsPage() {
                   fullWidth
                   label="Cụm sân / Địa điểm"
                   value={hostClubName}
-                  onChange={(event) => setHostClubName(event.target.value)}
+                  onChange={(event) => {
+                    setDirty(true);
+                    setHostClubName(event.target.value);
+                  }}
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
@@ -517,7 +838,10 @@ export default function IndividualSettingsPage() {
                     select
                     label="Chế độ giải"
                     value={officialMode}
-                    onChange={(event) => setOfficialMode(event.target.value)}
+                    onChange={(event) => {
+                      setDirty(true);
+                      setOfficialMode(event.target.value);
+                    }}
                   >
                     {Object.entries(OFFICIAL_MODE_LABELS).map(([value, label]) => (
                       <MenuItem key={value} value={value}>
@@ -662,7 +986,46 @@ export default function IndividualSettingsPage() {
         ) : null}
 
         {tab === "format" ? (
-          scope === "event" ? (
+          official ? (
+            selectedEvent ? (
+              <Box data-testid="official-competition-settings" sx={{ width: "100%", minWidth: 0 }}>
+                <OfficialContentFormatSettingsPanel
+                  draft={contentRulesDraft}
+                  setDraft={setContentDraft}
+                  eventName={eventName}
+                  eventType={eventType}
+                  eventId={selectedEvent.id}
+                  events={events}
+                  selectedEventId={selectedEventId}
+                  onSelectEvent={selectEvent}
+                  onEventNameChange={(value) => {
+                    setDirty(true);
+                    setEventName(value);
+                  }}
+                  onEventTypeChange={(value) => {
+                    setDirty(true);
+                    setEventType(value);
+                  }}
+                  locked={competitionLocked}
+                  lockReason="Các cấu hình ảnh hưởng thi đấu đã khóa vì nội dung đã có trận."
+                  scoringCaps={scoringCaps}
+                  officialMode={officialMode}
+                  rulesBootstrapSource={rulesBootstrapSource}
+                  rulesAdoption={rulesAdoption}
+                  dirty={dirty}
+                  busy={busy}
+                  lastSavedAt={tournament.updatedAt || selectedEvent.updatedAt || null}
+                  onBack={() => navigate(individualOverviewPath(tournamentId))}
+                  onSaveDraft={handlePrimarySave}
+                  onUpdate={handlePrimarySave}
+                />
+              </Box>
+            ) : (
+              <Typography sx={{ fontSize: 13, color: TOURNAMENT_COLOR.textMuted }}>
+                Thể thức thuộc phạm vi Nội dung. Chọn Nội dung để xem thiết kế thể thức.
+              </Typography>
+            )
+          ) : scope === "event" ? (
             <FormatDesigner
               steps={formatSteps}
               locked={competitionLocked}

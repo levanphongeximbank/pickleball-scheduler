@@ -13,6 +13,7 @@ export default function DirectorActions({
   onCloseRefereeDialog,
   onCloseAuditDialog,
   onRefereeAssign,
+  requireCanonicalIdentity = true,
 }) {
   return (
     <>
@@ -30,6 +31,7 @@ export default function DirectorActions({
         }
         existingReferee={refereeDialogMatch?.referee}
         roster={refereeSettings.roster}
+        requireCanonicalIdentity={requireCanonicalIdentity}
         onClose={onCloseRefereeDialog}
         onAssign={onRefereeAssign}
       />

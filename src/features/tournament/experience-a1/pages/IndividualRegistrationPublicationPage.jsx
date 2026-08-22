@@ -15,6 +15,7 @@ import ShareOutlinedIcon from "@mui/icons-material/ShareOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import {
+  Alert,
   Box,
   Button,
   Divider,
@@ -36,12 +37,18 @@ import {
 } from "@mui/material";
 
 import { useClub } from "../../../../context/ClubContext.jsx";
+import PermissionGate from "../../../../components/auth/PermissionGate.jsx";
+import { PERMISSIONS } from "../../../../auth/permissions.js";
 import {
   individualPlayerRegistrationPath,
   individualPublicTournamentPath,
   isIndividualTournament,
 } from "../../../../config/tournamentRoutes.js";
 import { useCanonicalTournament } from "../../hooks/useCanonicalTournament.js";
+import {
+  isOfficialTournamentExperience,
+  resolveTournamentExperienceAdapter,
+} from "../experienceModeResolver.js";
 import TournamentExperienceWorkspace from "../components/TournamentExperienceWorkspace.jsx";
 import {
   deriveRegistrationModel,
@@ -77,7 +84,8 @@ const TITLE = "Đăng ký & Công bố";
 const SUBTITLE = "Hồ sơ đăng ký theo nội dung";
 const TEST_ID = "tournament-registration-page";
 
-function RegistrationRecord({ row, registerTo }) {
+function RegistrationRecord({ row, registerTo, onApprove, busy }) {
+  const approve = row.approveEnabled;
   return (
     <ExperienceMobileRecordCard
       title={row.names}
@@ -94,16 +102,22 @@ function RegistrationRecord({ row, registerTo }) {
       }
       action={
         <span title={row.actionHint}>
-          <Button
-            size="small"
-            variant="outlined"
-            disabled={!row.actionEnabled}
-            component={row.actionEnabled ? RouterLink : "button"}
-            to={row.actionEnabled ? registerTo : undefined}
-            sx={{ mt: 0.75 }}
-          >
-            {row.actionLabel}
-          </Button>
+          {approve ? (
+            <Button size="small" variant="outlined" disabled={busy} onClick={() => onApprove?.(row.id)} sx={{ mt: 0.75 }}>
+              Duyệt
+            </Button>
+          ) : (
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={!row.actionEnabled}
+              component={row.actionEnabled ? RouterLink : "button"}
+              to={row.actionEnabled ? registerTo : undefined}
+              sx={{ mt: 0.75 }}
+            >
+              {row.actionLabel}
+            </Button>
+          )}
         </span>
       }
     />
@@ -116,11 +130,20 @@ export default function IndividualRegistrationPublicationPage() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isTable = useMediaQuery(theme.breakpoints.up("md"));
-  const { activeClub, revision } = useClub();
-  const { tournament, loading, error } = useCanonicalTournament(activeClub, tournamentId, revision);
+  const { activeClub, revision, refreshClubs } = useClub();
+  const { tournament, loading, error, update, setStatus } = useCanonicalTournament(
+    activeClub,
+    tournamentId,
+    revision
+  );
   const [tab, setTab] = useState("all");
   const [query, setQuery] = useState("");
   const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(null);
+  const [opensAt, setOpensAt] = useState("");
+  const [closesAt, setClosesAt] = useState("");
+  const [maxEntries, setMaxEntries] = useState("");
 
   const selectedEventId = searchParams.get("eventId") || "";
 
@@ -141,6 +164,9 @@ export default function IndividualRegistrationPublicationPage() {
   const model = deriveRegistrationModel(tournament, { selectedEventId, publicHref });
   const rows = filterRegistrationRows(model.rows, { tab, query });
   const registerTo = individualPlayerRegistrationPath(tournamentId);
+  const officialAdapter = isOfficialTournamentExperience(tournament)
+    ? resolveTournamentExperienceAdapter(tournament, { selectedEventId })
+    : null;
   const selectEvent = (eventId) => {
     const next = new URLSearchParams(searchParams);
     if (eventId) next.set("eventId", eventId);
@@ -148,6 +174,81 @@ export default function IndividualRegistrationPublicationPage() {
     setSearchParams(next);
   };
   const contextLine = [model.tournamentName, model.eventName].filter(Boolean).join(" • ");
+
+  const persistOfficial = async (built, successText) => {
+    if (!built?.ok) {
+      setMessage({ type: "error", text: built?.error || "Thao tác thất bại." });
+      return false;
+    }
+    if (!built.patch) {
+      setMessage({ type: "info", text: successText });
+      return true;
+    }
+    setBusy(true);
+    const result = await update(built.patch);
+    setBusy(false);
+    if (!result.ok) {
+      setMessage({ type: "error", text: result.error || "Không lưu được." });
+      return false;
+    }
+    refreshClubs();
+    setMessage({ type: "success", text: successText });
+    return true;
+  };
+
+  const handlePublication = async () => {
+    if (!model.official) return;
+    if (model.publicationStatus === "PUBLISHED") {
+      setOpensAt(model.window.opensAtRaw || "");
+      setClosesAt(model.window.closesAtRaw || "");
+      setMaxEntries(
+        model.window.maxEntriesRaw === "" || model.window.maxEntriesRaw == null
+          ? ""
+          : String(model.window.maxEntriesRaw)
+      );
+      setMessage({ type: "info", text: "Quản lý công bố: chỉnh cửa sổ đăng ký bên dưới rồi lưu." });
+      return;
+    }
+    const built = officialAdapter.commands.publishRegistration(tournament);
+    if (built.nextStatus && typeof setStatus === "function") {
+      setBusy(true);
+      const result = await setStatus(built.nextStatus);
+      setBusy(false);
+      if (!result.ok) {
+        setMessage({ type: "error", text: result.error || "Không công bố được." });
+        return;
+      }
+      refreshClubs();
+      setMessage({ type: "success", text: "Đã công bố đăng ký (status = registration)." });
+      return;
+    }
+    await persistOfficial(built, "Đã công bố đăng ký.");
+  };
+
+  const handleSaveWindow = async () => {
+    if (!model.official) return;
+    const built = officialAdapter.commands.saveRegistrationWindow(tournament, {
+      opensAt: opensAt || null,
+      closesAt: closesAt || null,
+      maxEntries: maxEntries === "" ? null : Number(maxEntries),
+    });
+    await persistOfficial(built, "Đã lưu cửa sổ đăng ký.");
+  };
+
+  const handleCloseRegistration = async () => {
+    if (!model.official || !model.closeEnabled) return;
+    const built = officialAdapter.commands.closeRegistration(tournament);
+    await persistOfficial(built, "Đã đóng / khóa đăng ký.");
+  };
+
+  const handleApprove = async (entryId) => {
+    if (!model.official || !model.eventId) {
+      setMessage({ type: "error", text: "Chọn nội dung trước khi duyệt." });
+      return;
+    }
+    const built = officialAdapter.commands.approveEntry(tournament, entryId);
+    await persistOfficial(built, "Đã duyệt hồ sơ.");
+  };
 
   const copyPublic = async () => {
     try {
@@ -174,9 +275,17 @@ export default function IndividualRegistrationPublicationPage() {
         Xem trước
       </Button>
       <span title={model.publicationHint}>
-        <Button variant="contained" size="small" disabled sx={primaryActionSx}>
-          {model.publicationActionLabel}
-        </Button>
+        <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
+          <Button
+            variant="contained"
+            size="small"
+            disabled={!model.publicationEnabled || busy}
+            onClick={handlePublication}
+            sx={primaryActionSx}
+          >
+            {model.publicationActionLabel}
+          </Button>
+        </PermissionGate>
       </span>
       <Button
         variant="outlined"
@@ -188,6 +297,22 @@ export default function IndividualRegistrationPublicationPage() {
       >
         Thêm VĐV
       </Button>
+      {model.official ? (
+        <span title={model.closeHint}>
+          <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<LockOutlinedIcon />}
+              disabled={!model.closeEnabled || busy}
+              onClick={handleCloseRegistration}
+              sx={outlinedActionSx}
+            >
+              Đóng đăng ký
+            </Button>
+          </PermissionGate>
+        </span>
+      ) : null}
     </Stack>
   );
 
@@ -208,10 +333,67 @@ export default function IndividualRegistrationPublicationPage() {
         ]}
       />
       <BatchBEventPicker events={model.events} selectedEventId={selectedEventId || model.eventId} onSelect={selectEvent} />
+      {model.emptyEvents ? (
+        <Alert severity="warning" sx={{ mb: 1.5 }}>
+          Chưa có nội dung thi đấu. Tạo nội dung trong Cài đặt trước khi đăng ký.
+        </Alert>
+      ) : null}
       {model.needsEventChoice ? (
         <Typography sx={{ fontSize: 13, color: TOURNAMENT_COLOR.textMuted, mb: 1.5 }}>
           Chọn nội dung để xem đăng ký. Không lấy nội dung mặc định.
         </Typography>
+      ) : null}
+      {message ? (
+        <Alert severity={message.type} sx={{ mb: 1.25 }} onClose={() => setMessage(null)}>
+          {message.text}
+        </Alert>
+      ) : null}
+      {model.official ? (
+        <Paper
+          elevation={0}
+          sx={{
+            p: 1.25,
+            mb: 1.5,
+            border: `1px solid ${TOURNAMENT_COLOR.divider}`,
+            borderRadius: `${TOURNAMENT_RADIUS.card}px`,
+          }}
+        >
+          <Typography sx={{ fontSize: 12, fontWeight: 700, mb: 1 }}>Cửa sổ đăng ký (registrationEngine)</Typography>
+          <Grid container spacing={1}>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <TextField
+                size="small"
+                fullWidth
+                label="Mở lúc (ISO)"
+                value={opensAt || model.window.opensAtRaw || ""}
+                onChange={(event) => setOpensAt(event.target.value)}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <TextField
+                size="small"
+                fullWidth
+                label="Đóng lúc (ISO)"
+                value={closesAt || model.window.closesAtRaw || ""}
+                onChange={(event) => setClosesAt(event.target.value)}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <TextField
+                size="small"
+                fullWidth
+                label="Max entries"
+                value={maxEntries === "" ? model.window.maxEntriesRaw ?? "" : maxEntries}
+                onChange={(event) => setMaxEntries(event.target.value)}
+              />
+            </Grid>
+          </Grid>
+          <PermissionGate permission={PERMISSIONS.TOURNAMENT_UPDATE}>
+            <Button size="small" sx={{ mt: 1, ...outlinedActionSx }} disabled={busy} onClick={handleSaveWindow}>
+              Lưu cửa sổ đăng ký
+            </Button>
+          </PermissionGate>
+        </Paper>
       ) : null}
 
       <Grid container spacing={1.25} sx={{ mb: 1.5, alignItems: "stretch" }}>
@@ -421,14 +603,20 @@ export default function IndividualRegistrationPublicationPage() {
                     <TableCell sx={{ fontSize: 12.5 }}>{row.checkinLabel}</TableCell>
                     <TableCell>
                       <span title={row.actionHint}>
-                        <Button
-                          size="small"
-                          disabled={!row.actionEnabled}
-                          component={row.actionEnabled ? RouterLink : "button"}
-                          to={row.actionEnabled ? registerTo : undefined}
-                        >
-                          {row.actionLabel}
-                        </Button>
+                        {row.approveEnabled ? (
+                          <Button size="small" disabled={busy} onClick={() => handleApprove(row.id)}>
+                            Duyệt
+                          </Button>
+                        ) : (
+                          <Button
+                            size="small"
+                            disabled={!row.actionEnabled}
+                            component={row.actionEnabled ? RouterLink : "button"}
+                            to={row.actionEnabled ? registerTo : undefined}
+                          >
+                            {row.actionLabel}
+                          </Button>
+                        )}
                       </span>
                     </TableCell>
                   </TableRow>
@@ -439,7 +627,7 @@ export default function IndividualRegistrationPublicationPage() {
         ) : (
           <Box>
             {rows.map((row) => (
-              <RegistrationRecord key={row.id} row={row} registerTo={registerTo} />
+              <RegistrationRecord key={row.id} row={row} registerTo={registerTo} onApprove={handleApprove} busy={busy} />
             ))}
           </Box>
         )}

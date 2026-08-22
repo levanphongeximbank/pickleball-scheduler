@@ -5,7 +5,18 @@
  * Do not add lock / publish / complete commands here.
  */
 import { createEventRecord } from "../../../models/tournament/event.js";
-import { EVENT_TYPE, EVENT_TYPE_LABELS } from "../../../models/tournament/constants.js";
+import {
+  EVENT_TYPE,
+  EVENT_TYPE_LABELS,
+  OFFICIAL_MODE,
+} from "../../../models/tournament/constants.js";
+import {
+  OFFICIAL_REGISTRATION_MODE,
+} from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
+import {
+  CONTENT_COMPETITION_RULES_PROPERTY,
+  deriveCanonicalDefaultContentRules,
+} from "../../individual-tournament/engines/officialContentCompetitionRules.js";
 
 export const A1_SETTINGS_WRITER = Object.freeze({
   command: "updateTournamentCommand",
@@ -33,11 +44,44 @@ export function buildIdentityPatch({ name, hostClubName, officialMode } = {}) {
   return patch;
 }
 
-export function buildAddOfficialEventPatch(tournament, eventType) {
-  const type = eventType || EVENT_TYPE.MEN_DOUBLE;
+/**
+ * Create one Official Event via existing createEventRecord + events[] upsert.
+ * @param {object} tournament
+ * @param {string|{ eventType?: string, name?: string, registrationMode?: string }} eventTypeOrOptions
+ */
+export function buildAddOfficialEventPatch(tournament, eventTypeOrOptions) {
+  const options =
+    eventTypeOrOptions && typeof eventTypeOrOptions === "object"
+      ? eventTypeOrOptions
+      : { eventType: eventTypeOrOptions };
+
+  const type = options.eventType || EVENT_TYPE.MEN_DOUBLE;
+  const explicitName = String(options.name || "").trim();
+  const name =
+    explicitName ||
+    EVENT_TYPE_LABELS[type] ||
+    `Nội dung ${(tournament?.events?.length || 0) + 1}`;
+
+  const registrationMode = options.registrationMode
+    ? String(options.registrationMode).trim()
+    : "";
+
+  if (
+    registrationMode === OFFICIAL_REGISTRATION_MODE.PAIR &&
+    String(tournament?.officialMode || "") === OFFICIAL_MODE.AI_BALANCE
+  ) {
+    return {
+      ok: false,
+      code: "AI_BALANCE_PAIR_REGISTRATION_BLOCKED",
+      error: "AI Balance chỉ cho đăng ký cá nhân — không tạo nội dung với chế độ theo cặp.",
+      patch: null,
+      event: null,
+    };
+  }
+
   const event = createEventRecord({
     tournamentId: tournament?.id || "",
-    name: EVENT_TYPE_LABELS[type] || `Nội dung ${(tournament?.events?.length || 0) + 1}`,
+    name,
     eventType: type,
     entries: [],
     groups: [],
@@ -46,10 +90,33 @@ export function buildAddOfficialEventPatch(tournament, eventType) {
     bracket: null,
     status: "draft",
   });
+
+  // Content-owned registration mode seed — do NOT write tournament officialCompetition rules.
+  if (registrationMode) {
+    const seeded = deriveCanonicalDefaultContentRules({
+      registrationMode,
+    });
+    event[CONTENT_COMPETITION_RULES_PROPERTY] = {
+      schemaVersion: seeded.schemaVersion,
+      registrationMode: seeded.registrationMode,
+      matchScoring: seeded.matchScoring,
+      stageOverrides: seeded.stageOverrides,
+      roundTargets: seeded.roundTargets,
+      groupStage: seeded.groupStage,
+      qualification: seeded.qualification,
+      knockout: seeded.knockout,
+      eligibility: seeded.eligibility,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  const patch = {
+    events: upsertEventById(listEvents(tournament), event),
+  };
+
   return {
-    patch: {
-      events: upsertEventById(listEvents(tournament), event),
-    },
+    ok: true,
+    patch,
     event,
   };
 }

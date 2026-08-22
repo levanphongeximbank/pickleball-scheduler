@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { can, canAccessClub, canAccessVenue, canAll, canAny } from "../auth/rbac.js";
 import {
@@ -24,6 +24,10 @@ import { selectStableAuthState } from "../auth/authSemanticScope.js";
 import { clearClubScope } from "../auth/clubScopeResolver.js";
 import { clearGovernanceScope } from "../auth/governanceScopeResolver.js";
 import {
+  buildAuthorizationPrincipalFingerprint,
+  shouldSkipAuthUiRefreshOnTokenEvent,
+} from "../auth/authorizationPrincipalFingerprint.js";
+import {
   logPlatformContextEvent,
   PLATFORM_CONTEXT_EVENT,
 } from "../core/platform/app/platformContextDiagnostics.js";
@@ -42,6 +46,17 @@ export function AuthProvider({ children }) {
   const refresh = useCallback(() => {
     setState((previous) => selectStableAuthState(previous, getAuthState()));
   }, []);
+  const principalFingerprintRef = useRef(
+    buildAuthorizationPrincipalFingerprint(state.user, {
+      rbacEnabled: state.rbacEnabled,
+    })
+  );
+
+  useEffect(() => {
+    principalFingerprintRef.current = buildAuthorizationPrincipalFingerprint(state.user, {
+      rbacEnabled: state.rbacEnabled,
+    });
+  }, [state.user, state.rbacEnabled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -147,10 +162,23 @@ export function AuthProvider({ children }) {
       if (!cancelled) {
         // Keep profile sync for TOKEN_REFRESHED / repeated SIGNED_IN / USER_UPDATED.
         // refresh() returns the previous React state when semantic identity is unchanged.
-        unsubscribe = subscribeToSupabaseAuth(() => {
-          if (!cancelled) {
-            refresh();
+        unsubscribe = subscribeToSupabaseAuth(({ event, user: nextUser } = {}) => {
+          if (cancelled) {
+            return;
           }
+          // Supabase client already holds the rotated access token.
+          // Skip React user/profile rehydration only when authz fingerprint is unchanged.
+          if (
+            shouldSkipAuthUiRefreshOnTokenEvent({
+              event,
+              previousFingerprint: principalFingerprintRef.current,
+              nextUser,
+              rbacEnabled: getAuthState().rbacEnabled,
+            })
+          ) {
+            return;
+          }
+          refresh();
         });
       }
     };

@@ -701,7 +701,11 @@ describe("architecture boundaries", () => {
     assert.doesNotMatch(adapter, /tournamentBookingService|team-tournament|features[\\/]court-engine|features[\\/]ai/);
     assert.doesNotMatch(adapter, /courtResourceGateway|court-resource[\\/]index/);
     assert.match(facade, /features\/court-resource/);
-    assert.doesNotMatch(facade, /from ["'].*bookingService|from ["'].*clubStorage|from ["'].*courtBookingEngine/);
+    assert.match(facade, /\breserveCourts\b/);
+    assert.match(facade, /await reserveCourts\(/);
+    // Compatibility persistence/conflict helpers may remain; inventory authority must not.
+    assert.doesNotMatch(facade, /\bloadCourtsForClub\b/);
+    assert.doesNotMatch(facade, /localStorage\.getItem/);
     assert.doesNotMatch(inventory, /team-tournament|localStorage\.getItem|loadCourtsForClub/);
     assert.match(inventory, /club_data_v3/);
   });
@@ -712,7 +716,7 @@ describe("architecture boundaries", () => {
       "utf8"
     );
     assert.match(adapter, /club_data_v3/);
-    assert.match(adapter, /canonicalCloudCourtInventory/);
+    assert.match(adapter, /listCanonicalClubCourtsForFormatVenue|readCanonicalClubCourtBookingSnapshot/);
     assert.doesNotMatch(adapter, /localStorage\.getItem|loadCourtsForClub|loadClubData/);
   });
 

@@ -35,6 +35,7 @@ import {
   getDailyMatchShapeForMatch,
   resolveCanonicalPersistedMatchTypeFromMatch,
 } from "./dailyPlayMatchShape.js";
+import { assertCourtAvailable } from "../../court-occupancy/courtAvailabilityDomain.js";
 
 function deny(code, error, extra = {}) {
   return { ok: false, code, error: error || DAILY_PLAY_MESSAGES[code] || code, ...extra };
@@ -64,6 +65,9 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
   const athleteGenders = new Map(
     Object.entries(seed.athleteGenders || {}).map(([id, gender]) => [String(id), gender])
   );
+
+  let calendarReservations = [...(seed.calendarReservations || [])];
+  let blobBookings = [...(seed.blobBookings || [])];
 
   const actor = {
     tenantId: seed.tenantId || "tenant-daily-01",
@@ -205,6 +209,22 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
       occupiedCourtIds,
       hasCourtCapability: courts.length > 0,
     });
+  }
+
+  function denyIfCalendarOccupied(tenantId, clubId, courtId) {
+    const occupied = assertCourtAvailable({
+      tenantId,
+      clubId,
+      courtId,
+      liveUnbounded: true,
+      reservations: calendarReservations,
+      dailyLeases: [],
+      blobBookings,
+    });
+    if (!occupied.ok) {
+      return deny(occupied.code, occupied.error, { courtId });
+    }
+    return null;
   }
 
   function beginIdempotent(key, command) {
@@ -485,6 +505,8 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
       if (!courts.some((court) => String(court.id) === courtId)) {
         return deny(DAILY_PLAY_CODE.COURT_NOT_ELIGIBLE, "Sân không thuộc buổi chơi.");
       }
+      const calendarDeny = denyIfCalendarOccupied(row.tenant_id, row.club_id, courtId);
+      if (calendarDeny) return calendarDeny;
 
       const matchToAssign = daily.matches.find(
         (item) => String(item.id) === String(args.p_match_id)
@@ -581,6 +603,12 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
       if (!courts.some((court) => String(court.id) === String(args.p_court_id))) {
         return deny(DAILY_PLAY_CODE.COURT_NOT_ELIGIBLE, "Sân không thuộc buổi chơi.");
       }
+      const calendarDeny = denyIfCalendarOccupied(
+        row.tenant_id,
+        row.club_id,
+        String(args.p_court_id)
+      );
+      if (calendarDeny) return calendarDeny;
       const leases = leasesFor(row.id);
       const target = String(args.p_court_id);
       const occupiedElsewhere = clubWideActiveLeases(row.tenant_id, row.club_id).some(
@@ -645,6 +673,12 @@ export function createInMemoryDailyPlayAuthority(seed = {}) {
     },
     __setLeases(tournamentId, leases = []) {
       setLeases(tournamentId, leases || []);
+    },
+    __setCalendarReservations(rows = []) {
+      calendarReservations = [...(rows || [])];
+    },
+    __setBlobBookings(rows = []) {
+      blobBookings = [...(rows || [])];
     },
     __getLeases(tournamentId) {
       return leasesFor(tournamentId);

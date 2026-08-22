@@ -28,11 +28,20 @@ export {
 } from "./engines/registrationEngine.js";
 
 export {
+  uniqueOfficialIndividualSelection,
+  toggleOfficialIndividualSelection,
+  mergeVisibleOfficialIndividualSelection,
+  formatOfficialBulkRegistrationError,
+  registerOfficialIndividualsBatch,
+} from "./engines/officialRegistrationBatchEngine.js";
+
+export {
   ELIGIBILITY_VIOLATION,
   DEFAULT_ELIGIBILITY_RULES,
   normalizeEligibilityRules,
   getEligibilityRules,
   updateEligibilityRules,
+  patchOfficialVisibleEligibilityLimits,
   getPlayerAge,
   getPlayerDisplayRating,
   checkPlayerEligibility,
@@ -56,6 +65,7 @@ export {
   recordEntryPayment,
   organizerOverridePayment,
   getEntryFeeSummary,
+  getCanonicalEntryPaymentEvidence,
 } from "./engines/entryFeeEngine.js";
 
 export {
@@ -208,6 +218,148 @@ export {
   buildTournamentSummary,
   reopenClosedTournament,
 } from "./engines/tournamentClosingEngine.js";
+
+export {
+  OFFICIAL_STAGE_ID,
+  OFFICIAL_STAGE_STATE,
+  OFFICIAL_STAGE_DEFS,
+  summarizeOfficialEntries,
+  projectOfficialFinalizationBuckets,
+  summarizeOfficialMatches,
+  summarizeOfficialRefereeOps,
+  buildOfficialCompetitionFacts,
+  deriveOfficialOrganizerStages,
+  deriveOfficialNextAction,
+  evaluateOfficialCloseGate,
+  filterOfficialDrawEntries,
+  buildOfficialDrawBlockMessage,
+  deriveOfficialKnockoutStages,
+} from "./engines/officialOrganizerWorkflowEngine.js";
+
+export {
+  projectOfficialDrawSubsteps,
+  formOfficialIndividualPairs,
+  assertOfficialGroupDrawAllowed,
+  getOfficialGroupDrawUnits,
+  preserveOfficialRegistrationOnGroupDrawEvent,
+  applyOfficialGroupDrawPreservingRegistration,
+  listOfficialRegistrationEntries,
+  listOfficialDrawEntries,
+  isOfficialPairShapedEntry,
+  isOfficialIndividualShapedEntry,
+  OFFICIAL_DRAW_PAIR_ORIGIN,
+  OFFICIAL_REGISTRATION_LOCAL_SELECTION,
+  OFFICIAL_REGISTRATION_FORBIDDEN_LABELS,
+} from "./engines/officialDrawOrchestrationEngine.js";
+
+export {
+  projectOfficialGroupDrawReview,
+  projectOfficialMatchPresentation,
+  projectOfficialGroupStageMatches,
+  presentOfficialGroupLabel,
+  isRawTechnicalId,
+  GROUP_MATCH_COUNT_SOURCE,
+  GROUP_REVIEW_ISSUE,
+  UNRESOLVED_COMPETITION_SIDE_LABEL,
+} from "./engines/officialGroupDrawReviewProjection.js";
+
+export {
+  scheduleOfficialGroupMatches,
+  isOfficialGroupScheduleReady,
+  countOfficialRoundRobinMatches,
+  OFFICIAL_GROUP_MATCH_DURATION_MINUTES,
+} from "./engines/officialGroupScheduleEngine.js";
+
+export {
+  REFEREE_IDENTITY_BINDING_BLOCKED,
+  REFEREE_SCORING_RULE_TRANSPORT_BLOCKED,
+  syncOfficialAssignedMatchToLive,
+  syncOfficialRefereeAssignResultToLive,
+  revokeOfficialAssignedMatchLive,
+} from "./engines/officialRefereeLiveBridge.js";
+
+export {
+  OFFICIAL_REGISTRATION_MODE,
+  OFFICIAL_REGISTRATION_MODE_RESOLUTION,
+  OFFICIAL_SCORING_METHOD,
+  OFFICIAL_ROUND_SCORE_KEY,
+  DEFAULT_OFFICIAL_ROUND_TARGETS,
+  DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP,
+  CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT,
+  SIDEOUT_OPERATIONAL,
+  SIDEOUT_SELECTION_FAIL_CLOSED,
+  SIDEOUT_BACKEND_REQUIREMENT,
+  SIDEOUT_BACKEND_PACKAGE_REQUIRED,
+  SIDEOUT_BACKEND_PACKAGE_PATH,
+  SIDEOUT_DEFAULT_FOR_NEW_TOURNAMENT,
+  SIDEOUT_SHARED_EXTRACTION_RECONCILE_AFTER_PR418,
+  INTENDED_NEW_TOURNAMENT_SCORING_METHOD,
+  WIN_BY_POLICY_DEFERRED,
+  OFFICIAL_WIN_BY_DUPLICATE_AUTHORITY,
+  parseOfficialDecimalLevelInput,
+  assessOfficialRegistrationModeChange,
+  resolveNewOfficialTournamentScoringDefault,
+  getOfficialCompetitionSettings,
+  patchOfficialCompetitionSettings,
+  resolveOfficialRegistrationMode,
+  deriveLegacyOfficialRegistrationMode,
+  normalizeOfficialRegistrationMode,
+  normalizeOfficialScoringMethod,
+  normalizeOfficialRoundTargets,
+  isOfficialRegistrationModeResolved,
+  isOfficialPairRegistrationMode,
+  isOfficialIndividualRegistrationMode,
+  OFFICIAL_REGISTRATION_MODE_LABELS,
+  OFFICIAL_SCORING_METHOD_LABELS,
+  OFFICIAL_ROUND_SCORE_LABELS,
+} from "./engines/officialTournamentSettingsEngine.js";
+
+export {
+  OFFICIAL_PAIRING_AUTHORITY,
+  OFFICIAL_GROUP_DRAW_AUTHORITY,
+  isOfficialAiBalanceMode,
+  isOfficialOpenMode,
+  resolveOfficialPairingDispatch,
+  resolveOfficialGroupDrawDispatch,
+  allowedOfficialRegistrationModes,
+  assessOfficialCompetitionStrategyChange,
+} from "./engines/officialCompetitionStrategyEngine.js";
+
+export {
+  OFFICIAL_STAGE_QUERY_KEY,
+  readOfficialStageQuery,
+  applyOfficialStageSearchParams,
+  resolveOfficialOrganizerStageSelection,
+} from "./engines/officialOrganizerStageNavigation.js";
+
+export {
+  SIDEOUT_POINT_BY_POINT_RUNTIME_BLOCKED,
+  mapMatchToOfficialRoundKey,
+  resolveOfficialMatchScoringRules,
+  validateOfficialFinishedScore,
+} from "./engines/officialScoringRulesResolver.js";
+
+export {
+  QUALIFICATION_TIE_UNRESOLVED,
+  QUALIFICATION_NOT_READY,
+  buildOfficialAllGroupStandings,
+  officialQualificationReady,
+  resolveOfficialQualifiersPerGroup,
+  resolveOfficialQualificationReadiness,
+} from "./engines/officialStandingsEngine.js";
+
+export {
+  canGenerateOfficialKnockout,
+  generateOfficialKnockout,
+  officialKnockoutHasStarted,
+} from "./engines/officialKnockoutEngine.js";
+
+export {
+  evaluateOfficialCompletionPredicate,
+  resolveOfficialChampion,
+} from "./engines/officialCompletionEngine.js";
+
+export { buildOfficialPublicResultsDto } from "./engines/officialPublicResultsDto.js";
 
 export {
   findPlayerEntries,

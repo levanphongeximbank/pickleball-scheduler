@@ -1,15 +1,20 @@
 import { useEffect, useState } from "react";
 
 import { rpcTeamTournamentListMyDashboards } from "../services/teamTournamentRpcService.js";
-import { normalizeMyDashboardListResult } from "./myDashboardsModel.js";
+import { listMyOfficialRefereeAssignmentsCommand } from "../../tournament/official-lifecycle/officialOpenLifecycleCommands.js";
+import {
+  normalizeMyDashboardListResult,
+  normalizeOfficialRefereeAssignmentListResult,
+} from "./myDashboardsModel.js";
 
 /**
- * Loads Giải của tôi from team_tournament_list_my_dashboards only.
- * No activeClub / tenant / playerId client authority.
+ * Shared Giải của tôi aggregation. Team and Official adapters remain
+ * server-authorized; no activeClub / tenant / playerId client authority.
  */
 export function useMyTournamentDashboards({ enabled = true } = {}) {
   const [loading, setLoading] = useState(Boolean(enabled));
   const [error, setError] = useState(null);
+  const [warning, setWarning] = useState(null);
   const [tournaments, setTournaments] = useState([]);
 
   useEffect(() => {
@@ -17,26 +22,51 @@ export function useMyTournamentDashboards({ enabled = true } = {}) {
     async function load() {
       if (!enabled) {
         setLoading(false);
+        setWarning(null);
         setTournaments([]);
         return;
       }
       setLoading(true);
       setError(null);
-      const raw = await rpcTeamTournamentListMyDashboards();
+      setWarning(null);
+      const [teamResult, officialResult] = await Promise.allSettled([
+        rpcTeamTournamentListMyDashboards(),
+        listMyOfficialRefereeAssignmentsCommand(),
+      ]);
       if (cancelled) return;
-      const normalized = normalizeMyDashboardListResult(raw);
-      if (!normalized.ok) {
+
+      const team = normalizeMyDashboardListResult(
+        teamResult.status === "fulfilled"
+          ? teamResult.value
+          : { ok: false, error: String(teamResult.reason || "") }
+      );
+      const official = normalizeOfficialRefereeAssignmentListResult(
+        officialResult.status === "fulfilled"
+          ? officialResult.value
+          : { ok: false, error: String(officialResult.reason || "") }
+      );
+
+      if (!team.ok && !official.ok) {
         setTournaments([]);
-        setError(normalized.error || normalized.code);
+        setError([team.error, official.error].filter(Boolean).join(" "));
       } else {
-        setTournaments(normalized.tournaments);
+        setTournaments([
+          ...(team.ok ? team.tournaments : []),
+          ...(official.ok ? official.tournaments : []),
+        ]);
         setError(null);
+        const sourceWarnings = [
+          !team.ok ? team.error : null,
+          !official.ok ? official.error : null,
+        ].filter(Boolean);
+        setWarning(sourceWarnings.join(" "));
       }
       setLoading(false);
     }
     load().catch((err) => {
       if (!cancelled) {
         setError(String(err?.message || err));
+        setWarning(null);
         setTournaments([]);
         setLoading(false);
       }
@@ -46,5 +76,5 @@ export function useMyTournamentDashboards({ enabled = true } = {}) {
     };
   }, [enabled]);
 
-  return { loading, error, tournaments };
+  return { loading, error, warning, tournaments };
 }

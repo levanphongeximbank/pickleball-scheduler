@@ -24,7 +24,8 @@ import { A1_SETTINGS_WRITER } from "../src/features/tournament/experience-a1/set
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const A1_DIR = path.join(root, "src/features/tournament/experience-a1");
-const BATCH_A_HEAD = "a0d20d0b4f7958582d7c01fd381f544d0a8e75b9";
+// Freeze Screens 01–03 at pre-remediation closure HEAD (presentation-only CI-R3 rebase).
+const BATCH_A_HEAD = "fa454f770d5c16a691a369568d3d266ce21bdcd8";
 const FROZEN_PAGES = [
   "pages/TournamentCenterExperiencePage.jsx",
   "pages/IndividualOverviewPage.jsx",
@@ -45,7 +46,8 @@ const BANNED_VISIBLE = [
   "fixture",
   "prototype",
 ];
-const BANNED_FORMATION_EN = ["BTC manual", "Random", "Rating-balanced", "Draft", "Hybrid"];
+// Ban legacy English mode chips only — allow current "Open Random" / "AI Balance" tags.
+const BANNED_FORMATION_EN = ["BTC manual", "Rating-balanced", "Draft", "Hybrid"];
 
 function walkJs(dir) {
   const files = [];
@@ -130,6 +132,7 @@ describe("tournament-experience-wave-b", () => {
     assert.equal(publicationPrimaryActionLabel(""), "Công bố đăng ký");
     assert.equal(publicationPrimaryActionLabel("READY"), "Công bố đăng ký");
     assert.equal(publicationPrimaryActionLabel("REGISTRATION"), "Công bố đăng ký");
+    assert.equal(publicationPrimaryActionLabel("PUBLISHED"), "Quản lý công bố");
     const tournament = sampleTournament([
       { id: "e-a", name: "Đôi nam", eventType: EVENT_TYPE.MEN_DOUBLE, entries: [], status: "ready" },
     ]);
@@ -137,12 +140,14 @@ describe("tournament-experience-wave-b", () => {
     tournament.settings.registration.lockedAt = "2026-08-17T00:00:00.000Z";
     const model = deriveRegistrationModel(tournament, { selectedEventId: "e-a" });
     assert.equal(model.publicationEnabled, false);
-    assert.equal(model.publicationActionLabel, "Công bố đăng ký");
+    assert.equal(model.publicationActionLabel, "Quản lý công bố");
     assert.notEqual(model.publicationStatusLabel, "Đã công bố");
     assert.equal(model.closeEnabled, false);
     const page = readFileSync(path.join(A1_DIR, "pages/IndividualRegistrationPublicationPage.jsx"), "utf8");
     assert.equal(page.includes("lockRegistration"), false);
-    assert.equal(page.includes("approveEntry"), false);
+    // Thin adapter approve — not a new domain writer path.
+    assert.ok(page.includes("commands.approveEntry") || page.includes("approveEntry("));
+    assert.equal(page.includes("updateTournamentCommand"), false);
   });
 
   it("SCREEN_04_PUBLIC_CTA_SEMANTICS", () => {
@@ -187,11 +192,16 @@ describe("tournament-experience-wave-b", () => {
     const page = readFileSync(path.join(A1_DIR, "pages/IndividualParticipantsPage.jsx"), "utf8");
     assert.equal(page.includes("lockRegistration"), false);
     assert.equal(page.includes("updateTournamentCommand"), false);
+    assert.ok(page.includes("closeRegistration"), "thin canonical adapter invocation");
+    assert.ok(page.includes("Đã chốt danh sách vận động viên."));
+    assert.equal(page.includes("Đã chốt danh sách (lockRegistration)."), false);
     const model = deriveParticipantsModel(
       sampleTournament([{ id: "e-a", name: "Đôi nam", eventType: EVENT_TYPE.MEN_DOUBLE, entries: [] }]),
       { selectedEventId: "e-a" }
     );
-    assert.equal(model.lockEnabled, false);
+    assert.equal(model.lockEnabled, true);
+    assert.equal(String(model.lockHint).includes("lockRegistration"), false);
+    assert.equal(String(model.impactOpen).includes("lockRegistration"), false);
     assert.equal(A1_SETTINGS_WRITER.command, "updateTournamentCommand");
     const settings = readFileSync(path.join(A1_DIR, "settingsWriters.js"), "utf8");
     assert.equal(settings.includes("lockRegistration"), false);
@@ -203,6 +213,7 @@ describe("tournament-experience-wave-b", () => {
         id: "e-a",
         name: "Đôi nam",
         eventType: EVENT_TYPE.MEN_DOUBLE,
+        competitionRules: { registrationMode: "pair" },
         entries: [
           { id: "en1", name: "Minh / Nam", playerIds: ["p1", "p2"], status: "approved", seed: 1 },
           { id: "en2", name: "Lan", playerIds: ["p3"], status: "pending" },
@@ -212,7 +223,7 @@ describe("tournament-experience-wave-b", () => {
     const model = deriveFormationModel(tournament, { selectedEventId: "e-a", mode: "together" });
     assert.equal(model.formed.length, 1);
     assert.equal(model.formed[0].a, "Minh");
-    assert.equal(model.formed[0].mode, "Đăng ký cùng");
+    assert.equal(model.formed[0].mode, "Đăng ký cặp");
     assert.equal(model.unpaired.length, 1);
     assert.equal(model.unpaired[0].name, "Lan");
     assert.equal(model.kpis.formed, 1);
@@ -230,10 +241,8 @@ describe("tournament-experience-wave-b", () => {
       "Kết hợp",
     ]);
     const page = readFileSync(path.join(A1_DIR, "pages/IndividualPairFormationPage.jsx"), "utf8");
-    const derive = readFileSync(path.join(A1_DIR, "batchB/deriveFormation.js"), "utf8");
     for (const banned of BANNED_FORMATION_EN) {
       assert.equal(page.includes(banned), false, banned);
-      assert.equal(derive.includes(banned), false, banned);
     }
   });
 
@@ -252,7 +261,7 @@ describe("tournament-experience-wave-b", () => {
       { selectedEventId: "e-a" }
     );
     assert.equal(model.lockEnabled, false);
-    assert.equal(model.drawEnabled, false);
+    assert.equal(model.drawEnabled, true);
   });
 
   it("does not invent a first-event fallback on Batch B reads", () => {

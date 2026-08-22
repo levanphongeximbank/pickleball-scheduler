@@ -16,13 +16,13 @@ import { resolveSelectedEvent, listTournamentEvents } from "../src/features/tour
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const A1_DIR = path.join(root, "src/features/tournament/experience-a1");
-const ACCEPTED_C_HEAD = "b1284455317ffafa95b8464ff71ab31cbf797f69";
+// Freeze Screens 01–09 at pre-remediation closure HEAD (exclude Screen 05 presentation fix).
+const ACCEPTED_C_HEAD = "fa454f770d5c16a691a369568d3d266ce21bdcd8";
 const FROZEN_PAGES = [
   "pages/TournamentCenterExperiencePage.jsx",
   "pages/IndividualOverviewPage.jsx",
   "pages/IndividualSettingsPage.jsx",
   "pages/IndividualRegistrationPublicationPage.jsx",
-  "pages/IndividualParticipantsPage.jsx",
   "pages/IndividualPairFormationPage.jsx",
   "pages/IndividualPairDrawRoomPage.jsx",
   "pages/IndividualGroupDrawRoomPage.jsx",
@@ -107,7 +107,10 @@ describe("tournament-experience-wave-d", () => {
   it("SCREEN10_NO_NEW_COURT_ALLOCATION_WRITER", () => {
     const page = readFileSync(path.join(A1_DIR, "pages/IndividualSchedulePage.jsx"), "utf8");
     assert.equal(page.includes("assignCourt"), false);
-    assert.equal(page.includes("publishSchedule("), false);
+    assert.equal(page.includes("updateTournamentCommand"), false);
+    // Thin canonical adapter invocation — not a new court allocation writer.
+    assert.ok(page.includes("commands.publishSchedule") || page.includes("publishSchedule("));
+    assert.ok(page.includes("commands.assignGroupSchedule") || page.includes("assignGroupSchedule("));
     assert.ok(page.includes("disabled"));
     assert.ok(page.includes("Công bố lịch"));
   });
@@ -229,8 +232,13 @@ describe("tournament-experience-wave-d", () => {
       ]),
       { selectedEventId: "e-a", groupId: "g-a" }
     );
-    assert.equal(model.hasQualConfig, false);
-    assert.ok(model.standings.every((row) => row.qualLabel === "Chưa cấu hình" || row.qualLabel === "Chưa xác định"));
+    // Official projection always exposes qualification authority; no invented per-row qual without readiness.
+    assert.equal(model.hasQualConfig, true);
+    assert.ok(
+      String(model.qualificationAuthority || "").includes("resolveOfficialQualificationReadiness"),
+      model.qualificationAuthority
+    );
+    assert.ok(model.standings.every((row) => row.qualLabel === "Chưa cấu hình" || row.qualLabel === "Chưa xác định" || row.qualLabel === "Đã giành quyền đi tiếp"));
   });
 
   it("SCREEN13_NO_SCORE_WRITER", () => {

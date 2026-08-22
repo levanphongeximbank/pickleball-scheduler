@@ -215,7 +215,8 @@ describe("internal-tournament-canonical-scope-remediation-01", () => {
     const daily = readSrc("src/pages/tournament/DailyPlaySetup.jsx");
     const official = readSrc("src/pages/tournament/OfficialTournamentSetup.jsx");
     assert.match(daily, /useCanonicalTournament\(activeClub,/);
-    assert.match(official, /useCanonicalTournament\(activeClub,/);
+    assert.match(official, /useCanonicalTournament\(canonicalClubScope,/);
+    assert.match(official, /\.\.\.activeClub, authzFingerprint/);
     assert.equal(daily.includes("{ id: tournamentClubId }"), false);
     assert.equal(official.includes("{ id: tournamentClubId }"), false);
   });

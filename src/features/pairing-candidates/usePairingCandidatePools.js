@@ -3,11 +3,12 @@
  * Surfaces loading + explicit error (never silent empty on repo failure).
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   loadClubPairingCandidatePool,
   loadTenantPairingCandidatePool,
 } from "./screenCandidateAdapters.js";
+import { resolvePairingCandidatePoolScopePolicy } from "./pairingCandidatePoolScopePolicy.js";
 
 /**
  * @param {string|null|undefined} clubId
@@ -21,10 +22,16 @@ export function useClubPairingCandidatePool(clubId, options = {}) {
   const [emptyMessage, setEmptyMessage] = useState(null);
   const [gatewayResult, setGatewayResult] = useState(null);
   const [diagnostics, setDiagnostics] = useState(null);
+  const scopeRef = useRef("");
 
   useEffect(() => {
     let cancelled = false;
     const id = String(clubId || "").trim();
+    const policy = resolvePairingCandidatePoolScopePolicy({
+      nextScopeId: id,
+      prevScopeId: scopeRef.current,
+    });
+    scopeRef.current = id;
     if (!id) {
       setPlayers([]);
       setLoading(false);
@@ -33,6 +40,9 @@ export function useClubPairingCandidatePool(clubId, options = {}) {
       setGatewayResult(null);
       setDiagnostics(null);
       return undefined;
+    }
+    if (!policy.keepPlayers) {
+      setPlayers([]);
     }
 
     setLoading(true);
@@ -89,16 +99,25 @@ export function useTenantPairingCandidatePool(tenantId, options = {}) {
   const [loading, setLoading] = useState(Boolean(tenantId));
   const [error, setError] = useState(null);
   const [emptyMessage, setEmptyMessage] = useState(null);
+  const scopeRef = useRef("");
 
   useEffect(() => {
     let cancelled = false;
     const id = String(tenantId || "").trim();
+    const policy = resolvePairingCandidatePoolScopePolicy({
+      nextScopeId: id,
+      prevScopeId: scopeRef.current,
+    });
+    scopeRef.current = id;
     if (!id) {
       setPlayers([]);
       setLoading(false);
       setError(null);
       setEmptyMessage(null);
       return undefined;
+    }
+    if (!policy.keepPlayers) {
+      setPlayers([]);
     }
 
     setLoading(true);

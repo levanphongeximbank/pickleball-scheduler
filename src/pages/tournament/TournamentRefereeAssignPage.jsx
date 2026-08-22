@@ -150,8 +150,7 @@ export default function TournamentRefereeAssignPage() {
 
           {tournament ? (
             <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: "block" }}>
-              Audit blob: settings.resultPropagation.auditLog · Phân công:
-              settings.refereeAssignments · Kết quả: settings.matchResults
+              Nhật ký vận hành trọng tài được lưu nội bộ trên giải.
             </Typography>
           ) : null}
         </>

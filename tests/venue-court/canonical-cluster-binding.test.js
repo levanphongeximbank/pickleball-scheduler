@@ -42,7 +42,6 @@ import {
   __resetCanonicalCloudCourtInventoryDepsForTests,
   __setCanonicalCloudCourtInventoryDepsForTests,
 } from "../../src/features/venue-court/services/canonicalCloudCourtInventory.js";
-import { listCanonicalClubCourtsForFormatVenue } from "../../src/features/team-tournament/services/canonicalClubCourtInventory.js";
 import { ensureCourtsHaveClusterId } from "../../src/features/court-cluster/services/courtClusterService.js";
 import { loadCourtClusters, saveCourtClusters } from "../../src/data/courtCluster.js";
 import { loadCourts, saveCourts } from "../../src/pages/courts.logic.js";
@@ -566,7 +565,12 @@ describe("regressions", () => {
       path.join(root, "src/features/team-tournament/services/canonicalClubCourtInventory.js"),
       "utf8"
     );
-    assert.match(adapterSrc, /listCanonicalCloudCourts/);
+    // Team Format & Venue reads club_data_v3 as compatibility only — not Team-local court authority.
+    assert.match(adapterSrc, /club_data_v3/);
+    assert.match(adapterSrc, /listCanonicalClubCourtsForFormatVenue|readCanonicalClubCourtBookingSnapshot/);
+    assert.doesNotMatch(adapterSrc, /localStorage\.getItem|loadCourtsForClub|loadClubData/);
+
+    // Upstream shared Court Resource inventory excludes unstamped courts when cluster-scoped.
     __setCanonicalCloudCourtInventoryDepsForTests({
       hasSupabaseConfig: () => true,
       getSupabaseAuthClient: () => ({
@@ -597,15 +601,22 @@ describe("regressions", () => {
         },
       }),
     });
-    const result = await listCanonicalClubCourtsForFormatVenue({
+    const shared = await listCanonicalCloudCourts({
       clubId: CLUB_ID,
       tenantId: VENUE,
       clusterId: CLUSTER,
     });
-    assert.equal(result.ok, true);
+    assert.equal(shared.ok, true);
     assert.deepEqual(
-      result.courts.map((item) => item.id),
+      shared.courts.map((item) => item.id),
       [COURT_2]
+    );
+    assert.equal(
+      filterCourtsByClusterMembership(
+        [court(COURT_1), court(COURT_2, { clusterId: CLUSTER })],
+        CLUSTER
+      ).map((item) => item.id).join(","),
+      COURT_2
     );
   });
 });

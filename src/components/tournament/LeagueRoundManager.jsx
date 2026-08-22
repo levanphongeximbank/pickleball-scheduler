@@ -29,6 +29,7 @@ import {
   updateLeagueRound,
 } from "../../domain/leagueRoundService.js";
 import { TOURNAMENT_MODE } from "../../models/tournament/index.js";
+import { resolveOfficialCanonicalOpenPath } from "../../features/tournament/official-tournament-experience/officialOpenPaths.js";
 import { touchButtonSx } from "./mobileUi.js";
 
 const MODE_LABELS = {
@@ -45,7 +46,7 @@ function resolveTournamentPath(tournament) {
     return `/tournament/internal/${tournament.id}`;
   }
   if (tournament.mode === TOURNAMENT_MODE.OFFICIAL_TOURNAMENT) {
-    return `/tournament/official/${tournament.id}`;
+    return resolveOfficialCanonicalOpenPath(tournament);
   }
   return "/tournament";
 }

@@ -15,9 +15,110 @@ import {
   promoteFromWaitlist,
   submitRegistration,
 } from "./registrationEngine.js";
+import { createOfficialOpenAdapterB } from "../../tournament/official-open-adapter-b/createOfficialOpenAdapterB.js";
+import { shouldActivateOfficialOpenRating } from "../../tournament/official-open-adapter-b/activation.js";
+import { resolveOfficialRegistrationEligibilityRules } from "./officialContentCompetitionRules.js";
+
+function isOfficialTournament(tournament) {
+  return (
+    String(tournament?.mode || "") === "official_tournament" ||
+    Boolean(tournament?.officialMode)
+  );
+}
+
+function withOfficialOpenAuditSink(tournament, options = {}) {
+  if (!isOfficialTournament(tournament) || typeof options.appendAudit === "function") {
+    return options;
+  }
+  const adapter = createOfficialOpenAdapterB({
+    tournament,
+    currentTenantId: options.tenantId || tournament?.tenantId,
+    actor: options.actor,
+  });
+  return {
+    ...options,
+    appendAudit: (payload) =>
+      adapter.appendAudit(payload.action, {
+        actorId: payload.actor?.id,
+        clubId: payload.clubId,
+        entityRef: payload.resourceId,
+      }),
+  };
+}
+
+function resolveEligibilityOptions(tournament, options = {}) {
+  const eventId = String(options.eventId || "").trim();
+  const isOfficial = isOfficialTournament(tournament);
+
+  if (!isOfficial) {
+    return {
+      ok: true,
+      eligibilityOptions: {
+        ...options,
+        eventId: eventId || options.eventId,
+      },
+    };
+  }
+
+  const resolved = resolveOfficialRegistrationEligibilityRules(tournament, {
+    eventId: eventId || undefined,
+    // G1-E: Official eligibility never sole-event-infers.
+    allowSoleEventInference: false,
+  });
+  if (!resolved.ok) {
+    return {
+      ok: false,
+      error: resolved.error,
+      code: resolved.code || "EVENT_REQUIRED",
+      violations:
+        resolved.code === "INVALID_ELIGIBILITY_POLICY"
+          ? [
+              {
+                code: ELIGIBILITY_VIOLATION.INVALID_ELIGIBILITY_POLICY,
+                message: resolved.error,
+              },
+            ]
+          : [],
+    };
+  }
+
+  return {
+    ok: true,
+    eligibilityOptions: {
+      ...options,
+      eventId: resolved.eventId,
+      rules: resolved.rules,
+      requireCanonicalMembershipEvidence:
+        options.requireCanonicalMembershipEvidence === true ||
+        resolved.rules.clubMembership?.enabled === true,
+      requireCanonicalRatingEvidence:
+        options.requireCanonicalRatingEvidence === true ||
+        (resolved.hasRatingBounds === true &&
+          shouldActivateOfficialOpenRating(tournament, { eventId: resolved.eventId })),
+      eligibilitySource: resolved.source,
+      skillRatingAuthority: resolved.skillRatingAuthority,
+    },
+  };
+}
 
 export function validateRegistrationEligibility(tournament, playerIds, players = [], options = {}) {
-  const report = checkEntryPlayersEligibility(tournament, playerIds, players, options);
+  const scoped = resolveEligibilityOptions(tournament, options);
+  if (!scoped.ok) {
+    const policy = getRegistrationPolicy(tournament);
+    return {
+      ok: false,
+      violations: scoped.violations || [],
+      message: scoped.error || policy.eligibilityFailedMessage,
+      code: scoped.code,
+    };
+  }
+
+  const report = checkEntryPlayersEligibility(
+    tournament,
+    playerIds,
+    players,
+    scoped.eligibilityOptions
+  );
   const policy = getRegistrationPolicy(tournament);
 
   // Event-type gender via shared validation when entry has full roster
@@ -42,6 +143,7 @@ export function validateRegistrationEligibility(tournament, playerIds, players =
 
   return {
     ...report,
+    eligibilitySource: scoped.eligibilityOptions.eligibilitySource || null,
     message: report.ok
       ? ""
       : report.violations[0]?.message || policy.eligibilityFailedMessage,
@@ -50,16 +152,48 @@ export function validateRegistrationEligibility(tournament, playerIds, players =
 
 export function gatedSubmitRegistration(tournament, payload = {}, options = {}) {
   const playerIds = payload.playerIds || [];
+  const events = tournament.events || [];
+  const wanted = String(payload.eventId || "").trim();
+  const isOfficial = isOfficialTournament(tournament);
+
+  // G1-E: Official business registration always requires explicit eventId.
+  if (isOfficial && !wanted) {
+    return {
+      ok: false,
+      error: "Chọn nội dung tường minh (eventId) trước khi đăng ký.",
+      code: "EVENT_REQUIRED",
+      tournament,
+    };
+  }
+
   const event =
-    (tournament.events || []).find((item) => String(item.id) === String(payload.eventId)) ||
-    tournament.events?.[0];
+    (wanted
+      ? events.find((item) => String(item.id) === wanted)
+      : null) ||
+    (!isOfficial && events.length === 1 ? events[0] : null) ||
+    (!isOfficial ? events[0] : null);
+
+  if (isOfficial && !event) {
+    return {
+      ok: false,
+      error: "Giải chưa có nội dung thi đấu.",
+      code: wanted ? "EVENT_NOT_FOUND" : "EVENT_REQUIRED",
+      tournament,
+    };
+  }
+
+  const eventId = wanted || (event ? String(event.id) : "");
 
   const eligibility = validateRegistrationEligibility(tournament, playerIds, options.players || [], {
-    eventId: payload.eventId || event?.id,
+    eventId,
     event,
     clubId: options.clubId || tournament.clubId,
     hasInvite: Boolean(options.hasInvite),
     excludeEntryId: options.excludeEntryId,
+    membershipEvidence: options.membershipEvidence,
+    membershipEvidenceByPlayerId: options.membershipEvidenceByPlayerId,
+    ratingEvidence: options.ratingEvidence,
+    ratingEvidenceByPlayerId: options.ratingEvidenceByPlayerId,
   });
 
   let working = tournament;
@@ -70,7 +204,7 @@ export function gatedSubmitRegistration(tournament, payload = {}, options = {}) 
       playerIds,
       violations: eligibility.violations,
     },
-    options
+    withOfficialOpenAuditSink(tournament, options)
   );
   working = audited.tournament;
 
@@ -78,13 +212,20 @@ export function gatedSubmitRegistration(tournament, payload = {}, options = {}) 
     return {
       ok: false,
       error: eligibility.message,
-      code: "ELIGIBILITY_FAILED",
+      code: eligibility.code || "ELIGIBILITY_FAILED",
       violations: eligibility.violations,
       tournament: working,
     };
   }
 
-  const result = submitRegistration(working, payload, options);
+  const result = submitRegistration(
+    working,
+    {
+      ...payload,
+      eventId: eventId || payload.eventId,
+    },
+    options
+  );
   if (!result.ok) {
     return { ...result, tournament: result.tournament || working };
   }
@@ -108,22 +249,25 @@ export function gatedConfirmPartnerInvite(tournament, token, partnerPlayerId, op
     [partnerPlayerId],
     options.players || [],
     {
+      eventId: options.eventId,
       clubId: options.clubId || tournament.clubId,
       hasInvite: true,
+      membershipEvidence: options.membershipEvidence,
+      ratingEvidence: options.ratingEvidence,
     }
   );
 
   let working = auditEligibilityDecision(
     tournament,
     { ok: eligibility.ok, playerIds: [partnerPlayerId], violations: eligibility.violations },
-    options
+    withOfficialOpenAuditSink(tournament, options)
   ).tournament;
 
   if (!eligibility.ok) {
     return {
       ok: false,
       error: eligibility.message,
-      code: "ELIGIBILITY_FAILED",
+      code: eligibility.code || "ELIGIBILITY_FAILED",
       violations: eligibility.violations,
       tournament: working,
     };
@@ -155,25 +299,53 @@ export function gatedApproveEntry(tournament, entryId, options = {}) {
         event,
         clubId: options.clubId || tournament.clubId,
         excludeEntryId: entryId,
+        membershipEvidence: options.membershipEvidence,
+        membershipEvidenceByPlayerId: options.membershipEvidenceByPlayerId,
+        ratingEvidence: options.ratingEvidence,
+        ratingEvidenceByPlayerId: options.ratingEvidenceByPlayerId,
       }
     );
     if (!eligibility.ok) {
       return {
         ok: false,
         error: eligibility.message,
-        code: "ELIGIBILITY_FAILED",
+        code: eligibility.code || "ELIGIBILITY_FAILED",
         violations: eligibility.violations,
       };
     }
   }
 
-  return approveEntry(tournament, entryId, options);
+  return approveEntry(tournament, entryId, {
+    ...options,
+    eventId: options.eventId || event?.id,
+  });
 }
 
 export function gatedPromoteFromWaitlist(tournament, options = {}) {
+  const isOfficial = isOfficialTournament(tournament);
+  const wanted = String(options.eventId || "").trim();
+  // G1-E: Official mutation always requires explicit eventId (no sole-event inference).
+  if (isOfficial && !wanted) {
+    return {
+      ok: false,
+      error: "Chọn nội dung tường minh (eventId) trước khi duyệt danh sách chờ.",
+      code: "EVENT_REQUIRED",
+    };
+  }
   const queueEvent =
-    (tournament.events || []).find((item) => String(item.id) === String(options.eventId)) ||
-    tournament.events?.[0];
+    (wanted
+      ? (tournament.events || []).find((item) => String(item.id) === wanted)
+      : null) ||
+    (!isOfficial && (tournament.events || []).length === 1
+      ? tournament.events[0]
+      : null);
+  if (isOfficial && !queueEvent) {
+    return {
+      ok: false,
+      error: "Không tìm thấy nội dung (eventId).",
+      code: wanted ? "EVENT_NOT_FOUND" : "EVENT_REQUIRED",
+    };
+  }
   const waitlisted = (queueEvent?.entries || [])
     .filter((entry) => entry.status === "waitlisted")
     .sort((a, b) => (a.waitlistPosition || 0) - (b.waitlistPosition || 0));
@@ -188,5 +360,8 @@ export function gatedPromoteFromWaitlist(tournament, options = {}) {
     }
   }
 
-  return promoteFromWaitlist(tournament, options);
+  return promoteFromWaitlist(tournament, {
+    ...options,
+    eventId: options.eventId || queueEvent?.id,
+  });
 }

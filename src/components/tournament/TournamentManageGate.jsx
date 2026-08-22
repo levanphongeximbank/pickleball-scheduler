@@ -9,6 +9,10 @@ import { PERMISSIONS } from "../../auth/permissions.js";
 import { assertLoadedTournamentAccess } from "../../features/tournament/guards/tournamentAccess.js";
 import { shouldBlockTournamentManageGate } from "../../features/tournament/guards/tournamentManageGatePolicy.js";
 import { useCanonicalTournament } from "../../features/tournament/hooks/useCanonicalTournament.js";
+import {
+  evaluateOfficialOpenManageAccess,
+  isOfficialOpenManageTarget,
+} from "../../features/tournament/official-open-adapter-b/index.js";
 
 function AccessDenied({ title, message, to = "/tournament" }) {
   return (
@@ -39,7 +43,7 @@ export default function TournamentManageGate({
   tournamentId = null,
   loadedTournament = null,
 }) {
-  const { rbacEnabled, isAuthenticated, can } = useAuth();
+  const { rbacEnabled, isAuthenticated, can, user } = useAuth();
   const { activeClub, activeClubId } = useClub();
   const { currentTenantId } = useTenant();
   const { tournament: fetchedTournament, loading } = useCanonicalTournament(
@@ -85,11 +89,20 @@ export default function TournamentManageGate({
     }
   }
 
-  const allowed = can(PERMISSIONS.TOURNAMENT_UPDATE, {
-    clubId: activeClubId,
-    venueId: currentTenantId,
-    tenantId: currentTenantId,
-  });
+  const allowed = isOfficialOpenManageTarget(tournament)
+    ? evaluateOfficialOpenManageAccess({
+        actor: user,
+        tenantId: currentTenantId,
+        clubId: activeClubId,
+        venueId: activeClub?.venueId || null,
+        competitionId: tournamentId,
+        rbacEnabled,
+      }).allowed === true
+    : can(PERMISSIONS.TOURNAMENT_UPDATE, {
+        clubId: activeClubId,
+        venueId: currentTenantId,
+        tenantId: currentTenantId,
+      });
 
   if (allowed) {
     return children;

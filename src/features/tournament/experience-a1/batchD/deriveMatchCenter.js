@@ -1,5 +1,6 @@
 import { eventDisplayName, resolveBatchBEvent } from "../batchB/eventScope.js";
-import { listTournamentEvents } from "../deriveOverview.js";
+import { listTournamentEvents, isOfficialOpenFamily } from "../deriveOverview.js";
+import { projectOfficialMatchCenter } from "../../official-tournament-experience/operationsProjection.js";
 import {
   courtLabel,
   courtsByIdMap,
@@ -13,7 +14,7 @@ import {
   stageLabel,
 } from "./matchPresentation.js";
 
-function toCard(match, event, entries, courtsMap, groups) {
+function toCard(match, event, entries, courtsMap, groups, tournament = null) {
   const group = groups.find((item) => String(item.id) === String(match.groupId));
   const a = entries.find((entry) => String(entry.id) === String(match.entryAId))?.name || "Chưa xác định";
   const b = entries.find((entry) => String(entry.id) === String(match.entryBId))?.name || "Chưa xác định";
@@ -47,21 +48,64 @@ function toCard(match, event, entries, courtsMap, groups) {
         }))
       : [],
     issues,
-    refereeLaunchTo: refereeLaunchTo(match),
+    refereeLaunchTo: refereeLaunchTo(match, tournament),
   };
 }
 
-export function deriveMatchCenterModel(tournament, { selectedEventId = "all", stage = "all", groupId = "all", court = "all", referee = "all", status = "all", selectedMatchId = "" } = {}) {
+export function deriveMatchCenterModel(tournament, options = {}) {
+  const base = deriveMatchCenterModelBase(tournament, options);
+  if (!isOfficialOpenFamily(tournament) && !tournament?.officialMode) {
+    return base;
+  }
+  const selectedEventId =
+    options.selectedEventId && options.selectedEventId !== "all"
+      ? options.selectedEventId
+      : "";
+  const projection = projectOfficialMatchCenter(tournament, { selectedEventId });
+  return {
+    ...base,
+    official: true,
+    needsEventChoice:
+      listTournamentEvents(tournament).length > 1 &&
+      (!options.selectedEventId || options.selectedEventId === "all"),
+    lifecycleAuthority: projection.lifecycleAuthority,
+    scoringAuthority: projection.scoringAuthority,
+    resultAuthority: projection.resultAuthority,
+    refereeAuthority: projection.refereeAuthority,
+    scoringDenied: true,
+    scoringHint: projection.scoringHint,
+    lifecycleHint: projection.lifecycleHint,
+    liveScoreTreatedAsFinal: false,
+    completedTreatedAsAccepted: false,
+  };
+}
+
+function deriveMatchCenterModelBase(
+  tournament,
+  {
+    selectedEventId = "all",
+    stage = "all",
+    groupId = "all",
+    court = "all",
+    referee = "all",
+    status = "all",
+    selectedMatchId = "",
+  } = {}
+) {
   const events = listTournamentEvents(tournament);
-  const scope = selectedEventId && selectedEventId !== "all" ? resolveBatchBEvent(tournament, selectedEventId) : { events, event: null, needsEventChoice: false, emptyEvents: events.length === 0 };
+  const scope =
+    selectedEventId && selectedEventId !== "all"
+      ? resolveBatchBEvent(tournament, selectedEventId)
+      : { events, event: null, needsEventChoice: false, emptyEvents: events.length === 0 };
   const courtsMap = courtsByIdMap(tournament);
-  const sourceEvents = selectedEventId === "all" || !selectedEventId ? events : scope.event ? [scope.event] : [];
+  const sourceEvents =
+    selectedEventId === "all" || !selectedEventId ? events : scope.event ? [scope.event] : [];
   const rows = [];
   for (const event of sourceEvents) {
     const entries = resolveEntries(event);
     const groups = Array.isArray(event?.groups) ? event.groups : [];
     for (const match of eventMatches(event)) {
-      rows.push(toCard(match, event, entries, courtsMap, groups));
+      rows.push(toCard(match, event, entries, courtsMap, groups, tournament));
     }
   }
 
@@ -69,7 +113,9 @@ export function deriveMatchCenterModel(tournament, { selectedEventId = "all", st
     (event.groups || []).map((group) => ({ id: group.id, label: group.label || group.name || group.id }))
   );
   const filtered = rows.filter((row) => {
-    if (stage === "group" && !String(row.stage).includes("bảng") && row.stage !== "Vòng bảng") return false;
+    if (stage === "group" && !String(row.stage).includes("bảng") && row.stage !== "Vòng bảng") {
+      return false;
+    }
     if (stage === "ko" && String(row.stage).includes("bảng")) return false;
     if (groupId !== "all") {
       const group = groups.find((item) => String(item.id) === String(groupId) || item.label === groupId);
@@ -85,9 +131,14 @@ export function deriveMatchCenterModel(tournament, { selectedEventId = "all", st
     return true;
   });
 
-  const selected = filtered.find((row) => String(row.id) === String(selectedMatchId)) || filtered[0] || null;
-  const uniqueCourts = [...new Set(rows.map((row) => row.court).filter((item) => item && item !== "Chưa gán sân"))];
-  const uniqueReferees = [...new Set(rows.map((row) => row.referee).filter((item) => item && item !== "Chưa gán"))];
+  const selected =
+    filtered.find((row) => String(row.id) === String(selectedMatchId)) || filtered[0] || null;
+  const uniqueCourts = [
+    ...new Set(rows.map((row) => row.court).filter((item) => item && item !== "Chưa gán sân")),
+  ];
+  const uniqueReferees = [
+    ...new Set(rows.map((row) => row.referee).filter((item) => item && item !== "Chưa gán")),
+  ];
 
   return {
     tournamentName: String(tournament?.name || "Giải đấu"),
@@ -107,5 +158,10 @@ export function deriveMatchCenterModel(tournament, { selectedEventId = "all", st
     courts: uniqueCourts,
     referees: uniqueReferees,
     scoringDenied: true,
+    official: false,
+    lifecycleAuthority: null,
+    scoringAuthority: null,
+    resultAuthority: null,
+    refereeAuthority: null,
   };
 }

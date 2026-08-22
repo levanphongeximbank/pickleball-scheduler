@@ -14,7 +14,15 @@ import { resolveEntryLabel } from "../../tournament/engines/tournamentDirectorEn
 import { useScoreDrafts } from "../../tournament/useScoreDrafts.js";
 import { touchButtonSx } from "./mobileUi.js";
 
-function GroupMatchScoreRow({ match, entries, players, onSubmitScore, draft }) {
+function GroupMatchScoreRow({
+  match,
+  entries,
+  players,
+  onSubmitScore,
+  draft,
+  presentation,
+  commitLabel = "Chốt kết quả",
+}) {
   const [localScoreA, setLocalScoreA] = useState(match.scoreA ?? "");
   const [localScoreB, setLocalScoreB] = useState(match.scoreB ?? "");
 
@@ -24,8 +32,10 @@ function GroupMatchScoreRow({ match, entries, players, onSubmitScore, draft }) {
 
   const completed =
     match.status === MATCH_STATUS.COMPLETED || match.status === MATCH_STATUS.FORFEIT;
-  const labelA = resolveEntryLabel(match.entryAId, entries, players);
-  const labelB = resolveEntryLabel(match.entryBId, entries, players);
+  const labelA =
+    presentation?.sideA?.label || resolveEntryLabel(match.entryAId, entries, players);
+  const labelB =
+    presentation?.sideB?.label || resolveEntryLabel(match.entryBId, entries, players);
 
   const handleScoreChange = (field, value) => {
     if (draft) {
@@ -63,11 +73,12 @@ function GroupMatchScoreRow({ match, entries, players, onSubmitScore, draft }) {
         </Typography>
         <Chip
           size="small"
-          label={completed ? "Đã xong" : "Chờ điểm"}
+          label={completed ? `${match.scoreA} — ${match.scoreB}` : "Chờ trọng tài / chốt"}
           color={completed ? "success" : "default"}
         />
       </Stack>
 
+      {completed || !onSubmitScore ? null : (
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="stretch">
         <TextField
           size="small"
@@ -93,14 +104,22 @@ function GroupMatchScoreRow({ match, entries, players, onSubmitScore, draft }) {
           sx={{ ...touchButtonSx, whiteSpace: "nowrap" }}
           onClick={handleSubmit}
         >
-          Lưu điểm
+          {commitLabel}
         </Button>
       </Stack>
+      )}
     </Paper>
   );
 }
 
-export default function GroupStagePanel({ event, players = [], onSubmitScore, draftScope }) {
+export default function GroupStagePanel({
+  event,
+  players = [],
+  onSubmitScore,
+  draftScope,
+  matchPresentationById = null,
+  presentGroupLabel = null,
+}) {
   const draft = useScoreDrafts(draftScope);
   const groups = event?.groups || [];
   const entries = event?.entries || [];
@@ -126,11 +145,10 @@ export default function GroupStagePanel({ event, players = [], onSubmitScore, dr
       >
         <Box>
           <Typography variant="subtitle1" fontWeight="bold">
-            Nhập điểm vòng bảng
+            Nhập / chốt điểm vòng bảng
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Đã hoàn thành {completedCount}/{groupMatches.length} trận. Điểm đang nhập được giữ
-            khi chuyển tab. Khi nhập đủ, bracket knock-out sẽ được tạo tự động từ BXH.
+            Kết quả chính thức do lệnh chốt server ghi. Điểm live trọng tài chỉ là tạm thời.
           </Typography>
         </Box>
         <Chip label={`${completedCount}/${groupMatches.length} trận`} color="primary" />
@@ -149,17 +167,21 @@ export default function GroupStagePanel({ event, players = [], onSubmitScore, dr
           return (
             <Box key={group.id}>
               <Typography fontWeight="bold" sx={{ mb: 1 }}>
-                {group.name || `Bảng ${group.label}`}
+                {presentGroupLabel
+                  ? presentGroupLabel(group)
+                  : group.name || `Bảng ${group.label}`}
               </Typography>
               <Stack spacing={1}>
                 {matches.map((match) => (
-                  <GroupMatchScoreRow
+                    <GroupMatchScoreRow
                     key={match.id}
                     match={match}
                     entries={entries}
                     players={players}
                     onSubmitScore={onSubmitScore}
                     draft={draft}
+                    presentation={matchPresentationById?.[String(match.id)] || null}
+                    commitLabel="Chốt kết quả"
                   />
                 ))}
               </Stack>

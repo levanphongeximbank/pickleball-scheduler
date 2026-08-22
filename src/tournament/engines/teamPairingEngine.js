@@ -49,6 +49,29 @@ export function filterPlayersForEventType(players = [], eventType) {
   return players;
 }
 
+function shufflePlayers(items = [], randomFn = Math.random) {
+  const array = [...items];
+  for (let index = array.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(randomFn() * (index + 1));
+    const temp = array[index];
+    array[index] = array[swapIndex];
+    array[swapIndex] = temp;
+  }
+  return array;
+}
+
+function buildPairTeam(members = []) {
+  const avgLevel = members.length
+    ? members.reduce((sum, player) => sum + playerRating(player), 0) / members.length
+    : 0;
+  return {
+    id: members.map((player) => String(player.id)).sort().join("|"),
+    name: members.map((player) => player.name).join(" / "),
+    members,
+    avgLevel: Math.round(avgLevel * 100) / 100,
+  };
+}
+
 export function createMixedPairsFromPlayers(players = []) {
   const males = sortByRatingDesc(
     players.filter((player) => getPlayerGenderKey(player.gender) === "male")
@@ -61,21 +84,26 @@ export function createMixedPairsFromPlayers(players = []) {
   const teams = [];
 
   for (let index = 0; index < pairCount; index += 1) {
-    const male = males[index];
-    const female = females[pairCount - 1 - index];
-    const members = [male, female];
-    const avgLevel =
-      members.reduce((sum, player) => sum + playerRating(player), 0) / members.length;
-
-    teams.push({
-      id: [male.id, female.id].map(String).sort().join("|"),
-      name: `${male.name} / ${female.name}`,
-      members,
-      avgLevel: Math.round(avgLevel * 100) / 100,
-    });
+    teams.push(buildPairTeam([males[index], females[pairCount - 1 - index]]));
   }
 
   return teams;
+}
+
+/** Rating-neutral mixed pairing: shuffle each gender, then zip. Structural M+F only. */
+export function createOpenMixedPairsFromPlayers(players = [], randomFn = Math.random) {
+  const males = shufflePlayers(
+    players.filter((player) => getPlayerGenderKey(player.gender) === "male"),
+    randomFn
+  );
+  const females = shufflePlayers(
+    players.filter((player) => getPlayerGenderKey(player.gender) === "female"),
+    randomFn
+  );
+  const pairCount = Math.min(males.length, females.length);
+  return Array.from({ length: pairCount }, (_, index) =>
+    buildPairTeam([males[index], females[index]])
+  );
 }
 
 export function suggestTeamsFromPlayers(players = [], eventType, options = {}) {
@@ -87,11 +115,15 @@ export function suggestTeamsFromPlayers(players = [], eventType, options = {}) {
 
   let teams;
   if (eventType === EVENT_TYPE.MIXED_DOUBLE) {
-    teams = createMixedPairsFromPlayers(filtered);
+    teams =
+      mode === "open"
+        ? createOpenMixedPairsFromPlayers(filtered, options.randomFn)
+        : createMixedPairsFromPlayers(filtered);
   } else {
     teams = createTeamsFromPlayers(filtered, {
       mode,
       teamSize: 2,
+      randomFn: options.randomFn,
     });
   }
 
@@ -198,6 +230,17 @@ export function suggestEntriesFromPlayers(players = [], eventType, options = {})
   );
 }
 
+/**
+ * Official Open random pairing — existing createTeamsFromPlayers({ mode: "open" }) authority.
+ * Does not sort/bucket by rating, VPR, or skill.
+ */
+export function suggestOpenRandomEntriesFromPlayers(players = [], eventType, options = {}) {
+  return suggestEntriesFromPlayers(players, eventType, {
+    ...options,
+    mode: "open",
+  });
+}
+
 export function entriesToTeams(entries = [], players = []) {
   const playersById = new Map(players.map((player) => [String(player.id), player]));
 
@@ -245,8 +288,11 @@ export function assignSeedsToEntries(entries = [], players = []) {
 
 export function createSingleEntriesFromPlayers(players = [], eventType, options = {}) {
   const filtered = filterPlayersForEventType(players, eventType);
+  const mode = options.mode || "skill_controlled";
+  const randomFn = typeof options.randomFn === "function" ? options.randomFn : Math.random;
+  const ordered = mode === "open" ? shufflePlayers(filtered, randomFn) : filtered;
 
-  const entries = filtered.map((player) =>
+  const entries = ordered.map((player) =>
     createEntryRecord({
       id: `entry-${player.id}`,
       tournamentId: options.tournamentId || "",
@@ -261,6 +307,10 @@ export function createSingleEntriesFromPlayers(players = [], eventType, options 
       status: "active",
     })
   );
+
+  if (mode === "open") {
+    return entries.map((entry, index) => ({ ...entry, seed: index + 1 }));
+  }
 
   return assignSeedsToEntries(entries, filtered);
 }

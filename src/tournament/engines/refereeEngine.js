@@ -33,12 +33,17 @@ export function assignRefereeToMatch(match, refereeName, options = {}) {
   };
 }
 
-export function buildRefereeUrl(token) {
+export function buildRefereeUrl(token, options = {}) {
   const path = `/referee/${encodeURIComponent(token)}`;
+  const query = options.query
+    ? `?${String(options.query).replace(/^\?/, "")}`
+    : options.search
+      ? `?${String(options.search).replace(/^\?/, "")}`
+      : "";
   if (typeof window !== "undefined" && window.location?.origin) {
-    return `${window.location.origin}${path}`;
+    return `${window.location.origin}${path}${query}`;
   }
-  return path;
+  return `${path}${query}`;
 }
 
 export function buildRefereeShareText({ url, matchLabels = {}, refereeName = "" }) {

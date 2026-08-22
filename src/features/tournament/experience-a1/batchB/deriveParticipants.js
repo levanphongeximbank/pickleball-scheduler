@@ -5,6 +5,9 @@ import {
   getEntryPayment,
   PAYMENT_STATUS,
 } from "../../../individual-tournament/engines/entryFeeEngine.js";
+import { getOfficialCompetitionSettings } from "../../../individual-tournament/engines/officialTournamentSettingsEngine.js";
+import { isRegistrationLocked } from "../../../individual-tournament/engines/registrationEngine.js";
+import { isOfficialOpenFamily } from "../deriveOverview.js";
 import { eventDisplayName, isProfileComplete, resolveBatchBEvent } from "./eventScope.js";
 
 const PAYMENT_LABEL = { paid: "Đã thanh toán", unpaid: "Chưa thanh toán", free: "Miễn phí" };
@@ -27,10 +30,19 @@ function paymentState(tournament, entryId) {
 export function deriveParticipantsModel(tournament, { selectedEventId } = {}) {
   const scope = resolveBatchBEvent(tournament, selectedEventId);
   const event = scope.event;
+  const official = isOfficialOpenFamily(tournament);
+  const competition = official ? getOfficialCompetitionSettings(tournament) : null;
+  const registrationMode = competition?.registrationMode || null;
+  const locked = isRegistrationLocked(tournament);
   const entries = event ? normalizeEntries(event.entries) : [];
   const rows = entries.map((entry) => {
     const payment = paymentState(tournament, entry.id);
     const complete = isProfileComplete(entry, event);
+    const playerIds = Array.isArray(entry?.playerIds)
+      ? entry.playerIds.map(String).filter(Boolean)
+      : [];
+    const unit =
+      registrationMode === "pair" || playerIds.length >= 2 ? "pair" : "individual";
     const issue = !complete
       ? "Thiếu hồ sơ"
       : !payment.satisfied
@@ -39,6 +51,11 @@ export function deriveParticipantsModel(tournament, { selectedEventId } = {}) {
     return {
       id: entry.id,
       names: entry.name,
+      playerIds,
+      unit,
+      unitLabel: unit === "pair" ? "Cặp đăng ký" : "Cá nhân",
+      status: entry.status || "",
+      clubName: String(entry.clubName || entry.club || "").trim() || null,
       payment: payment.key,
       paymentLabel: payment.label,
       paymentSatisfied: payment.satisfied,
@@ -49,6 +66,7 @@ export function deriveParticipantsModel(tournament, { selectedEventId } = {}) {
       eligible: null,
       eligibilityLabel: "Chưa có dữ liệu",
       issue,
+      removeEnabled: official && Boolean(event?.id) && !locked,
     };
   });
 
@@ -58,12 +76,12 @@ export function deriveParticipantsModel(tournament, { selectedEventId } = {}) {
     {
       label: "Thanh toán đủ",
       ready: unpaid === 0,
-      note: unpaid ? `${unpaid} cặp chưa thanh toán` : rows.length ? "Tất cả đã thanh toán hoặc miễn phí" : "Chưa có hồ sơ",
+      note: unpaid ? `${unpaid} hồ sơ chưa thanh toán` : rows.length ? "Tất cả đã thanh toán hoặc miễn phí" : "Chưa có hồ sơ",
     },
     {
       label: "Hồ sơ đủ",
       ready: incomplete === 0,
-      note: incomplete ? `${incomplete} cặp thiếu hồ sơ` : rows.length ? "Tất cả đủ hồ sơ" : "Chưa có hồ sơ",
+      note: incomplete ? `${incomplete} hồ sơ thiếu` : rows.length ? "Tất cả đủ hồ sơ" : "Chưa có hồ sơ",
     },
     {
       label: "Check-in bắt buộc",
@@ -80,21 +98,33 @@ export function deriveParticipantsModel(tournament, { selectedEventId } = {}) {
     needsEventChoice: scope.needsEventChoice,
     emptyEvents: scope.emptyEvents,
     events: scope.events,
+    official,
+    registrationMode,
+    officialMode: tournament?.officialMode || null,
     kpis: {
       total: rows.length,
       paid: rows.filter((row) => row.payment === "paid" || row.payment === "free").length,
       checkedIn: "—",
       complete: rows.filter((row) => row.profile === "complete").length,
       blocked: rows.filter((row) => Boolean(row.issue)).length,
+      individual: rows.filter((row) => row.unit === "individual").length,
+      pair: rows.filter((row) => row.unit === "pair").length,
     },
     readyItems,
     blockers,
     notReady: blockers.length > 0,
-    lockEnabled: false,
-    lockHint: "Chốt danh sách chưa có trên hệ thống này.",
-    impactLocked: "Chốt danh sách chưa có trên hệ thống này. Không thêm hoặc khóa từ màn này.",
-    impactOpen:
-      "Sau khi chốt danh sách: không thêm VĐV thường. Hiện chưa có thao tác chốt riêng. Lưu hồ sơ không phải đóng đăng ký, cũng không phải chốt danh sách.",
+    lockEnabled: official && !locked,
+    lockHint: official
+      ? locked
+        ? "Danh sách / đăng ký đã khóa trên hồ sơ."
+        : "Chốt danh sách vận động viên trên hồ sơ đăng ký."
+      : "Chốt danh sách chưa có trên hệ thống này.",
+    impactLocked: official
+      ? "Đã khóa đăng ký / danh sách trên hồ sơ giải."
+      : "Chốt danh sách chưa có trên hệ thống này. Không thêm hoặc khóa từ màn này.",
+    impactOpen: official
+      ? "Chốt danh sách trên hồ sơ đăng ký. Không tạo cặp / pairing trên màn này."
+      : "Sau khi chốt danh sách: không thêm VĐV thường. Hiện chưa có thao tác chốt riêng. Lưu hồ sơ không phải đóng đăng ký, cũng không phải chốt danh sách.",
     rows,
   };
 }
@@ -107,7 +137,7 @@ export function filterParticipantRows(rows, filters = {}) {
   const eligibility = filters.eligibility || "all";
   const issue = filters.issue || "all";
   return (Array.isArray(rows) ? rows : []).filter((row) => {
-    const hay = `${row.names} ${row.id} ${row.issue || ""}`.toLowerCase();
+    const hay = `${row.names} ${row.id} ${(row.playerIds || []).join(" ")} ${row.issue || ""}`.toLowerCase();
     if (query && !hay.includes(query)) return false;
     if (payment !== "all") {
       if (payment === "paid" && row.payment !== "paid" && row.payment !== "free") return false;

@@ -2,6 +2,10 @@ import { MATCH_STAGE, MATCH_STATUS } from "../../../../models/tournament/constan
 import { normalizeEntries } from "../../../../models/tournament/entry.js";
 import { normalizeMatches } from "../../../../models/tournament/match.js";
 import { getCourtDisplayName } from "../../../../models/court.js";
+import {
+  buildOfficialCore16RulesEnvelopeFromTournament,
+  buildOfficialRefereeUrlWithCore16Rules,
+} from "../../official-open-adapter-b/officialOpenCore16LiveScoringBinding.js";
 
 export function entryName(entries, id) {
   if (!id) return "";
@@ -10,7 +14,15 @@ export function entryName(entries, id) {
 }
 
 export function resolveEntries(event) {
-  return event ? normalizeEntries(event.entries) : [];
+  if (!event) return [];
+  const draw = Array.isArray(event.drawEntries) ? event.drawEntries : [];
+  const pairDraw = draw.filter(
+    (entry) => Array.isArray(entry?.playerIds) && entry.playerIds.filter(Boolean).length >= 2
+  );
+  if (pairDraw.length > 0) {
+    return normalizeEntries(pairDraw);
+  }
+  return normalizeEntries(event.entries);
 }
 
 export function eventMatches(event) {
@@ -92,9 +104,19 @@ export function refereeLabel(match) {
   return "Chưa gán";
 }
 
-export function refereeLaunchTo(match) {
+export function refereeLaunchTo(match, tournament = null) {
   const token = String(match?.referee?.token || match?.refereeToken || "").trim();
-  return token ? `/referee/${encodeURIComponent(token)}` : "";
+  if (!token) return "";
+  if (tournament) {
+    const built = buildOfficialCore16RulesEnvelopeFromTournament(tournament, match, {
+      tenantId: tournament.tenantId,
+      eventId: match?.eventId,
+    });
+    if (built.ok) {
+      return buildOfficialRefereeUrlWithCore16Rules(token, built.envelope);
+    }
+  }
+  return `/referee/${encodeURIComponent(token)}`;
 }
 
 export function listTournamentCourts(tournament) {

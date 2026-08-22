@@ -109,11 +109,20 @@ test("tournamentCommands canonical branch uses Adapter B without loadCourtsForCl
   const source = read("src/features/tournament/services/tournamentCommands.js");
   assert.match(source, /isCanonicalCompetitionCourtAdaptersEnabled/);
   assert.match(source, /syncCompetitionCourtScheduleViaAdapterB/);
-  // Legacy branch may still loadCourtsForClub; canonical ON branch must not call it.
-  const canonicalBlock = source.slice(
-    source.indexOf("if (isCanonicalCompetitionCourtAdaptersEnabled())"),
-    source.indexOf("} else {")
+  // Canonical-ON block ends at the provided-courts else-if. Do not slice through
+  // that branch: syncTournamentCourtBookings there is the authorized CI-R1 await
+  // on the Adapter-B-OFF provided-courts path, not an inventory-authority bypass.
+  const canonicalOnStart = source.indexOf(
+    "if (isCanonicalCompetitionCourtAdaptersEnabled())"
   );
-  assert.doesNotMatch(canonicalBlock, /\bloadCourtsForClub\s*\(/);
-  assert.doesNotMatch(canonicalBlock, /\bsyncTournamentCourtBookings\s*\(/);
+  const providedCourtsStart = source.indexOf(
+    '} else if (Object.prototype.hasOwnProperty.call(options, "courts"))',
+    canonicalOnStart
+  );
+  assert.ok(canonicalOnStart >= 0, "canonical Adapter B gate missing");
+  assert.ok(providedCourtsStart > canonicalOnStart, "provided-courts branch missing");
+  const canonicalOnBlock = source.slice(canonicalOnStart, providedCourtsStart);
+  assert.match(canonicalOnBlock, /syncCompetitionCourtScheduleViaAdapterB/);
+  assert.doesNotMatch(canonicalOnBlock, /\bloadCourtsForClub\s*\(/);
+  assert.doesNotMatch(canonicalOnBlock, /\bsyncTournamentCourtBookings\s*\(/);
 });

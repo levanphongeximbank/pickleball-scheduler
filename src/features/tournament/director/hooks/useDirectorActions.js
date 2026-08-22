@@ -43,6 +43,10 @@ import {
   DAILY_PLAY_MESSAGES,
   validateScoreInput,
 } from "../../../daily-play/canonical/index.js";
+import {
+  executeOfficialCore13RefereeAssignment,
+  OFFICIAL_CORE13_ASSIGNMENT_ACTIONS,
+} from "../../official-tournament-experience/officialCore13AssignmentCommands.js";
 
 const DAILY_LOCK_UNSUPPORTED =
   "Khóa sân thủ công chưa hỗ trợ trong Daily canonical.";
@@ -204,7 +208,7 @@ export function useDirectorActions(state) {
   );
 
   const handleRefereeAssign = useCallback(
-    async ({ match: assignedMatch, referee }) => {
+    async (payload = {}) => {
       const currentTournament = tournamentRef.current;
       const currentEvent = activeEventRef.current;
       if (!currentTournament) {
@@ -218,63 +222,166 @@ export function useDirectorActions(state) {
         };
       }
 
-      let persisted;
+      const assignedMatch = payload.match;
+      const referee = payload.referee || null;
+      const rosterEntry = payload.rosterEntry || null;
+      if (!assignedMatch?.id) {
+        return { ok: false, error: "Thiếu trận để phân công." };
+      }
+
+      // Daily remains on daily metadata path (not Official CORE-13 cutover).
       if (isDaily) {
+        if (!referee) {
+          return {
+            ok: false,
+            error: "Daily Director cần đối tượng trọng tài legacy cho metadata.",
+          };
+        }
         const metadataPatch = buildDailyMatchRefereeAssignmentPatch(
           assignedMatch.id,
           referee
         );
-        persisted = await persistDailyReferee(metadataPatch);
-      } else {
-        const patch = patchRefereeInTournament(currentTournament, {
-          eventId: currentEvent?.id,
-          matchId: assignedMatch.id,
-          referee,
-          isDaily: false,
-        });
-        if (!patch) {
-          return { ok: false, error: "Không cập nhật được trận." };
+        const persisted = await persistDailyReferee(metadataPatch);
+        if (!persisted) {
+          return { ok: false, error: "Không lưu được thông tin trọng tài." };
         }
-        const nextEvent = (patch.events || []).find(
-          (event) => String(event.id) === String(currentEvent?.id)
-        );
-        persisted = nextEvent ? await persistEvent(nextEvent) : false;
+        const labels = resolveMatchLabels(assignedMatch, {
+          entries: currentEvent?.entries || [],
+          players: state.players,
+          courts,
+        });
+        const liveRecord = buildMatchLiveRecord({
+          clubId: activeClubId,
+          tournamentId,
+          eventId: currentEvent?.id,
+          match: { ...assignedMatch, referee },
+          labels,
+          isDaily,
+          tournamentName: currentTournament.name,
+        });
+        const syncResult = await upsertMatchLive(liveRecord);
+        if (!syncResult.ok) {
+          return { ok: false, error: syncResult.error || "Không đồng bộ được lên cloud." };
+        }
+        return { ok: true, path: "daily-metadata" };
       }
 
-      if (!persisted) {
-        return { ok: false, error: "Không lưu được thông tin trọng tài." };
-      }
+      // Official / Internal Director: SAME Official CORE-13 integration path — no private blob writer.
+      const action =
+        payload.action ||
+        (payload.unassign
+          ? OFFICIAL_CORE13_ASSIGNMENT_ACTIONS.UNASSIGN
+          : OFFICIAL_CORE13_ASSIGNMENT_ACTIONS.ASSIGN);
+      const rosterOrCanonicalId =
+        rosterEntry?.canonicalUserId ||
+        referee?.canonicalUserId ||
+        payload.rosterOrCanonicalId ||
+        rosterEntry?.id ||
+        referee?.rosterId ||
+        "";
 
-      const labels = resolveMatchLabels(assignedMatch, {
-        entries: currentEvent?.entries || [],
-        players: state.players,
-        courts,
+      const core13 = await executeOfficialCore13RefereeAssignment(currentTournament, {
+        action,
+        matchId: assignedMatch.id,
+        rosterOrCanonicalId,
+        tenantId: tenantId || currentTournament.tenantId || "",
+        reason: payload.reason || `director-${action}`,
       });
-
-      const liveRecord = buildMatchLiveRecord({
-        clubId: activeClubId,
-        tournamentId,
-        eventId: currentEvent?.id,
-        match: { ...assignedMatch, referee },
-        labels,
-        isDaily,
-        tournamentName: currentTournament.name,
-      });
-
-      const syncResult = await upsertMatchLive(liveRecord);
-      if (!syncResult.ok) {
-        return { ok: false, error: syncResult.error || "Không đồng bộ được lên cloud." };
+      if (!core13.ok) {
+        return {
+          ok: false,
+          error: core13.error || "Phân công CORE-13 thất bại.",
+          code: core13.code,
+          core13: true,
+          projected: false,
+        };
       }
 
-      return { ok: true };
+      // Compatibility match.referee denorm ONLY after durable ACK (not authority).
+      const displayReferee =
+        action === OFFICIAL_CORE13_ASSIGNMENT_ACTIONS.UNASSIGN
+          ? null
+          : {
+              name:
+                rosterEntry?.name ||
+                referee?.name ||
+                core13.rosterEntry?.name ||
+                core13.refereeId,
+              rosterId: rosterEntry?.id || core13.rosterEntry?.id || "",
+              canonicalUserId: core13.refereeId,
+              token: referee?.token || "",
+            };
+      const projectedTournament = displayReferee
+        ? patchRefereeInTournament(core13.tournament, {
+            eventId: currentEvent?.id,
+            matchId: assignedMatch.id,
+            referee: displayReferee,
+            isDaily: false,
+          }) || core13.tournament
+        : core13.tournament;
+
+      const persistResult = await persistTournament({
+        settings: projectedTournament.settings,
+        events: projectedTournament.events,
+      });
+      if (!persistResult) {
+        return {
+          ok: false,
+          error:
+            "CORE-13 đã ACK nhưng không lưu được projection. Canonical vẫn là nguồn sự thật.",
+          code: "PROJECTION_PERSIST_FAILED",
+          core13: true,
+          projected: false,
+        };
+      }
+
+      if (displayReferee) {
+        const labels = resolveMatchLabels(assignedMatch, {
+          entries: currentEvent?.entries || [],
+          players: state.players,
+          courts,
+        });
+        const liveRecord = buildMatchLiveRecord({
+          clubId: activeClubId,
+          tournamentId,
+          eventId: currentEvent?.id,
+          match: { ...assignedMatch, referee: displayReferee },
+          labels,
+          isDaily: false,
+          tournamentName: currentTournament.name,
+        });
+        const syncResult = await upsertMatchLive(liveRecord);
+        if (!syncResult.ok) {
+          return {
+            ok: true,
+            warning: syncResult.error || "Đã phân công CORE-13; live sync thất bại.",
+            core13: true,
+            assignment: core13.assignment,
+            version: core13.version,
+            path: "official-core13",
+          };
+        }
+      }
+
+      return {
+        ok: true,
+        core13: true,
+        assignment: core13.assignment,
+        version: core13.version,
+        refereeId: core13.refereeId,
+        path: "official-core13",
+        settingsAuthority: "COMPATIBILITY_PROJECTION_ONLY",
+        matchRefereeAuthority: "COMPATIBILITY_PROJECTION_ONLY",
+      };
     },
     [
       activeClubId,
       courts,
       isDaily,
       persistDailyReferee,
-      persistEvent,
+      persistTournament,
       state.players,
+      tenantId,
       tournamentId,
       tournamentRef,
       activeEventRef,
@@ -291,18 +398,34 @@ export function useDirectorActions(state) {
       if (!rosterEntry) {
         return;
       }
-
-      const assigned = assignCourtRefereeToMatch(match, rosterEntry);
-      if (!assigned) {
+      if (!String(rosterEntry.canonicalUserId || rosterEntry.refereeUserId || "").trim()) {
+        setMessage("Trọng tài sân chưa có danh tính canonical để phân công.");
         return;
       }
 
-      const result = await handleRefereeAssign(assigned);
+      if (isDaily) {
+        const assigned = assignCourtRefereeToMatch(match, rosterEntry);
+        if (!assigned) return;
+        const result = await handleRefereeAssign(assigned);
+        if (result?.ok) {
+          setMessage(`Đã gán trọng tài ${rosterEntry.name} cho trận trên sân.`);
+        }
+        return;
+      }
+
+      const result = await handleRefereeAssign({
+        match,
+        rosterEntry,
+        action: OFFICIAL_CORE13_ASSIGNMENT_ACTIONS.ASSIGN,
+        reason: "director-court-auto-assign",
+      });
       if (result?.ok) {
-        setMessage(`Đã gán trọng tài ${rosterEntry.name} cho trận trên sân.`);
+        setMessage(`Đã gán trọng tài ${rosterEntry.name} cho trận trên sân (CORE-13).`);
+      } else if (result?.error) {
+        setError(result.error);
       }
     },
-    [handleRefereeAssign, setMessage, tournamentRef]
+    [handleRefereeAssign, isDaily, setError, setMessage, tournamentRef]
   );
 
   const handleAssignCourt = useCallback(

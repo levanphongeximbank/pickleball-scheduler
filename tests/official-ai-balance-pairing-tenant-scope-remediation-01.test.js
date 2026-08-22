@@ -173,10 +173,13 @@ describe("official-ai-balance-pairing-tenant-scope-remediation-01", () => {
     const src = readSrc("src/pages/tournament/OfficialTournamentSetup.jsx");
     assert.match(src, /projectLivePrivatePairingPrepareInput/);
     assert.match(src, /prepareOfficialPrivatePairing/);
-    assert.match(src, /handleStartGuidedFlow[\s\S]*prepareOfficialPrivatePairing\(\)/);
-    assert.match(src, /handleSuggestAiPairs[\s\S]*prepareOfficialPrivatePairing\(\)/);
-    assert.match(src, /handleBuildAiGroups[\s\S]*prepareOfficialPrivatePairing\(\)/);
+    // Phase 2D: guided-flow / suggest-pairs CTAs left Registration; remaining
+    // Official pairing + group-draw mutations still go through the shared projector.
+    assert.doesNotMatch(src, /handleStartGuidedFlow/);
+    assert.doesNotMatch(src, /handleSuggestAiPairs/);
+    assert.match(src, /handleFormOfficialPairs[\s\S]*prepareOfficialPrivatePairing\(\)/);
     assert.match(src, /handleDrawGroups[\s\S]*prepareOfficialPrivatePairing\(\)/);
+    assert.doesNotMatch(src, /handleBuildAiGroups/);
     assert.equal(
       (src.match(/prepareLivePrivatePairingOptions\(/g) || []).length,
       1,

@@ -107,6 +107,21 @@ export function getSupabaseAuthClient() {
   return authClient;
 }
 
+/** Token referee RPC client — no session persist. */
+let anonRpcClient = null;
+export function getSupabaseAnonRpcClient() {
+  if (!hasSupabaseConfig()) {
+    return null;
+  }
+  const { url, anonKey } = readSupabaseEnv();
+  if (!anonRpcClient) {
+    anonRpcClient = createClient(url, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
+  return anonRpcClient;
+}
+
 export const PROFILES_TABLE = "profiles";
 
 logSupabaseConfigDebug();

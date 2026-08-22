@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { Alert, Box, Button, Drawer, Grid, Paper, Table, TableBody, TableCell, TableHead, TableRow, useMediaQuery, useTheme } from "@mui/material";
+import { Alert, Box, Button, Drawer, Grid, Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography, useMediaQuery, useTheme } from "@mui/material";
 
 import { useClub } from "../../../../context/ClubContext.jsx";
 import { isIndividualTournament } from "../../../../config/tournamentRoutes.js";
 import { useCanonicalTournament } from "../../hooks/useCanonicalTournament.js";
+import {
+  isOfficialTournamentExperience,
+} from "../experienceModeResolver.js";
 import TournamentExperienceWorkspace from "../components/TournamentExperienceWorkspace.jsx";
 import {
   BatchBError,
@@ -44,7 +47,7 @@ export default function IndividualMatchCenterPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { activeClub, revision } = useClub();
   const { tournament, loading, error } = useCanonicalTournament(activeClub, tournamentId, revision);
-  const selectedEventId = searchParams.get("eventId") || "all";
+  const selectedEventId = searchParams.get("eventId") || "";
   const stage = searchParams.get("stage") || "all";
   const groupId = searchParams.get("groupId") || "all";
   const court = searchParams.get("court") || "all";
@@ -58,8 +61,12 @@ export default function IndividualMatchCenterPage() {
   if (!tournament) return <BatchBMissingTournament testId={TEST_ID} title={TITLE} subtitle={SUBTITLE} />;
   if (!isIndividualTournament(tournament)) return <BatchBWrongFamily testId={TEST_ID} title={TITLE} subtitle={SUBTITLE} />;
 
+  const official = isOfficialTournamentExperience(tournament);
+  const eventFilter = official
+    ? selectedEventId || ""
+    : selectedEventId || "all";
   const model = deriveMatchCenterModel(tournament, {
-    selectedEventId,
+    selectedEventId: eventFilter || "all",
     stage,
     groupId,
     court,
@@ -77,6 +84,16 @@ export default function IndividualMatchCenterPage() {
     setSelectedId(id);
     if (isMobile) setMobileOpen(true);
   };
+  const authorityLine = official
+    ? [
+        model.refereeAuthority && `${model.refereeAuthority} trọng tài`,
+        model.lifecycleAuthority && `${model.lifecycleAuthority} vòng đời`,
+        model.scoringAuthority && `${model.scoringAuthority} ghi điểm`,
+        model.resultAuthority && `${model.resultAuthority} kết quả`,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : "";
 
   return (
     <ExperienceBatchBFrame
@@ -91,7 +108,26 @@ export default function IndividualMatchCenterPage() {
       }
     >
       <BatchDSiblingNav tournamentId={tournamentId} eventId={selectedEventId === "all" ? "" : selectedEventId} current="matches" />
-      <Alert severity="info" sx={{ mb: 1.25 }}>Màn này không ghi điểm. Chỉ xem danh sách trận và mở trọng tài khi đã có quyền.</Alert>
+      {official ? (
+        <Alert severity="info" sx={{ mb: 1.25 }} data-testid="official-match-center-authority">
+          <Typography sx={{ fontSize: 13, mb: 0.5 }}>
+            {model.scoringHint || "Màn này không ghi điểm cục bộ (scoringDenied)."}
+          </Typography>
+          <Typography sx={{ fontSize: 12.5, color: "text.secondary", mb: 0.5 }}>
+            {model.lifecycleHint}
+          </Typography>
+          {authorityLine ? (
+            <Typography sx={{ fontSize: 12, color: "text.secondary" }}>{authorityLine}</Typography>
+          ) : null}
+        </Alert>
+      ) : (
+        <Alert severity="info" sx={{ mb: 1.25 }}>Màn này không ghi điểm. Chỉ xem danh sách trận và mở trọng tài khi đã có quyền.</Alert>
+      )}
+      {official && model.needsEventChoice ? (
+        <Alert severity="warning" sx={{ mb: 1.25 }} data-testid="official-match-center-event-required">
+          Chọn nội dung để xem trận Official (không dùng “Tất cả” khi có nhiều nội dung).
+        </Alert>
+      ) : null}
       <Grid container spacing={1.25} sx={{ mb: 1.5 }}>
         <Grid size={{ xs: 6, sm: true }}><CenterKpiCard label="Tổng" value={model.kpis.total} /></Grid>
         <Grid size={{ xs: 6, sm: true }}><CenterKpiCard label="Sắp tới" value={model.kpis.upcoming} /></Grid>
@@ -100,8 +136,12 @@ export default function IndividualMatchCenterPage() {
         <Grid size={{ xs: 6, sm: true }}><CenterKpiCard label="Cần xử lý" value={model.kpis.attention} tone="warning" /></Grid>
       </Grid>
       <BatchBEventPicker
-        events={[{ id: "all", name: "Tất cả nội dung" }, ...model.events]}
-        selectedEventId={selectedEventId}
+        events={
+          official
+            ? model.events
+            : [{ id: "all", name: "Tất cả nội dung" }, ...model.events]
+        }
+        selectedEventId={official ? selectedEventId : selectedEventId || "all"}
         onSelect={(id) => setParam("eventId", id)}
       />
       <StageSelector

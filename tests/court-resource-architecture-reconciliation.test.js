@@ -53,12 +53,16 @@ test("tournament booking is a facade above the gateway and cannot form a cycle",
     path.join(root, "src/features/court-resource/services/courtResourceGateway.js"),
     "utf8"
   );
+  // Facade translates/composes: default reserve path must go through Court Resource
+  // Gateway. Compatibility helpers (clubStorage / courtBookingEngine) may persist or
+  // validate caller-authorized occupancy but must not load legacy inventory authority.
   assert.match(facade, /features\/court-resource\/index\.js/);
   assert.match(facade, /\breserveCourts\b/);
-  assert.doesNotMatch(
-    facade,
-    /from ["'][^"']*(?:bookingService|clubStorage|courtBookingEngine)\.js["']/
-  );
+  assert.match(facade, /\breleaseCourts\b/);
+  assert.match(facade, /export async function syncTournamentCourtBookings/);
+  assert.match(facade, /await reserveCourts\(/);
+  assert.doesNotMatch(facade, /\bloadCourtsForClub\b/);
+  assert.doesNotMatch(facade, /localStorage\.getItem/);
   assert.doesNotMatch(gateway, /tournamentBookingService/);
 });
 

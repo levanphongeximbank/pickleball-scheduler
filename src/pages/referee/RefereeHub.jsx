@@ -50,7 +50,7 @@ export default function RefereeHub() {
       <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
         <SportsIcon color="primary" />
         <Typography variant={isMobile ? "h5" : "h4"} fontWeight={800}>
-          Trọng tài — Trận được phân công
+          Trọng tài của tôi
         </Typography>
       </Stack>
 
@@ -122,7 +122,7 @@ export default function RefereeHub() {
 
         {!loading && matches.length === 0 && (
           <Typography color="text.secondary">
-            Chưa có trận live được phân công cho {user?.displayName || "bạn"}.
+            Chưa có trận được phân công (CORE-13) cho {user?.displayName || "bạn"}.
           </Typography>
         )}
       </Stack>

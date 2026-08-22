@@ -73,6 +73,11 @@ export function canonicalRowToTournament(row) {
     settings,
     createdAt: row.created_at || payload.createdAt,
     updatedAt: row.updated_at || payload.updatedAt,
+    version: Number.isFinite(Number(row.version))
+      ? Number(row.version)
+      : Number.isFinite(Number(payload.version))
+        ? Number(payload.version)
+        : 1,
   });
 }
 

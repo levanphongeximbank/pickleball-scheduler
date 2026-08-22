@@ -108,11 +108,11 @@ export function loadAIData(clubId) {
   return clubDataToAiView(clubData);
 }
 
-export function saveAIData(data, clubId) {
+export function saveAIData(data, clubId, options = {}) {
   const resolvedClubId = assertExplicitClubId(clubId);
   const clubData = loadClubData(resolvedClubId);
   const next = applyAiViewToClubData(clubData, data);
-  saveClubData(resolvedClubId, next);
+  saveClubData(resolvedClubId, next, options);
   purgeLegacyAiScopedKeys(resolvedClubId);
 }
 

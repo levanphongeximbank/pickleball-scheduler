@@ -564,15 +564,26 @@ test("architecture guards: SQL package authored; Contract #08 untouched", () => 
   );
   assert.match(determinism, /CORE-13/);
 
-  // Panel cutover evidence
+  // Panel cutover evidence — Official integration facade → Edge trusted client
   const panel = readFileSync(
     path.join(ROOT, "src/components/tournament/RefereeAssignPanel.jsx"),
     "utf8"
   );
-  assert.match(panel, /createCompetitionRefereeAssignmentTrustedClient/);
+  assert.match(panel, /executeOfficialCore13RefereeAssignment/);
   assert.doesNotMatch(panel, /createBlobCanonicalAssignmentPersistence/);
   assert.doesNotMatch(panel, /createCompetitionRefereeAssignmentCommandService/);
   assert.doesNotMatch(panel, /assignRefereeToIndividualMatch/);
+
+  const facade = readFileSync(
+    path.join(
+      ROOT,
+      "src/features/tournament/official-tournament-experience/officialCore13AssignmentCommands.js"
+    ),
+    "utf8"
+  );
+  assert.match(facade, /createCompetitionRefereeAssignmentTrustedClient/);
+  assert.doesNotMatch(facade, /createBlobCanonicalAssignmentPersistence/);
+  assert.doesNotMatch(facade, /createCompetitionRefereeAssignmentCommandService/);
 
   const teamPanel = readFileSync(
     path.join(ROOT, "src/components/tournament/team/TeamRefereeSafetyPanel.jsx"),

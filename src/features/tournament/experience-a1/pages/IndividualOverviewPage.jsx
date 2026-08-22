@@ -23,9 +23,27 @@ import {
 } from "../../../../config/tournamentRoutes.js";
 import { TOURNAMENT_MODE } from "../../../../models/tournament/constants.js";
 import { useCanonicalTournament } from "../../hooks/useCanonicalTournament.js";
+import {
+  isOfficialTournamentExperience,
+  resolveTournamentExperienceAdapter,
+  resolveTournamentExperienceMode,
+  TOURNAMENT_EXPERIENCE_MODE,
+} from "../experienceModeResolver.js";
+import { officialLegacySetupPath } from "../../official-tournament-experience/officialOpenPaths.js";
 import TournamentExperienceWorkspace from "../components/TournamentExperienceWorkspace.jsx";
 import { deriveOverviewVisual } from "../deriveOverview.js";
-import { individualSettingsPath } from "../routes.js";
+import {
+  individualSettingsPath,
+  individualRegistrationPublicationPath,
+  individualParticipantsPath,
+  individualPairsPath,
+  individualPairDrawPath,
+  individualGroupDrawPath,
+  individualGroupStagePath,
+  individualSchedulePath,
+  individualMatchesPath,
+  individualStandingsPath,
+} from "../routes.js";
 import CenterKpiCard from "../visual/CenterKpiCard.jsx";
 import CenterRightRailCard from "../visual/CenterRightRailCard.jsx";
 import ExperienceHero from "../visual/ExperienceHero.jsx";
@@ -121,8 +139,29 @@ export default function IndividualOverviewPage() {
   }
 
   const model = deriveOverviewVisual(tournament, { clubName: activeClub?.name || "" });
+  const experienceMode = resolveTournamentExperienceMode(tournament);
+  const officialAdapter = isOfficialTournamentExperience(tournament)
+    ? resolveTournamentExperienceAdapter(tournament)
+    : null;
+  const officialProjection = officialAdapter?.projection || null;
   const settingsTo = individualSettingsPath(tournament.id);
   const publicTo = individualPublicTournamentPath(tournament.id);
+  const legacySetupTo =
+    experienceMode === TOURNAMENT_EXPERIENCE_MODE.OFFICIAL
+      ? officialLegacySetupPath(tournament.id)
+      : null;
+
+  const kpiEntryCount = officialProjection?.registrationSummary?.entryCount ?? model.kpis.entryCount;
+  const kpiEventCount = officialProjection?.events?.length ?? model.kpis.eventCount;
+  const kpiCourtCount = officialProjection
+    ? officialProjection.courtReadinessSummary.courtCount
+    : model.kpis.courtCount;
+  const kpiCourtConfigured = officialProjection
+    ? officialProjection.courtReadinessSummary.configured
+    : model.kpis.courtConfigured;
+  const kpiMatchCount = officialProjection?.matchSummary?.matchCount ?? model.kpis.matchCount;
+  const kpiCompletedMatches =
+    officialProjection?.matchSummary?.completedMatchCount ?? model.kpis.completedMatchCount;
 
   return (
     <OverviewState>
@@ -142,6 +181,85 @@ export default function IndividualOverviewPage() {
             <Button component={RouterLink} to={settingsTo} variant="contained" size="small" sx={primaryActionSx}>
               Cài đặt
             </Button>
+            {legacySetupTo ? (
+              <>
+                <Button
+                  component={RouterLink}
+                  to={individualRegistrationPublicationPath(tournament.id)}
+                  size="small"
+                  sx={outlinedActionSx}
+                >
+                  Đăng ký
+                </Button>
+                <Button
+                  component={RouterLink}
+                  to={individualParticipantsPath(tournament.id)}
+                  size="small"
+                  sx={outlinedActionSx}
+                >
+                  Người tham dự
+                </Button>
+                <Button
+                  component={RouterLink}
+                  to={individualPairsPath(tournament.id)}
+                  size="small"
+                  sx={outlinedActionSx}
+                >
+                  Hình thành cặp
+                </Button>
+                <Button
+                  component={RouterLink}
+                  to={individualPairDrawPath(tournament.id)}
+                  size="small"
+                  sx={outlinedActionSx}
+                >
+                  Bốc thăm ghép
+                </Button>
+                <Button
+                  component={RouterLink}
+                  to={individualGroupDrawPath(tournament.id)}
+                  size="small"
+                  sx={outlinedActionSx}
+                >
+                  Chia bảng
+                </Button>
+                <Button
+                  component={RouterLink}
+                  to={individualGroupStagePath(tournament.id)}
+                  size="small"
+                  sx={outlinedActionSx}
+                >
+                  Vòng bảng
+                </Button>
+                <Button
+                  component={RouterLink}
+                  to={individualSchedulePath(tournament.id)}
+                  size="small"
+                  sx={outlinedActionSx}
+                >
+                  Lịch
+                </Button>
+                <Button
+                  component={RouterLink}
+                  to={individualMatchesPath(tournament.id)}
+                  size="small"
+                  sx={outlinedActionSx}
+                >
+                  Trận
+                </Button>
+                <Button
+                  component={RouterLink}
+                  to={individualStandingsPath(tournament.id)}
+                  size="small"
+                  sx={outlinedActionSx}
+                >
+                  BXH
+                </Button>
+                <Button component={RouterLink} to={legacySetupTo} size="small" sx={outlinedActionSx}>
+                  Setup đầy đủ (legacy)
+                </Button>
+              </>
+            ) : null}
           </Stack>
         }
       />
@@ -158,12 +276,12 @@ export default function IndividualOverviewPage() {
           publicTo={publicTo}
         />
 
-        <Grid container spacing={1.25} sx={{ mb: 1.5 }}>
+        <Grid container spacing={1.25} sx={{ mb: 1.5 }} data-experience-mode={experienceMode}>
           <Grid size={{ xs: 6, md: 3 }}>
             <CenterKpiCard
               label="VĐV"
               value={model.athleteCount}
-              hint={model.kpis.entryCount ? `${model.kpis.entryCount} đăng ký` : "Chưa có đăng ký"}
+              hint={kpiEntryCount ? `${kpiEntryCount} đăng ký` : "Chưa có đăng ký"}
               tone="success"
               icon={<GroupsOutlinedIcon />}
             />
@@ -171,7 +289,7 @@ export default function IndividualOverviewPage() {
           <Grid size={{ xs: 6, md: 3 }}>
             <CenterKpiCard
               label="Nội dung"
-              value={model.kpis.eventCount}
+              value={kpiEventCount}
               hint={model.eventInitHint}
               tone="purple"
               icon={<EventNoteOutlinedIcon />}
@@ -180,7 +298,7 @@ export default function IndividualOverviewPage() {
           <Grid size={{ xs: 6, md: 3 }}>
             <CenterKpiCard
               label="Sân"
-              value={model.kpis.courtConfigured ? model.kpis.courtCount : "—"}
+              value={kpiCourtConfigured ? kpiCourtCount : "—"}
               hint={model.courtHint}
               tone="info"
               icon={<SportsTennisIcon />}
@@ -189,8 +307,12 @@ export default function IndividualOverviewPage() {
           <Grid size={{ xs: 6, md: 3 }}>
             <CenterKpiCard
               label="Trận"
-              value={model.kpis.matchCount}
-              hint={model.matchHint}
+              value={kpiMatchCount}
+              hint={
+                kpiCompletedMatches
+                  ? `${kpiCompletedMatches}/${kpiMatchCount || 0} hoàn thành`
+                  : model.matchHint
+              }
               icon={<TimelineIcon />}
             />
           </Grid>
