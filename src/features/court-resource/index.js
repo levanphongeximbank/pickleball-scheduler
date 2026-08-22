@@ -166,14 +166,17 @@ export {
   isActiveTournamentReservation,
 } from "./services/courtResourceGateway.js";
 
-export { buildTournamentReservationRows } from "./legacy/index.js";
+export { buildTournamentReservationRows } from "./adapters/legacyReservationAdapter.js";
 
 export {
   LEGACY_COMPATIBILITY_BOUNDARY_EXPLICIT as LEGACY_BOUNDARY_EXPLICIT_FLAG,
   LEGACY_BOUNDARY_LOCATION as LEGACY_BOUNDARY_PATH,
+} from "./legacy/legacyIsolationLocks.js";
+
+export {
   planLegacyLiveStateMigrationDryRun,
   planLegacyMaintenanceMigrationDryRun,
-} from "./legacy/index.js";
+} from "./legacy/legacyMigrationDryRun.js";
 
 export {
   CANONICAL_IDENTITY_CONTRACT_VERSION,
