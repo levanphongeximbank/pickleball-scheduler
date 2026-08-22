@@ -1175,7 +1175,9 @@ function knockoutPairingRuntimeMetadata(pairingPolicy) {
 /**
  * Group 2 Content resolver surface (group stage / qualification / knockout structure).
  * CONTENT_EXPLICIT wins. Legacy draft never overrides Content.
- * Does NOT enforce draw/qualification/knockout runtime (G2-B/C/D/E).
+ * G2-B: groupStageEnabled / groupCount / maxUnitsPerGroup / allowUnevenGroups
+ * are enforced at Official/Open group-draw runtime (see validateContentGroupStageDrawStructure).
+ * Qualification / knockout / DOUBLE round-robin remain deferred.
  */
 export function resolveContentGroup2Settings(tournament, options = {}) {
   const resolved = resolveContentCompetitionRules(tournament, {
@@ -1204,9 +1206,10 @@ export function resolveContentGroup2Settings(tournament, options = {}) {
       doubleRuntimeEnabled: CONTENT_ROUND_ROBIN_RUNTIME.doubleRuntimeEnabled,
       doubleStatus: CONTENT_ROUND_ROBIN_RUNTIME.DOUBLE,
     }),
-    maxUnitsPerGroupRuntime: "DEFERRED_TO_G2_B",
-    allowUnevenGroupsRuntime: "DEFERRED_TO_G2_B",
-    groupStageEnabledRuntime: "DEFERRED_TO_G2_B",
+    maxUnitsPerGroupRuntime: "RUNTIME_ENFORCED",
+    allowUnevenGroupsRuntime: "RUNTIME_ENFORCED",
+    groupStageEnabledRuntime: "RUNTIME_ENFORCED",
+    groupCountRuntime: "RUNTIME_ENFORCED",
     knockoutEnabledRuntime: "DEFERRED_TO_G2_C",
     qualifierCountRuntime: "DEFERRED_TO_G2_C",
     avoidSameGroupRuntime: "DEFERRED_TO_G2_E",
@@ -1214,6 +1217,199 @@ export function resolveContentGroup2Settings(tournament, options = {}) {
     legacyActiveAuthority: false,
     persistedSource: resolved.persistedSource,
     compatibilityClass: resolved.compatibilityClass,
+  };
+}
+
+function countGroupDrawUnits(group) {
+  if (Array.isArray(group?.entryIds) && group.entryIds.length > 0) {
+    return group.entryIds.length;
+  }
+  if (Array.isArray(group?.entries) && group.entries.length > 0) {
+    return group.entries.length;
+  }
+  return 0;
+}
+
+/**
+ * Pre-allocation structural gate for Official/Open Group Draw (G2-B).
+ * Constrains the existing allocator — does not replace it.
+ *
+ * Codes: EVENT_REQUIRED | GROUP_STAGE_DISABLED | INVALID_GROUP_COUNT |
+ *        GROUP_COUNT_TOO_LARGE | GROUP_CAPACITY_EXCEEDED | UNEVEN_GROUPS_NOT_ALLOWED
+ */
+export function validateContentGroupStageDrawStructure(tournament, options = {}) {
+  const eventId = trim(options.eventId);
+  if (!eventId) {
+    return {
+      ok: false,
+      code: "EVENT_REQUIRED",
+      error: "Chọn nội dung tường minh (eventId) trước khi chia bảng.",
+    };
+  }
+
+  const group2 = resolveContentGroup2Settings(tournament, {
+    eventId,
+    allowSoleEventInference: false,
+  });
+  if (!group2.ok) return group2;
+
+  const groupStage = group2.groupStage || {};
+  if (groupStage.groupStageEnabled === false) {
+    return {
+      ok: false,
+      code: "GROUP_STAGE_DISABLED",
+      error:
+        "Nội dung này không có vòng bảng (groupStageEnabled=false) — không chia bảng. Direct knockout / bypass thuộc G2-F.",
+      eventId,
+      source: group2.source,
+      groupStage,
+    };
+  }
+
+  const groupCount = Number(groupStage.groupCount);
+  if (!Number.isInteger(groupCount) || groupCount < 1) {
+    return {
+      ok: false,
+      code: "INVALID_GROUP_COUNT",
+      error: "Số bảng (groupCount) chưa cấu hình hợp lệ trên Nội dung đang chọn.",
+      eventId,
+      source: group2.source,
+      groupStage,
+    };
+  }
+
+  const eligibleUnitCount = Number(options.eligibleUnitCount);
+  if (!Number.isFinite(eligibleUnitCount) || eligibleUnitCount < 0) {
+    return {
+      ok: false,
+      code: "UNITS_MISSING",
+      error: "Thiếu số đơn vị đủ điều kiện để kiểm tra cấu trúc bảng.",
+      eventId,
+      source: group2.source,
+    };
+  }
+
+  if (groupCount > eligibleUnitCount) {
+    return {
+      ok: false,
+      code: "GROUP_COUNT_TOO_LARGE",
+      error: `Số bảng (${groupCount}) lớn hơn số đơn vị (${eligibleUnitCount}).`,
+      eventId,
+      source: group2.source,
+      groupStage,
+      eligibleUnitCount,
+      groupCount,
+    };
+  }
+
+  const maxUnitsPerGroup =
+    groupStage.maxUnitsPerGroup != null ? Number(groupStage.maxUnitsPerGroup) : null;
+  if (maxUnitsPerGroup != null && Number.isFinite(maxUnitsPerGroup) && maxUnitsPerGroup >= 1) {
+    const capacity = groupCount * Math.floor(maxUnitsPerGroup);
+    if (eligibleUnitCount > capacity) {
+      return {
+        ok: false,
+        code: "GROUP_CAPACITY_EXCEEDED",
+        error: `Số đơn vị (${eligibleUnitCount}) vượt sức chứa cấu trúc bảng (${groupCount} × ${Math.floor(maxUnitsPerGroup)} = ${capacity}). Không tạo thêm bảng.`,
+        eventId,
+        source: group2.source,
+        groupStage,
+        eligibleUnitCount,
+        groupCount,
+        maxUnitsPerGroup: Math.floor(maxUnitsPerGroup),
+        structuralCapacity: capacity,
+      };
+    }
+  }
+
+  const allowUnevenGroups = groupStage.allowUnevenGroups !== false;
+  if (!allowUnevenGroups && eligibleUnitCount % groupCount !== 0) {
+    return {
+      ok: false,
+      code: "UNEVEN_GROUPS_NOT_ALLOWED",
+      error: `Bảng không đều không được phép: ${eligibleUnitCount} đơn vị không chia hết cho ${groupCount} bảng.`,
+      eventId,
+      source: group2.source,
+      groupStage,
+      eligibleUnitCount,
+      groupCount,
+      remainder: eligibleUnitCount % groupCount,
+    };
+  }
+
+  return {
+    ok: true,
+    eventId,
+    source: group2.source,
+    groupStage,
+    groupCount,
+    maxUnitsPerGroup:
+      maxUnitsPerGroup != null && Number.isFinite(maxUnitsPerGroup) && maxUnitsPerGroup >= 1
+        ? Math.floor(maxUnitsPerGroup)
+        : null,
+    allowUnevenGroups,
+    eligibleUnitCount,
+    structuralCapacity:
+      maxUnitsPerGroup != null && Number.isFinite(maxUnitsPerGroup) && maxUnitsPerGroup >= 1
+        ? groupCount * Math.floor(maxUnitsPerGroup)
+        : null,
+    roundRobinPolicy: groupStage.roundRobinPolicy || "SINGLE",
+  };
+}
+
+/**
+ * Post-allocation check against Content groupStage (G2-B).
+ * Fail closed if the existing allocator violated max size or balance policy.
+ */
+export function assertAllocatedGroupsMatchContentGroupStage(groups = [], groupStage = {}) {
+  const list = Array.isArray(groups) ? groups : [];
+  const sizes = list.map(countGroupDrawUnits);
+  const maxUnitsPerGroup =
+    groupStage?.maxUnitsPerGroup != null ? Number(groupStage.maxUnitsPerGroup) : null;
+
+  if (maxUnitsPerGroup != null && Number.isFinite(maxUnitsPerGroup) && maxUnitsPerGroup >= 1) {
+    const cap = Math.floor(maxUnitsPerGroup);
+    const oversized = sizes.findIndex((size) => size > cap);
+    if (oversized >= 0) {
+      return {
+        ok: false,
+        code: "GROUP_CAPACITY_EXCEEDED",
+        error: `Bảng sau chia vượt maxUnitsPerGroup (${cap}): bảng #${oversized + 1} có ${sizes[oversized]} đơn vị.`,
+        sizes,
+        maxUnitsPerGroup: cap,
+      };
+    }
+  }
+
+  if (sizes.length > 0) {
+    const largest = Math.max(...sizes);
+    const smallest = Math.min(...sizes);
+    const allowUnevenGroups = groupStage?.allowUnevenGroups !== false;
+    if (allowUnevenGroups) {
+      if (largest - smallest > 1) {
+        return {
+          ok: false,
+          code: "UNEVEN_GROUPS_BALANCE_VIOLATED",
+          error: `Phân bổ bảng không cân: lớn nhất ${largest}, nhỏ nhất ${smallest} (chênh lệch phải ≤ 1).`,
+          sizes,
+          largest,
+          smallest,
+        };
+      }
+    } else if (largest !== smallest) {
+      return {
+        ok: false,
+        code: "UNEVEN_GROUPS_NOT_ALLOWED",
+        error: `Bảng không đều sau chia (sizes=${sizes.join(",")}) trong khi allowUnevenGroups=false.`,
+        sizes,
+      };
+    }
+  }
+
+  return {
+    ok: true,
+    sizes,
+    balanced: sizes.length === 0 || Math.max(...sizes) - Math.min(...sizes) <= 1,
   };
 }
 

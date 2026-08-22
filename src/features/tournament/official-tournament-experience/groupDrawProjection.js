@@ -27,10 +27,11 @@ import {
   OFFICIAL_REGISTRATION_MODE,
 } from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
 import {
+  assertAllocatedGroupsMatchContentGroupStage,
   assertContentSeedingNotGroupDrawAuthority,
   resolveContentGroup2Settings,
-  resolveContentGroupCount,
   resolveContentRegistrationMode,
+  validateContentGroupStageDrawStructure,
 } from "../../individual-tournament/engines/officialContentCompetitionRules.js";
 import {
   OFFICIAL_GROUP_DRAW_AUTHORITY,
@@ -442,6 +443,15 @@ export function projectOfficialGroupDraw(tournament, { selectedEventId } = {}) {
       })
     : null;
   const contentGroupCount = group2?.ok ? group2.groupStage.groupCount : null;
+  const structureGate =
+    event && units.ok
+      ? validateContentGroupStageDrawStructure(tournament, {
+          eventId: event.id,
+          eligibleUnitCount: units.units?.length || 0,
+        })
+      : event
+        ? { ok: false, code: "UNITS_MISSING", error: "Chưa có đơn vị cạnh tranh." }
+        : { ok: false, code: "EVENT_REQUIRED", error: "Chọn nội dung." };
   const publish = getDrawPublishStatus(tournament);
   const groups = Array.isArray(event?.groups) ? event.groups : [];
   const downstream = event
@@ -455,9 +465,11 @@ export function projectOfficialGroupDraw(tournament, { selectedEventId } = {}) {
   const createEnabled =
     !needsEventChoice &&
     Boolean(event) &&
+    Boolean(eventId) &&
     units.ok &&
     units.units.length >= 2 &&
     gate.ok &&
+    structureGate.ok &&
     groups.length === 0 &&
     modeDispatch.groupDrawAuthority === OFFICIAL_GROUP_DRAW_AUTHORITY.OPEN_RANDOM &&
     ratingMayInfluenceOpenPairingOrDraw() === false;
@@ -465,8 +477,10 @@ export function projectOfficialGroupDraw(tournament, { selectedEventId } = {}) {
   const regenerateEnabled =
     !needsEventChoice &&
     Boolean(event) &&
+    Boolean(eventId) &&
     groups.length > 0 &&
     units.ok &&
+    structureGate.ok &&
     downstream.ok;
 
   return {
@@ -480,6 +494,10 @@ export function projectOfficialGroupDraw(tournament, { selectedEventId } = {}) {
     groupCount: contentGroupCount,
     groupCountSource: group2?.ok ? group2.source : null,
     groupCountAuthority: group2?.ok ? group2.authority?.groupCount : null,
+    groupStageEnabled: group2?.ok ? group2.groupStage.groupStageEnabled !== false : null,
+    maxUnitsPerGroup: group2?.ok ? group2.groupStage.maxUnitsPerGroup ?? null : null,
+    allowUnevenGroups: group2?.ok ? group2.groupStage.allowUnevenGroups !== false : null,
+    structureGate,
     unitsReady: units.ok === true,
     unitCount: units.units?.length || 0,
     unitsSource: units.source || null,
@@ -501,13 +519,15 @@ export function projectOfficialGroupDraw(tournament, { selectedEventId } = {}) {
     ratingNeutral: ratingMayInfluenceOpenPairingOrDraw() === false,
     usesRating: modeDispatch.usesRating === true,
     authority: OFFICIAL_EXPERIENCE_AUTHORITY.OFFICIAL_GROUP_DRAW,
-    blocker: needsEventChoice
+    blocker: needsEventChoice || !eventId
       ? { code: "EVENT_REQUIRED", error: "Chọn nội dung trước khi chia bảng." }
-      : !units.ok
-        ? { code: units.code || "UNITS_MISSING", error: units.error || "Chưa có đơn vị cạnh tranh." }
-        : !gate.ok && groups.length === 0
-          ? { code: "GROUP_DRAW_NOT_READY", error: gate.error }
-          : null,
+      : !structureGate.ok
+        ? { code: structureGate.code || "GROUP_STAGE_STRUCTURE_INVALID", error: structureGate.error }
+        : !units.ok
+          ? { code: units.code || "UNITS_MISSING", error: units.error || "Chưa có đơn vị cạnh tranh." }
+          : !gate.ok && groups.length === 0
+            ? { code: "GROUP_DRAW_NOT_READY", error: gate.error }
+            : null,
   };
 }
 
@@ -522,11 +542,16 @@ export function buildOfficialCreateGroupDrawPatch(tournament, options = {}) {
 
   const selectedEventId = trim(options.selectedEventId || options.eventId);
   const events = listTournamentEvents(tournament);
-  if (events.length > 1 && !selectedEventId) {
-    return { ok: false, code: "EVENT_REQUIRED", error: "Chọn nội dung trước khi chia bảng." };
+  // G2-B business runtime: explicit eventId required (no events[0] / sole-event inference).
+  if (!selectedEventId) {
+    return {
+      ok: false,
+      code: "EVENT_REQUIRED",
+      error: "Chọn nội dung tường minh (eventId) trước khi chia bảng.",
+    };
   }
   const event = resolveSelectedEvent(events, selectedEventId);
-  if (!event) {
+  if (!event || String(event.id) !== selectedEventId) {
     return { ok: false, code: "EVENT_NOT_FOUND", error: "Không tìm thấy nội dung thi đấu." };
   }
 
@@ -575,27 +600,21 @@ export function buildOfficialCreateGroupDrawPatch(tournament, options = {}) {
     };
   }
 
-  const group2 = resolveContentGroup2Settings(tournament, {
+  const structure = validateContentGroupStageDrawStructure(tournament, {
     eventId: event.id,
-    allowSoleEventInference: false,
+    eligibleUnitCount: unitsResult.units.length,
   });
-  const groupCount = group2.ok
-    ? group2.groupStage.groupCount
-    : resolveContentGroupCount(tournament, { eventId: event.id });
-  if (groupCount < 1) {
+  if (!structure.ok) {
     return {
       ok: false,
-      code: "GROUP_COUNT_INVALID",
-      error: "Số bảng (groupCount) chưa cấu hình hợp lệ trên Nội dung đang chọn.",
+      code: structure.code || "GROUP_STAGE_STRUCTURE_INVALID",
+      error: structure.error || "Cấu trúc vòng bảng Nội dung không hợp lệ.",
+      groupStage: structure.groupStage || null,
+      source: structure.source || null,
     };
   }
-  if (groupCount > unitsResult.units.length) {
-    return {
-      ok: false,
-      code: "GROUP_COUNT_TOO_LARGE",
-      error: `Số bảng (${groupCount}) lớn hơn số đơn vị (${unitsResult.units.length}).`,
-    };
-  }
+
+  const groupCount = structure.groupCount;
 
   const players = Array.isArray(options.players) ? options.players : [];
   const plan = buildOfficialOpenPlan({
@@ -621,6 +640,21 @@ export function buildOfficialCreateGroupDrawPatch(tournament, options = {}) {
       code: "GROUP_DRAW_FAILED",
       error: plan.privatePairingError?.message || plan.errors?.join(" ") || "Không chia được bảng.",
       warnings: plan.warnings || [],
+    };
+  }
+
+  const allocatedGroups = Array.isArray(plan.event?.groups) ? plan.event.groups : [];
+  const postCheck = assertAllocatedGroupsMatchContentGroupStage(
+    allocatedGroups,
+    structure.groupStage
+  );
+  if (!postCheck.ok) {
+    return {
+      ok: false,
+      code: postCheck.code || "GROUP_CAPACITY_EXCEEDED",
+      error: postCheck.error || "Kết quả chia bảng vi phạm cấu trúc Nội dung.",
+      sizes: postCheck.sizes || [],
+      groupStage: structure.groupStage,
     };
   }
 
@@ -660,6 +694,10 @@ export function buildOfficialCreateGroupDrawPatch(tournament, options = {}) {
         updatedAt: new Date().toISOString(),
         groupDrawAuthority: OFFICIAL_GROUP_DRAW_AUTHORITY.OPEN_RANDOM,
         usesRating: false,
+        groupStageSource: structure.source,
+        groupCount,
+        maxUnitsPerGroup: structure.maxUnitsPerGroup,
+        allowUnevenGroups: structure.allowUnevenGroups,
       },
     },
   };
@@ -687,6 +725,10 @@ export function buildOfficialCreateGroupDrawPatch(tournament, options = {}) {
     groups: nextEvent.groups,
     groupCount: nextEvent.groups.length,
     unitCount: unitsResult.units.length,
+    groupStageSource: structure.source,
+    maxUnitsPerGroup: structure.maxUnitsPerGroup,
+    allowUnevenGroups: structure.allowUnevenGroups,
+    groupSizes: postCheck.sizes,
     isRedraw,
     usesRating: false,
     groupDrawAuthority: OFFICIAL_GROUP_DRAW_AUTHORITY.OPEN_RANDOM,
@@ -792,8 +834,15 @@ export function buildOfficialReopenGroupDrawPatch(tournament, options = {}) {
 
 export function buildOfficialRegenerateGroupDrawPatch(tournament, options = {}) {
   const selectedEventId = trim(options.selectedEventId || options.eventId);
+  if (!selectedEventId) {
+    return {
+      ok: false,
+      code: "EVENT_REQUIRED",
+      error: "Chọn nội dung tường minh (eventId) trước khi chia bảng lại.",
+    };
+  }
   const event = resolveSelectedEvent(listTournamentEvents(tournament), selectedEventId);
-  if (!event) {
+  if (!event || String(event.id) !== selectedEventId) {
     return { ok: false, code: "EVENT_NOT_FOUND", error: "Không tìm thấy nội dung." };
   }
 
