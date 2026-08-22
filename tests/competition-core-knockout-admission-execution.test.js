@@ -340,6 +340,14 @@ test("8. unresolvedSlotCount > 0 fails closed at execution", () => {
       composeKnockoutAdmission({
         knockoutAdmissionPlan: derived.knockoutAdmissionPlan,
         competitionRulesProfile: profile,
+        competitionPopulationEntryIds: [
+          "pair-direct-bypass-01",
+          "entry-direct-plays-group",
+          "g1-a",
+          "g1-b",
+          "g2-a",
+          "g2-b",
+        ],
         standingsByGroup: [],
         directQualifiersPerGroup: 2,
       }),
@@ -387,13 +395,34 @@ test("9. later-stage targetStage fails closed / deferred", () => {
     },
   };
   // Policy may accept later-stage as compatible with bracket, but execution defers
-  const derived = deriveKnockoutAdmissionPlan(profile);
+  const derived = deriveKnockoutAdmissionPlan(profile, {
+    competitionPopulationEntryIds: [
+      "late",
+      "a1",
+      "a2",
+      "a3",
+      "a4",
+      "b1",
+      "b2",
+      "b3",
+    ],
+  });
   if (derived.ok) {
     assert.throws(
       () =>
         composeKnockoutAdmission({
           knockoutAdmissionPlan: derived.knockoutAdmissionPlan,
           competitionRulesProfile: profile,
+          competitionPopulationEntryIds: [
+            "late",
+            "a1",
+            "a2",
+            "a3",
+            "a4",
+            "b1",
+            "b2",
+            "b3",
+          ],
           standingsByGroup: [
             {
               groupId: "A",
@@ -453,6 +482,7 @@ test("10+12. first-round DIRECT succeeds and slot equation holds", () => {
   const admission = composeKnockoutAdmission({
     knockoutAdmissionPlan: plan,
     competitionRulesProfile: profile,
+    competitionPopulationEntryIds: population,
     deterministicSeed: "admit-10",
     standingsByGroup: [
       {
@@ -569,12 +599,21 @@ test("11. duplicate entryId across sources cannot survive composition", () => {
   assert.equal(bad.ok, false);
 });
 
-test("13. PAIR entryId remains one competition unit", () => {
-  const unit = normalizeCompetitionUnitIdentity({
-    entryId: "pair::alice-bob",
-  });
+test("13. PAIR entryId remains one competition unit; person cannot masquerade", () => {
+  const unit = normalizeCompetitionUnitIdentity(
+    { entryId: "pair::alice-bob" },
+    { requireCanonicalEntryId: true, competitionUnitKind: "PAIR" }
+  );
   assert.equal(unit.entryId, "pair::alice-bob");
   assert.equal(unit.participantId, "pair::alice-bob");
+  assert.throws(
+    () =>
+      normalizeCompetitionUnitIdentity(
+        { participantId: "person-alice" },
+        { requireCanonicalEntryId: true, competitionUnitKind: "PAIR" }
+      ),
+    (err) => isE2E02CompositionError(err) && /PAIR\/TEAM/i.test(err.message)
+  );
   assert.throws(
     () =>
       normalizeCompetitionUnitIdentity({
@@ -585,12 +624,21 @@ test("13. PAIR entryId remains one competition unit", () => {
   );
 });
 
-test("14. TEAM entryId remains one competition unit", () => {
-  const unit = normalizeCompetitionUnitIdentity({
-    entryId: "team::hawks",
-  });
+test("14. TEAM entryId remains one competition unit; person cannot masquerade", () => {
+  const unit = normalizeCompetitionUnitIdentity(
+    { entryId: "team::hawks" },
+    { requireCanonicalEntryId: true, competitionUnitKind: "TEAM" }
+  );
   assert.equal(unit.entryId, "team::hawks");
   assert.equal(unit.participantId, "team::hawks");
+  assert.throws(
+    () =>
+      normalizeCompetitionUnitIdentity(
+        { participantId: "player-123" },
+        { requireCanonicalEntryId: true, competitionUnitKind: "TEAM" }
+      ),
+    (err) => isE2E02CompositionError(err) && /PAIR\/TEAM/i.test(err.message)
+  );
 });
 
 test("15+16. first-round BYE unchanged and DIRECT ≠ BYE", () => {
@@ -667,6 +715,13 @@ test("bypass-only without DIRECT route fails closed when knockout required", () 
       composeKnockoutAdmission({
         knockoutAdmissionPlan: derived.knockoutAdmissionPlan,
         competitionRulesProfile: profile,
+        competitionPopulationEntryIds: [
+          "bypass-only",
+          "a1",
+          "a2",
+          "b1",
+          "b2",
+        ],
         standingsByGroup: [
           {
             groupId: "A",

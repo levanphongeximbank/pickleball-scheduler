@@ -368,6 +368,7 @@ export function deriveKnockoutAdmissionPlan(profileOrRaw = {}, context = {}) {
     groupDirectQualifierSlots: qualificationPlan.groupDirectQualifierSlots,
     directQualifiersPerGroup: qualificationPlan.directQualifiersPerGroup,
     groupCount: qualificationPlan.groupCount,
+    groupStageEnabled: qualificationPlan.groupStageEnabled === true,
     wildcardSlots: qualificationPlan.wildcardSlots,
     remainingSlots: qualificationPlan.remainingSlots,
     requiresCrossGroupWildcardRanking:

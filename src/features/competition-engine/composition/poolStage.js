@@ -29,6 +29,8 @@ import { computeDeterministicFingerprint, deepFreeze } from "./fingerprint.js";
  *   knockoutAdmissionPlan?: object|null,
  *   groupStageBypassEntryIds?: string[],
  *   applyGroupStageBypass?: boolean,
+ *   requireCanonicalEntryId?: boolean,
+ *   competitionUnitKind?: string|null,
  * }} input
  */
 export function composePoolStage(input) {
@@ -47,6 +49,8 @@ export function composePoolStage(input) {
     knockoutAdmissionPlan: input.knockoutAdmissionPlan,
     groupStageBypassEntryIds: input.groupStageBypassEntryIds,
     applyGroupStageBypass: input.applyGroupStageBypass,
+    requireCanonicalEntryId: input.requireCanonicalEntryId,
+    competitionUnitKind: input.competitionUnitKind,
   });
 
   const divisionId = String(input.divisionId || "div-1").trim();

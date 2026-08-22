@@ -32,6 +32,8 @@ import { applyGroupStageBypassPopulation } from "./groupStageBypassPopulation.js
  *   knockoutAdmissionPlan?: object|null,
  *   groupStageBypassEntryIds?: string[],
  *   applyGroupStageBypass?: boolean,
+ *   requireCanonicalEntryId?: boolean,
+ *   competitionUnitKind?: string|null,
  * }} input
  */
 export function composePoolGrouping(input) {
@@ -58,7 +60,10 @@ export function composePoolGrouping(input) {
     (Array.isArray(input.groupStageBypassEntryIds) &&
       input.groupStageBypassEntryIds.length > 0);
 
-  /** @type {{ entryId: string, participantId: string, seedNumber: number }[]} */
+  const requireCanonical =
+    input.requireCanonicalEntryId === true || applyBypass;
+
+  /** @type {{ entryId: string, participantId: string, seedNumber?: number }[]} */
   let normalized;
   /** @type {object|null} */
   let bypassPopulation = null;
@@ -69,6 +74,8 @@ export function composePoolGrouping(input) {
       competitionRulesProfile: input.competitionRulesProfile,
       knockoutAdmissionPlan: input.knockoutAdmissionPlan,
       groupStageBypassEntryIds: input.groupStageBypassEntryIds,
+      requireCanonicalEntryId: requireCanonical,
+      competitionUnitKind: input.competitionUnitKind,
     });
     normalized = bypassPopulation.groupStageParticipants.map((p) => ({
       entryId: p.entryId,
@@ -76,8 +83,21 @@ export function composePoolGrouping(input) {
       seedNumber: p.seedNumber,
     }));
   } else {
-    normalized = normalizeCompetitionUnitParticipants(input.participants || []);
+    normalized = normalizeCompetitionUnitParticipants(input.participants || [], {
+      requireCanonicalEntryId: requireCanonical,
+      competitionUnitKind: input.competitionUnitKind,
+    });
   }
+
+  // Legacy pool path still needs seedNumbers for CORE-08 ordering; assign
+  // by input order only when seed absent (not admission-source driven).
+  normalized = normalized.map((p, index) => ({
+    ...p,
+    seedNumber:
+      Number.isFinite(Number(p.seedNumber)) && Number(p.seedNumber) >= 1
+        ? Number(p.seedNumber)
+        : index + 1,
+  }));
 
   const min = input.format.participantCountPolicy.minParticipants;
   const max = input.format.participantCountPolicy.maxParticipants;

@@ -368,7 +368,11 @@ export function createOrganizerOperationsFacade(deps = {}) {
     }
     const participants = current.entries
       .filter((e) => e.status === ENTRY_OPS_STATUS.ELIGIBLE)
-      .map((e) => e.participantId);
+      .map((e) =>
+        e.entryId
+          ? { entryId: e.entryId, participantId: e.participantId || e.entryId }
+          : e.participantId
+      );
 
     let composition;
     try {
@@ -384,6 +388,11 @@ export function createOrganizerOperationsFacade(deps = {}) {
         requireRuntimePorts: command.requireRuntimePorts !== false,
         includeKnockout: false,
         poolStageComplete: false,
+        competitionRulesProfile: command.competitionRulesProfile,
+        knockoutAdmissionPlan: command.knockoutAdmissionPlan,
+        competitionPopulationEntryIds: command.competitionPopulationEntryIds,
+        competitionUnitKind: command.competitionUnitKind,
+        authoritativeSeedsByEntryId: command.authoritativeSeedsByEntryId,
       });
     } catch (err) {
       if (isOrganizerOperationsError(err)) throw err;
@@ -991,7 +1000,11 @@ export function createOrganizerOperationsFacade(deps = {}) {
       String(command.deterministicSeed || current.deterministicSeed || "").trim();
     const participants = current.entries
       .filter((e) => e.status === ENTRY_OPS_STATUS.ELIGIBLE)
-      .map((e) => e.participantId);
+      .map((e) =>
+        e.entryId
+          ? { entryId: e.entryId, participantId: e.participantId || e.entryId }
+          : e.participantId
+      );
 
     let composition;
     try {
@@ -1009,6 +1022,11 @@ export function createOrganizerOperationsFacade(deps = {}) {
         poolStageComplete: true,
         poolStandingsRows: command.poolStandingsRows,
         poolMatchResults: command.poolMatchResults,
+        competitionRulesProfile: command.competitionRulesProfile,
+        knockoutAdmissionPlan: command.knockoutAdmissionPlan,
+        competitionPopulationEntryIds: command.competitionPopulationEntryIds,
+        competitionUnitKind: command.competitionUnitKind,
+        authoritativeSeedsByEntryId: command.authoritativeSeedsByEntryId,
       });
     } catch (err) {
       const code = /** @type {{ code?: string }} */ (err)?.code;

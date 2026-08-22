@@ -102,6 +102,7 @@ export function resolveAdmissionSourcePrecedence(input = {}) {
           Number.isFinite(Number(raw.seedNumber)) && Number(raw.seedNumber) >= 1
             ? Number(raw.seedNumber)
             : null,
+        authoritativeSeed: raw.authoritativeSeed === true,
       })
     );
   }

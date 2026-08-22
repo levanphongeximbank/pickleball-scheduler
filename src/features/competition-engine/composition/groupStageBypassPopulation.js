@@ -19,10 +19,15 @@ import { normalizeCompetitionUnitParticipants } from "./entryIdentity.js";
  *   competitionRulesProfile?: object,
  *   knockoutAdmissionPlan?: object|null,
  *   groupStageBypassEntryIds?: string[],
+ *   requireCanonicalEntryId?: boolean,
+ *   competitionUnitKind?: string|null,
  * }} input
  */
 export function applyGroupStageBypassPopulation(input = {}) {
-  const normalized = normalizeCompetitionUnitParticipants(input.participants || []);
+  const normalized = normalizeCompetitionUnitParticipants(input.participants || [], {
+    requireCanonicalEntryId: input.requireCanonicalEntryId === true,
+    competitionUnitKind: input.competitionUnitKind,
+  });
   const competitionPopulationEntryIds = normalized.map((p) => p.entryId);
 
   let plan = input.knockoutAdmissionPlan || null;

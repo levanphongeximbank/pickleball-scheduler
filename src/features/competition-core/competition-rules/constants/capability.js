@@ -114,9 +114,9 @@ export const COMPETITION_RULES_CAPABILITY_MATRIX = Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
     execution: CAPABILITY_STATE.SUPPORTED,
     executionCondition:
-      "Wildcard entrants composed via CE composeKnockoutAdmission after CORE-18 cross-group ranking; DIRECT/GROUP_DIRECT precedence excludes reserved entrants from the wildcard pool",
+      "Shared CE path: composeIndividualPoolKnockout (admission-aware) → composeKnockoutAdmission WILDCARD after CORE-18 ranking; requires group stage + wildcardSlots > 0",
     evidence:
-      "Policy slot math + CE composeKnockoutAdmission WILDCARD selection + CORE-18 rankCrossGroupWildcardCandidates",
+      "CE composeIndividualPoolKnockout wires composeKnockoutAdmission; CORE-18 rankCrossGroupWildcardCandidates",
   }),
   [COMPETITION_RULES_CAPABILITY_ID.IN_GROUP_TIEBREAK]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
@@ -127,9 +127,9 @@ export const COMPETITION_RULES_CAPABILITY_MATRIX = Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
     execution: CAPABILITY_STATE.SUPPORTED,
     executionCondition:
-      "Normalized criteria from Competition Rules; ranking executed by CORE-18 rankCrossGroupWildcardCandidates (deterministic DRAW_LOTS)",
+      "Normalized criteria from Competition Rules; ranking executed by CORE-18 rankCrossGroupWildcardCandidates (deterministic DRAW_LOTS). Independently callable; also consumed by shared CE admission path.",
     evidence:
-      "CORE-18 crossGroupWildcardRanking.js ranks candidates; CE composes selected WILDCARD entrants only",
+      "CORE-18 crossGroupWildcardRanking.js; CE admission path preserves played/wins/scoreFor/scoreAgainst metrics",
   }),
   [COMPETITION_RULES_CAPABILITY_ID.KNOCKOUT]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
@@ -140,25 +140,26 @@ export const COMPETITION_RULES_CAPABILITY_MATRIX = Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
     execution: CAPABILITY_STATE.SUPPORTED,
     executionCondition:
-      "groupStageParticipantEntryIds = competitionPopulation − explicit bypass; bypass-only without DIRECT route fails closed when knockout participation is required",
+      "Admission-aware composeIndividualPoolKnockout / createPoolKnockoutRuntimeComposition consumes bypass via applyGroupStageBypassPopulation before group allocation",
     evidence:
-      "CE applyGroupStageBypassPopulation + composeKnockoutAdmission consume deriveKnockoutAdmissionPlan bypass populations",
+      "Shared CE pool stage wires groupStageBypass from deriveKnockoutAdmissionPlan",
   }),
   [COMPETITION_RULES_CAPABILITY_ID.DIRECT_KNOCKOUT_ENTRY]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
     execution: CAPABILITY_STATE.PARTIAL,
     executionCondition:
-      "SUPPORTED only when effectiveTargetStage == bracketWideEntryRound (first-playable stage). Later-stage DIRECT remains DEFERRED — fail closed; no BYE/phantom simulation.",
+      "SUPPORTED only on shared group-stage pool→KO path when effectiveTargetStage == bracketWideEntryRound. Later-stage DIRECT = DEFERRED. No-group DIRECT / base remainingSlots path = DEFERRED (fail closed). SEEDING ≠ DIRECT.",
     supportedRuntimePaths: Object.freeze([
-      "CE composeKnockoutAdmission first-playable DIRECT",
-      "Rules assertFirstPlayableDirectEntryExecution",
+      "composeIndividualPoolKnockout admission-aware → composeKnockoutAdmission → composeKnockoutStage",
+      "createPoolKnockoutRuntimeComposition pass-through of competitionRulesProfile / knockoutAdmissionPlan",
     ]),
     unsupportedOrHintOnlyPaths: Object.freeze([
       "Later-stage DIRECT (targetStage after bracketWideEntryRound)",
+      "No-group (groupStageEnabled=false) DIRECT / remainingSlots base population",
       "Fake bye / phantom winner simulation of later-stage admission",
     ]),
     evidence:
-      "First-round DIRECT composed into knockout via shared admission boundary; later-stage deferred",
+      "First-playable DIRECT composed on shared CE admission path only; later-stage and no-group deferred",
   }),
   [COMPETITION_RULES_CAPABILITY_ID.KNOCKOUT_BYE]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
