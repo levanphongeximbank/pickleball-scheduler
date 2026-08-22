@@ -55,6 +55,7 @@ export const DRAW_COMPLETION_STATUS_VALUES = new Set(
  * @property {ReadonlyArray<object>} groupPlacements
  * @property {ReadonlyArray<object>} bracketPlacements
  * @property {ReadonlyArray<DrawPlacementRef>} participantPlacements
+ * @property {ReadonlyArray<object>} stageReservations
  * @property {ReadonlyArray<object>} seedReferences
  * @property {ReadonlyArray<object>} byePlacements
  * @property {Readonly<Record<string, unknown>>} deterministicOrderingMetadata
@@ -177,6 +178,10 @@ export function createDrawSnapshot(partial = {}) {
       "bracketPlacements"
     ),
     participantPlacements,
+    stageReservations: freezeObjectBag(
+      partial.stageReservations,
+      "stageReservations"
+    ),
     seedReferences: freezeObjectBag(partial.seedReferences, "seedReferences"),
     byePlacements: freezeObjectBag(partial.byePlacements, "byePlacements"),
     deterministicOrderingMetadata: freezeMetadata(

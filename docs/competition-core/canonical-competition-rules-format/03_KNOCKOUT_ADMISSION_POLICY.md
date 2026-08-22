@@ -167,9 +167,48 @@ Capability after this policy phase:
 - Later-stage DIRECT policy: `SUPPORTED`
 - Later-stage DIRECT slot accounting: `SUPPORTED`
 - Later-stage DIRECT execution: `DEFERRED`
-- CORE-08 stage-aware placement: `DEFERRED`
+- CORE-08 stage-aware placement: `SUPPORTED`
 - CORE-09 stage-aware match generation: `DEFERRED`
 - `DIRECT_KNOCKOUT_ENTRY` overall execution: `PARTIAL`
+
+## CORE-08 stage-aware reservation placement
+
+CORE-08 consumes resolved later-stage DIRECT candidates and the immutable
+accounting above. It emits `stageReservations[]` containing:
+
+```js
+{
+  entryId,
+  targetStage,
+  positionNumber,
+  matchNumber,
+  side,                  // "A" | "B"
+  seedNumber,
+  placementMode,         // "SEEDED" | "OPEN"
+  placementReason,
+}
+```
+
+The location is placement data only. It contains no source match, dependency,
+result, winner, auto-advance, or BYE semantics.
+
+- Placement scope is per `targetStage`.
+- SEEDED mode sorts each stage set by authoritative CORE-07 rank ascending and
+  projects that order through CORE-08 `buildSeededBracketSlotOrder`.
+- Higher-ranked entrants therefore use the existing balanced bracket-position
+  principle and meet as late as the available stage structure permits.
+- OPEN mode identity-normalizes candidates, then uses the existing
+  deterministic seeded shuffle; lexical identity is not the business placement
+  order.
+- Downstream reservations deterministically remove their feeder locations from
+  earlier stages. The remaining location count must exactly equal
+  `requiredEntrantsByStage`.
+- Missing or partial seeded coverage, unresolved later-stage identities,
+  duplicate entries/locations, and accounting mismatch fail closed.
+- Stage reservations participate in the draw fingerprint.
+- Existing first-playable slot placement and BYE behavior are unchanged.
+- CORE-09 mixed fixed/DIRECT dependencies and full later-stage execution remain
+  `DEFERRED`.
 
 **No-group slot accounting (`groupStageEnabled=false`):**
 

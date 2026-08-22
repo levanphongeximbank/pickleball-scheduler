@@ -189,6 +189,7 @@ export function createDrawBye(partial = {}) {
  * @property {DrawGroup[]} groups
  * @property {DrawBracket[]} brackets
  * @property {DrawBye[]} byes
+ * @property {import('./drawStageReservation.js').DrawStageReservation[]} stageReservations
  * @property {string} recordedAt
  * @property {Record<string, unknown>} [metadata]
  */
@@ -208,6 +209,11 @@ export function createDrawSnapshot(partial = {}) {
     groups: Array.isArray(partial.groups) ? partial.groups : [],
     brackets: Array.isArray(partial.brackets) ? partial.brackets : [],
     byes: Array.isArray(partial.byes) ? partial.byes : [],
+    stageReservations: Object.freeze(
+      Array.isArray(partial.stageReservations)
+        ? [...partial.stageReservations]
+        : []
+    ),
     recordedAt: String(partial.recordedAt || "1970-01-01T00:00:00.000Z"),
     metadata:
       partial.metadata &&

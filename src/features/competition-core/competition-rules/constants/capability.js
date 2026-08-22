@@ -148,19 +148,20 @@ export const COMPETITION_RULES_CAPABILITY_MATRIX = Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
     execution: CAPABILITY_STATE.PARTIAL,
     executionCondition:
-      "Canonical later-stage DIRECT admission policy and backward-from-FINAL slot accounting are SUPPORTED. Shared group-stage pool→KO and no-group knockout execution remains supported only when effectiveTargetStage == bracketWideEntryRound, with proven entryId and fully resolved DIRECT identities. No-group additionally requires exact eligible non-DIRECT competition population count == remainingSlots; underfill/overpopulation fail closed. CORE-08 stage-aware placement and CORE-09 stage-aware match generation remain DEFERRED. SEEDING ≠ DIRECT.",
+      "Canonical later-stage DIRECT admission policy, backward-from-FINAL slot accounting, and CORE-08 stage-aware SEEDED/OPEN placement are SUPPORTED. Shared group-stage pool→KO and no-group knockout execution remains supported only when effectiveTargetStage == bracketWideEntryRound, with proven entryId and fully resolved DIRECT identities. CORE-09 stage-aware match generation remains DEFERRED, so later-stage execution remains DEFERRED. SEEDING ≠ DIRECT.",
     supportedRuntimePaths: Object.freeze([
       "composeIndividualPoolKnockout admission-aware → composeKnockoutAdmission → composeKnockoutStage",
       "createPoolKnockoutRuntimeComposition pass-through of competitionRulesProfile / knockoutAdmissionPlan",
       "groupStageEnabled=false → exact DIRECT + eligible residual competition population → composeKnockoutStage",
+      "CORE-08 assignStageDirectReservations → CE buildKnockoutDrawSnapshotFromQualifiers stageReservations (placement only; CORE-09 execution deferred)",
     ]),
     unsupportedOrHintOnlyPaths: Object.freeze([
-      "Later-stage DIRECT execution (policy and slot accounting supported; placement/match generation deferred)",
+      "Later-stage DIRECT match generation/execution (policy, accounting, and CORE-08 placement supported; CORE-09 deferred)",
       "No-group underfill or overpopulation (exact remainingSlots fill required)",
       "Fake bye / phantom winner simulation of later-stage admission",
     ]),
     evidence:
-      "deriveKnockoutAdmissionPlan emits immutable laterStageDirect reservationsByStage / requiredEntrantsByStage constraints; first-playable DIRECT remains composed on shared CE admission paths; later-stage execution remains deferred; CE does not assign seeds or placement",
+      "deriveKnockoutAdmissionPlan emits immutable stage constraints; CORE-08 assignStageDirectReservations reuses balanced seed slot order per target stage or deterministic OPEN shuffle and emits fingerprinted stageReservations; CORE-09 execution remains deferred",
   }),
   [COMPETITION_RULES_CAPABILITY_ID.KNOCKOUT_BYE]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,

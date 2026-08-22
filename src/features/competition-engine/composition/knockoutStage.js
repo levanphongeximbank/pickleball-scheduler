@@ -28,6 +28,8 @@ import { computeDeterministicFingerprint, deepFreeze } from "./fingerprint.js";
  *   deterministicSeed: string,
  *   poolStageComplete?: boolean,
  *   placementMode?: string,
+ *   stageReservationCandidates?: Array<object>,
+ *   laterStageDirectAccounting?: object|null,
  * }} input
  */
 export function composeKnockoutStage(input) {
@@ -76,7 +78,21 @@ export function composeKnockoutStage(input) {
       byePolicy: input.format.knockoutStage.byePolicy,
       deterministicSeed: input.deterministicSeed,
       placementMode: input.placementMode,
+      stageReservationCandidates: input.stageReservationCandidates,
+      laterStageDirectAccounting: input.laterStageDirectAccounting,
     });
+
+  if ((drawSnapshot.stageReservations || []).length > 0) {
+    failE2E02(
+      E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+      "CORE-09 stage-aware match generation is deferred — placement snapshot cannot execute yet",
+      {
+        stageReservationCount: drawSnapshot.stageReservations.length,
+        CORE08_STAGE_AWARE_PLACEMENT: "SUPPORTED",
+        CORE09_STAGE_AWARE_MATCH_GENERATION: "DEFERRED",
+      }
+    );
+  }
 
   const evaluatedRules = createKnockoutStageEvaluatedRules(input.format);
   const participantIds = qualifiers.map((q) => q.participantId);

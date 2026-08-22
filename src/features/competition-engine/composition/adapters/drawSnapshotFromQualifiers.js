@@ -14,6 +14,7 @@ import {
   createDrawCandidate,
   CANDIDATE_TYPE,
   buildDrawIdentityKey,
+  assignStageDirectReservations,
 } from "../../../competition-core/draw-runtime/index.js";
 import {
   BRACKET_SIZE_POLICY,
@@ -43,6 +44,8 @@ export const KNOCKOUT_QUALIFIER_PLACEMENT_MODE = Object.freeze({
  *   byePolicy?: string,
  *   deterministicSeed: string,
  *   placementMode?: string,
+ *   stageReservationCandidates?: Array<{entryId: string, effectiveTargetStage: string, seedNumber?: number|null}>,
+ *   laterStageDirectAccounting?: object|null,
  * }} input
  */
 export function buildKnockoutDrawSnapshotFromQualifiers(input) {
@@ -60,8 +63,17 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
   const placementMode =
     input.placementMode || KNOCKOUT_QUALIFIER_PLACEMENT_MODE.LEGACY_SEEDED;
   const openDraw = placementMode === KNOCKOUT_QUALIFIER_PLACEMENT_MODE.OPEN;
+  const stageReservationCandidates = Array.isArray(
+    input.stageReservationCandidates
+  )
+    ? input.stageReservationCandidates
+    : [];
+  const laterStageDirectAccounting = input.laterStageDirectAccounting || null;
+  const stageAwarePlacementRequested =
+    stageReservationCandidates.length > 0 ||
+    laterStageDirectAccounting?.enabled === true;
 
-  if (qualifiers.length < 2) {
+  if (!stageAwarePlacementRequested && qualifiers.length < 2) {
     failE2E02(
       E2E02_ERROR_CODE.INVALID_PARTICIPANT_COUNT,
       "knockout requires at least 2 qualifiers",
@@ -101,10 +113,61 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
     }
   }
 
-  const dims = computeSingleEliminationBracket(
-    qualifiers.length,
-    bracketSizePolicy
-  );
+  const drawIdentityKey = buildDrawIdentityKey({
+    competitionId,
+    contextId: `${divisionId}:${stageId}`,
+  });
+  let stageReservations = Object.freeze([]);
+  let stageAwarePlacement = null;
+  if (stageAwarePlacementRequested) {
+    if (
+      !laterStageDirectAccounting ||
+      laterStageDirectAccounting.topologyValid !== true
+    ) {
+      failE2E02(
+        E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+        "Valid laterStageDirect accounting required for stage reservation placement",
+        {}
+      );
+    }
+    if (
+      placementMode !== KNOCKOUT_QUALIFIER_PLACEMENT_MODE.SEEDED &&
+      placementMode !== KNOCKOUT_QUALIFIER_PLACEMENT_MODE.OPEN
+    ) {
+      failE2E02(
+        E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+        "Later-stage DIRECT placement requires canonical SEEDED or OPEN mode",
+        { placementMode }
+      );
+    }
+    stageAwarePlacement = assignStageDirectReservations(
+      stageReservationCandidates,
+      {
+        drawIdentityKey,
+        bracketId: "ko-main",
+        bracketWideEntryRound:
+          laterStageDirectAccounting.bracketWideEntryRound,
+        reservationsByStage: laterStageDirectAccounting.reservationsByStage,
+        requiredEntrantsByStage:
+          laterStageDirectAccounting.requiredEntrantsByStage,
+        firstPlayableCandidates: qualifiers.map((q) => ({
+          entryId: q.participantId || q.entryId,
+          seedNumber: q.seedNumber,
+        })),
+        placementMode,
+        deterministicSeed: input.deterministicSeed,
+      }
+    );
+    stageReservations = stageAwarePlacement.stageReservations;
+  }
+
+  const dims = stageAwarePlacement
+    ? {
+        ok: true,
+        bracketSize: stageAwarePlacement.bracketSize,
+        byeCount: 0,
+      }
+    : computeSingleEliminationBracket(qualifiers.length, bracketSizePolicy);
   if (!dims.ok) {
     failE2E02(
       E2E02_ERROR_CODE.INVALID_BRACKET_SIZE,
@@ -113,19 +176,16 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
     );
   }
 
-  const byeCount = calculateByeCount(dims.bracketSize, qualifiers.length);
-  if (byeCount !== dims.byeCount) {
+  const byeCount = stageAwarePlacement
+    ? 0
+    : calculateByeCount(dims.bracketSize, qualifiers.length);
+  if (!stageAwarePlacement && byeCount !== dims.byeCount) {
     failE2E02(
       E2E02_ERROR_CODE.INVALID_BYE_CONFIGURATION,
       "bye count mismatch between CORE-08 and CORE-09",
       { core08: byeCount, core09: dims.byeCount }
     );
   }
-
-  const drawIdentityKey = buildDrawIdentityKey({
-    competitionId,
-    contextId: `${divisionId}:${stageId}`,
-  });
 
   const candidates = qualifiers.map((q, index) => {
     const id = String(q.participantId || q.entryId);
@@ -149,15 +209,20 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
     });
   });
 
-  const bracketResult = assignBracketSlots(candidates, {
-    drawIdentityKey,
-    competitionId,
-    contextId: `${divisionId}:${stageId}`,
-    bracketSize: dims.bracketSize,
-    bracketId: "ko-main",
-    open: openDraw,
-    deterministicSeed: input.deterministicSeed,
-  });
+  const bracketResult = stageAwarePlacement
+    ? {
+        placements: stageAwarePlacement.firstPlayablePlacements,
+        byes: Object.freeze([]),
+      }
+    : assignBracketSlots(candidates, {
+        drawIdentityKey,
+        competitionId,
+        contextId: `${divisionId}:${stageId}`,
+        bracketSize: dims.bracketSize,
+        bracketId: "ko-main",
+        open: openDraw,
+        deterministicSeed: input.deterministicSeed,
+      });
 
   /** @type {ReturnType<typeof createDrawPlacementRef>[]} */
   const participantPlacements = [];
@@ -201,7 +266,10 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
     );
   }
 
-  if (byePolicy === BYE_POLICY.EXPLICIT_PLACEMENTS) {
+  if (
+    !stageAwarePlacement &&
+    byePolicy === BYE_POLICY.EXPLICIT_PLACEMENTS
+  ) {
     for (let pos = 1; pos <= dims.bracketSize; pos += 1) {
       if (!occupied.has(pos)) {
         failE2E02(
@@ -226,6 +294,7 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
       placementMode,
       bracketSize: dims.bracketSize,
       byeCount: dims.byeCount,
+      stageReservations,
       deterministicSeed: input.deterministicSeed,
     },
     "draw-ko"
@@ -244,8 +313,9 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
       groupPlacements: [],
       bracketPlacements: [{ bracketId: "ko-main", order: 1 }],
       participantPlacements,
+      stageReservations,
       byePlacements: [],
-      seedReferences: qualifiers
+      seedReferences: [...qualifiers, ...stageReservationCandidates]
         .filter(
           (q) =>
             Number.isFinite(Number(q.seedNumber)) && Number(q.seedNumber) >= 1
@@ -263,5 +333,6 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
     bracketSize: dims.bracketSize,
     byeCount: dims.byeCount,
     placementMode,
+    stageReservations,
   };
 }

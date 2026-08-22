@@ -77,6 +77,52 @@ export function adaptAdmittedToKnockoutQualifiers(admitted, placementMode) {
 }
 
 /**
+ * Additive admission-to-draw partition. CORE-08 selects locations; this helper
+ * only separates first-playable entrants from identified later-stage DIRECT.
+ *
+ * @param {Array<object>} admitted
+ * @param {string|null} bracketWideEntryRound
+ * @param {"SEEDED"|"OPEN"} placementMode
+ */
+export function partitionAdmittedForKnockoutDraw(
+  admitted,
+  bracketWideEntryRound,
+  placementMode
+) {
+  const firstPlayable = [];
+  const laterStageDirect = [];
+  for (const row of admitted || []) {
+    if (
+      row.admissionSource === ADMISSION_SOURCE.DIRECT &&
+      row.effectiveTargetStage &&
+      row.effectiveTargetStage !== bracketWideEntryRound
+    ) {
+      laterStageDirect.push(row);
+    } else {
+      firstPlayable.push(row);
+    }
+  }
+
+  const firstPlayableQualifiers = adaptAdmittedToKnockoutQualifiers(
+    firstPlayable,
+    placementMode
+  );
+  const laterQualifiers = adaptAdmittedToKnockoutQualifiers(
+    laterStageDirect,
+    placementMode
+  );
+  return deepFreeze({
+    firstPlayableQualifiers,
+    laterStageDirectCandidates: laterQualifiers.map((row) => ({
+      entryId: row.entryId,
+      effectiveTargetStage: row.effectiveTargetStage,
+      seedNumber: row.seedNumber,
+      authoritativeSeed: row.authoritativeSeed,
+    })),
+  });
+}
+
+/**
  * @param {string[]|null|undefined} ids
  * @returns {Set<string>}
  */
@@ -586,15 +632,23 @@ export function composeKnockoutAdmission(input) {
       : KNOCKOUT_DRAW_PLACEMENT_MODE.OPEN;
 
   const frozenAdmitted = admitted.map((row) => Object.freeze({ ...row }));
-  const qualifiers = adaptAdmittedToKnockoutQualifiers(
+  const drawAdmission = partitionAdmittedForKnockoutDraw(
     frozenAdmitted,
+    bracketWideEntryRound,
     drawPlacementMode
   );
+  const qualifiers = drawAdmission.firstPlayableQualifiers;
 
   return deepFreeze({
     stage: "KNOCKOUT_ADMISSION",
     admitted: Object.freeze(frozenAdmitted),
     qualifiers: Object.freeze(qualifiers),
+    firstPlayableQualifiers: Object.freeze(
+      drawAdmission.firstPlayableQualifiers
+    ),
+    laterStageDirectCandidates: Object.freeze(
+      drawAdmission.laterStageDirectCandidates
+    ),
     drawPlacementMode,
     competitionPopulationEntryIds: Object.freeze([...population].sort()),
     populationBoundaryProven: true,

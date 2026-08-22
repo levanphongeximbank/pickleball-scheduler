@@ -42,6 +42,7 @@ export { composeIndividualPoolKnockout } from "./composePoolKnockout.js";
 export {
   composeKnockoutAdmission,
   adaptAdmittedToKnockoutQualifiers,
+  partitionAdmittedForKnockoutDraw,
   KNOCKOUT_DRAW_PLACEMENT_MODE,
 } from "./knockoutAdmission.js";
 export {

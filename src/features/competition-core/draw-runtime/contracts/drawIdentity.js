@@ -7,6 +7,7 @@
  * Bracket:    drawIdentityKey::BRACKET::bracketId
  * Slot:       drawIdentityKey::SLOT::slotNumber
  * Placement:  drawIdentityKey::PLACEMENT::candidateIdentityKey
+ * Stage res.:  drawIdentityKey::STAGE_RESERVATION::targetStage::positionNumber
  * Bye:        drawIdentityKey::BYE::slotNumber
  *
  * Excludes: display name, mutable rating/ranking, timestamps, random UUID,
@@ -26,6 +27,7 @@ export const DRAW_GROUP_IDENTITY_KIND = "GROUP";
 export const DRAW_BRACKET_IDENTITY_KIND = "BRACKET";
 export const DRAW_SLOT_IDENTITY_KIND = "SLOT";
 export const DRAW_PLACEMENT_IDENTITY_KIND = "PLACEMENT";
+export const DRAW_STAGE_RESERVATION_IDENTITY_KIND = "STAGE_RESERVATION";
 export const DRAW_BYE_IDENTITY_KIND = "BYE";
 
 /**
@@ -150,6 +152,29 @@ export function buildPlacementIdentityKey(parts = {}) {
         });
   const candidateIdentityKey = String(parts.candidateIdentityKey || "").trim();
   return `${drawKey}::${DRAW_PLACEMENT_IDENTITY_KIND}::${candidateIdentityKey}`;
+}
+
+/**
+ * @param {{
+ *   drawIdentityKey?: string,
+ *   competitionId?: string,
+ *   contextId?: string,
+ *   targetStage?: string,
+ *   positionNumber?: number|string,
+ * }} parts
+ * @returns {string}
+ */
+export function buildStageReservationIdentityKey(parts = {}) {
+  const drawKey =
+    isNonEmptyString(parts.drawIdentityKey)
+      ? String(parts.drawIdentityKey).trim()
+      : buildDrawIdentityKey({
+          competitionId: parts.competitionId,
+          contextId: parts.contextId,
+        });
+  const targetStage = String(parts.targetStage || "").trim();
+  const positionNumber = Number(parts.positionNumber);
+  return `${drawKey}::${DRAW_STAGE_RESERVATION_IDENTITY_KIND}::${targetStage}::${positionNumber}`;
 }
 
 /**

@@ -281,6 +281,10 @@ export function composeIndividualPoolKnockout(input) {
       competitionVersionId: input.competitionVersionId,
       deterministicSeed: input.deterministicSeed,
       placementMode: knockoutAdmission.drawPlacementMode,
+      stageReservationCandidates:
+        knockoutAdmission.laterStageDirectCandidates,
+      laterStageDirectAccounting:
+        knockoutAdmissionPlan.laterStageDirect,
     });
   } else if (wantsKnockout && hasQualificationInputs) {
     if (!poolStageComplete) {
@@ -337,6 +341,10 @@ export function composeIndividualPoolKnockout(input) {
         deterministicSeed: input.deterministicSeed,
         poolStageComplete: true,
         placementMode: knockoutAdmission.drawPlacementMode,
+        stageReservationCandidates:
+          knockoutAdmission.laterStageDirectCandidates,
+        laterStageDirectAccounting:
+          knockoutAdmissionPlan.laterStageDirect,
       });
     } else {
       qualification = composeQualificationAdvancement({

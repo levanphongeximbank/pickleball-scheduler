@@ -45,6 +45,10 @@ export {
   assignByes,
 } from "./assignBracket.js";
 export {
+  assignStageDirectReservations,
+  STAGE_RESERVATION_PLACEMENT_MODE,
+} from "./assignStageReservations.js";
+export {
   createDrawIdentityLookup,
   requireDrawIdentity,
 } from "./drawIdentityLookup.js";

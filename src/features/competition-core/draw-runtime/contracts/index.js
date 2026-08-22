@@ -5,6 +5,7 @@ export {
   DRAW_BRACKET_IDENTITY_KIND,
   DRAW_SLOT_IDENTITY_KIND,
   DRAW_PLACEMENT_IDENTITY_KIND,
+  DRAW_STAGE_RESERVATION_IDENTITY_KIND,
   DRAW_BYE_IDENTITY_KIND,
   buildDrawIdentityKey,
   buildCandidateIdentityKey,
@@ -12,6 +13,7 @@ export {
   buildBracketIdentityKey,
   buildSlotIdentityKey,
   buildPlacementIdentityKey,
+  buildStageReservationIdentityKey,
   buildByeIdentityKey,
   createDrawIdentity,
 } from "./drawIdentity.js";
@@ -24,6 +26,10 @@ export {
 } from "./drawSeedReference.js";
 
 export { createDrawPlacement } from "./drawPlacement.js";
+export {
+  createDrawStageReservation,
+  STAGE_RESERVATION_SIDE,
+} from "./drawStageReservation.js";
 
 export {
   createDrawGroup,
