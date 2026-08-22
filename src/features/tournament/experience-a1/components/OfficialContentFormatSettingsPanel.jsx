@@ -69,30 +69,24 @@ const NAV_GROUPS = [
   {
     id: "match-rules",
     number: 3,
-    title: "Luật trận đấu",
-    description: "Cách tính điểm, BO1/BO3, điểm theo giai đoạn",
-  },
-  {
-    id: "change-end",
-    number: 4,
-    title: "Đổi bên",
-    description: "Đổi đầu sân trong trận (không đổi sân vật lý)",
+    title: "Luật trận đấu & đổi bên",
+    description: "Tính điểm, thể thức trận, đổi bên theo giai đoạn",
   },
   {
     id: "ranking",
-    number: 5,
+    number: 4,
     title: "Xếp hạng & đi tiếp",
     description: "Tie-break trong bảng và wildcard liên bảng",
   },
   {
     id: "ops",
-    number: 6,
+    number: 5,
     title: "Vận hành trận",
     description: "WO, RET, đến trễ, rút lui, thay VĐV, check-in",
   },
   {
     id: "ops-infra",
-    number: 7,
+    number: 6,
     title: "Sân, trọng tài, lịch & công bố",
     description: "Yêu cầu sân, trọng tài, lịch, công bố",
   },
@@ -666,6 +660,8 @@ export default function OfficialContentFormatSettingsPanel({
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
   const [activeGroup, setActiveGroup] = useState("match-rules");
+  const resolvedActiveGroup =
+    activeGroup === "change-end" ? "match-rules" : activeGroup;
 
   const patch = (path, value) => {
     setDraft((prev) => {
@@ -802,7 +798,7 @@ export default function OfficialContentFormatSettingsPanel({
       : draft?.capacity?.maxParticipants;
 
   const renderGroupCenter = () => {
-    if (activeGroup === "content-registration") {
+    if (resolvedActiveGroup === "content-registration") {
       return (
         <>
           <Typography sx={{ fontWeight: 800, fontSize: 18, mb: 0.35 }}>
@@ -957,7 +953,7 @@ export default function OfficialContentFormatSettingsPanel({
       );
     }
 
-    if (activeGroup === "structure") {
+    if (resolvedActiveGroup === "structure") {
       return (
         <>
           <Typography sx={{ fontWeight: 800, fontSize: 18, mb: 0.35 }}>
@@ -1162,17 +1158,17 @@ export default function OfficialContentFormatSettingsPanel({
       );
     }
 
-    if (activeGroup === "match-rules") {
+    if (resolvedActiveGroup === "match-rules") {
       return (
         <>
           <Typography sx={{ fontWeight: 800, fontSize: 18, mb: 0.35 }}>
-            Nhóm 3. Luật trận đấu
+            Nhóm 3. Luật trận đấu & đổi bên
           </Typography>
           <Typography sx={{ fontSize: 13, color: TOURNAMENT_COLOR.textMuted, mb: 1.5 }}>
-            Cấu hình cách tính điểm và luật trận đấu theo từng giai đoạn thi đấu.
+            Cấu hình cách tính điểm, thể thức trận và quy tắc đổi bên theo từng giai đoạn thi đấu.
           </Typography>
 
-          <WorkspaceCard title="Rule cơ sở của nội dung">
+          <WorkspaceCard title="A. Rule cơ sở của Nội dung">
             <Stack spacing={1.25}>
               <CompactField label="Cách tính điểm">
                 <RadioGroup
@@ -1387,7 +1383,7 @@ export default function OfficialContentFormatSettingsPanel({
             </Stack>
           </WorkspaceCard>
 
-          <WorkspaceCard title="Cấu hình theo giai đoạn">
+          <WorkspaceCard title="B. Cấu hình theo giai đoạn">
             <StageRuleTable
               draft={draft}
               disabled={disabled}
@@ -1397,8 +1393,105 @@ export default function OfficialContentFormatSettingsPanel({
             />
           </WorkspaceCard>
 
+          
+          {(() => {
+            const changeUnsupported = scoringCaps.changeEnd !== true;
+            return (
+              <WorkspaceCard
+                title="C. Đổi bên / đổi đầu sân"
+                action={
+                  changeUnsupported ? (
+                    <StatusBadge label="Chưa vận hành đầy đủ" tone="warn" />
+                  ) : null
+                }
+              >
+                <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.textMuted, mb: 1.25 }}>
+                  Đổi phía thi đấu trong cùng một sân; không phải chuyển trận sang sân vật lý khác.
+                </Typography>
+                <Grid container spacing={1.25}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      select
+                      label="Có đổi bên"
+                      value={draft.matchScoring?.changeEnd?.changeEndsEnabled === true ? "on" : "off"}
+                      disabled={disabled || changeUnsupported}
+                      onChange={(e) =>
+                        patch("matchScoring.changeEnd.changeEndsEnabled", e.target.value === "on")
+                      }
+                    >
+                      <MenuItem value="on">Có</MenuItem>
+                      <MenuItem value="off">Không</MenuItem>
+                    </TextField>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      type="number"
+                      label="Điểm đổi bên"
+                      value={draft.matchScoring?.changeEnd?.changeEndsAtPoints ?? ""}
+                      disabled={
+                        disabled ||
+                        changeUnsupported ||
+                        !draft.matchScoring?.changeEnd?.changeEndsEnabled
+                      }
+                      onChange={(e) =>
+                        patch(
+                          "matchScoring.changeEnd.changeEndsAtPoints",
+                          e.target.value === "" ? null : Number(e.target.value)
+                        )
+                      }
+                      helperText="11 điểm → đổi tại 6 · 15 → 8 · 21 → 11"
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      select
+                      label="Đổi bên giữa các game"
+                      value={
+                        draft.matchScoring?.changeEnd?.changeEndsBetweenGames !== false
+                          ? "yes"
+                          : "no"
+                      }
+                      disabled={disabled || changeUnsupported}
+                      onChange={(e) =>
+                        patch(
+                          "matchScoring.changeEnd.changeEndsBetweenGames",
+                          e.target.value === "yes"
+                        )
+                      }
+                    >
+                      <MenuItem value="yes">Có</MenuItem>
+                      <MenuItem value="no">Không</MenuItem>
+                    </TextField>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      type="number"
+                      label="Game quyết định đổi bên tại điểm"
+                      value={draft.matchScoring?.changeEnd?.decidingGameChangeEndsAt ?? ""}
+                      disabled={disabled || changeUnsupported}
+                      onChange={(e) =>
+                        patch(
+                          "matchScoring.changeEnd.decidingGameChangeEndsAt",
+                          e.target.value === "" ? null : Number(e.target.value)
+                        )
+                      }
+                    />
+                  </Grid>
+                </Grid>
+              </WorkspaceCard>
+            );
+          })()}
+
           <Box sx={{ ...cardSx }}>
-            <Typography sx={{ fontWeight: 800, fontSize: 14, mb: 1 }}>Ví dụ minh họa</Typography>
+            <Typography sx={{ fontWeight: 800, fontSize: 14, mb: 1 }}>D. Ví dụ minh họa</Typography>
             <Grid container spacing={1.5}>
               <Grid size={{ xs: 12, md: 7 }}>
                 <Stack spacing={0.75}>
@@ -1427,6 +1520,9 @@ export default function OfficialContentFormatSettingsPanel({
                   <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.text }}>
                     • Không cần hơn 2 điểm do đã có điểm trần.
                   </Typography>
+                  <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.text, mt: 0.75 }}>
+                    • Trận 15 điểm → đổi bên khi một bên đạt 8.
+                  </Typography>
                 </Box>
               </Grid>
             </Grid>
@@ -1435,108 +1531,11 @@ export default function OfficialContentFormatSettingsPanel({
       );
     }
 
-    if (activeGroup === "change-end") {
-      const changeUnsupported = scoringCaps.changeEnd !== true;
-      return (
-        <>
-          <Typography sx={{ fontWeight: 800, fontSize: 18, mb: 0.35 }}>Nhóm 4. Đổi bên</Typography>
-          <Typography sx={{ fontSize: 13, color: TOURNAMENT_COLOR.textMuted, mb: 1.5 }}>
-            Đổi bên / đổi đầu sân trong trận — không phải đổi sân vật lý.
-          </Typography>
-          <WorkspaceCard
-            title="Chính sách đổi bên"
-            action={
-              changeUnsupported ? <StatusBadge label="Chưa sẵn sàng" tone="warn" /> : null
-            }
-          >
-            <Grid container spacing={1.25}>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  size="small"
-                  fullWidth
-                  select
-                  label="Có đổi bên"
-                  value={draft.matchScoring?.changeEnd?.changeEndsEnabled === true ? "on" : "off"}
-                  disabled={disabled || changeUnsupported}
-                  onChange={(e) =>
-                    patch("matchScoring.changeEnd.changeEndsEnabled", e.target.value === "on")
-                  }
-                >
-                  <MenuItem value="on">Có</MenuItem>
-                  <MenuItem value="off">Không</MenuItem>
-                </TextField>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  size="small"
-                  fullWidth
-                  type="number"
-                  label="Điểm đổi bên"
-                  value={draft.matchScoring?.changeEnd?.changeEndsAtPoints ?? ""}
-                  disabled={
-                    disabled ||
-                    changeUnsupported ||
-                    !draft.matchScoring?.changeEnd?.changeEndsEnabled
-                  }
-                  onChange={(e) =>
-                    patch(
-                      "matchScoring.changeEnd.changeEndsAtPoints",
-                      e.target.value === "" ? null : Number(e.target.value)
-                    )
-                  }
-                  helperText="11 → 6 · 15 → 8 · 21 → 11"
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  size="small"
-                  fullWidth
-                  select
-                  label="Đổi bên giữa các game"
-                  value={
-                    draft.matchScoring?.changeEnd?.changeEndsBetweenGames !== false
-                      ? "yes"
-                      : "no"
-                  }
-                  disabled={disabled || changeUnsupported}
-                  onChange={(e) =>
-                    patch(
-                      "matchScoring.changeEnd.changeEndsBetweenGames",
-                      e.target.value === "yes"
-                    )
-                  }
-                >
-                  <MenuItem value="yes">Có</MenuItem>
-                  <MenuItem value="no">Không</MenuItem>
-                </TextField>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  size="small"
-                  fullWidth
-                  type="number"
-                  label="Game quyết định đổi bên tại điểm"
-                  value={draft.matchScoring?.changeEnd?.decidingGameChangeEndsAt ?? ""}
-                  disabled={disabled || changeUnsupported}
-                  onChange={(e) =>
-                    patch(
-                      "matchScoring.changeEnd.decidingGameChangeEndsAt",
-                      e.target.value === "" ? null : Number(e.target.value)
-                    )
-                  }
-                />
-              </Grid>
-            </Grid>
-          </WorkspaceCard>
-        </>
-      );
-    }
-
-    if (activeGroup === "ranking") {
+    if (resolvedActiveGroup === "ranking") {
       return (
         <>
           <Typography sx={{ fontWeight: 800, fontSize: 18, mb: 0.35 }}>
-            Nhóm 5. Xếp hạng & đi tiếp
+            Nhóm 4. Xếp hạng & đi tiếp
           </Typography>
           <Typography sx={{ fontSize: 13, color: TOURNAMENT_COLOR.textMuted, mb: 1.5 }}>
             Thứ tự tie-break — engine domain tính toán, UI chỉ cấu hình chính sách.
@@ -1583,11 +1582,11 @@ export default function OfficialContentFormatSettingsPanel({
       );
     }
 
-    if (activeGroup === "ops") {
+    if (resolvedActiveGroup === "ops") {
       return (
         <>
           <Typography sx={{ fontWeight: 800, fontSize: 18, mb: 0.35 }}>
-            Nhóm 6. Vận hành trận
+            Nhóm 5. Vận hành trận
           </Typography>
           <Typography sx={{ fontSize: 13, color: TOURNAMENT_COLOR.textMuted, mb: 1.5 }}>
             Chính sách vận hành — không giả lập runtime.
@@ -1741,7 +1740,7 @@ export default function OfficialContentFormatSettingsPanel({
     return (
       <>
         <Typography sx={{ fontWeight: 800, fontSize: 18, mb: 0.35 }}>
-          Nhóm 7. Sân, trọng tài, lịch & công bố
+          Nhóm 6. Sân, trọng tài, lịch & công bố
         </Typography>
         <Typography sx={{ fontSize: 13, color: TOURNAMENT_COLOR.textMuted, mb: 1.5 }}>
           Chỉ chính sách. Không gán sân / trọng tài cụ thể tại đây.
@@ -1925,7 +1924,7 @@ export default function OfficialContentFormatSettingsPanel({
       }}
     >
       {NAV_GROUPS.map((g) => {
-        const active = activeGroup === g.id;
+        const active = resolvedActiveGroup === g.id;
         return (
           <Box
             key={g.id}
@@ -1997,7 +1996,7 @@ export default function OfficialContentFormatSettingsPanel({
         fullWidth
         select
         label="Nhóm cấu hình"
-        value={activeGroup}
+        value={resolvedActiveGroup}
         onChange={(e) => setActiveGroup(e.target.value)}
       >
         {NAV_GROUPS.map((g) => (
