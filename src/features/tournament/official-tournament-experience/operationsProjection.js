@@ -495,10 +495,12 @@ export function projectOfficialStandings(tournament, { selectedEventId } = {}) {
     qualification,
     groupStageQualification,
     qualificationPlan: qualification.plan || null,
+    wildcardRequirement: qualification.wildcardRequirement || null,
     directSlots: qualification.directSlots ?? null,
     directQualifiedCount: qualification.directQualifiedCount ?? null,
     wildcardSlots: qualification.wildcardSlots ?? null,
     wildcardQualifiedCount: qualification.wildcardQualifiedCount ?? null,
+    wildcardRequired: qualification.wildcardRequirement?.wildcardRequired === true,
     totalRequired: qualification.totalRequired ?? null,
     // Blob Official path: completed/forfeit on event.matches (officialStandingsEngine).
     // CORE-17 accepted active is RPC/live path — Screen 12 does not invent a second filter.

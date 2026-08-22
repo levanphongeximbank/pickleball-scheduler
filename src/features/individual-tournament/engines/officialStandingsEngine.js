@@ -14,6 +14,7 @@ import { DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP as SETTINGS_DEFAULT_Q } from "./o
 import {
   resolveContentQualifiersPerGroup,
   resolveContentQualificationPlan,
+  resolveContentWildcardRequirement,
 } from "./officialContentCompetitionRules.js";
 
 export const QUALIFICATION_TIE_UNRESOLVED = "QUALIFICATION_TIE_UNRESOLVED";
@@ -155,13 +156,14 @@ function countDirectQualified(standings = []) {
 }
 
 /**
- * Content-scoped qualification readiness (G2-C).
+ * Content-scoped qualification readiness (G2-C + G2-D).
  *
  * Combines:
  *   resolveContentQualificationPlan (Adapter A slot math)
  *   + officialQualificationReady (group complete + TOP_N ties)
+ *   + resolveContentWildcardRequirement (structural wildcard / Group 4 handoff)
  *
- * wildcardSlots > 0 → QUALIFICATION_NOT_READY (no candidate ranking yet).
+ * wildcardSlots > 0 without authoritative Group 4 result → QUALIFICATION_NOT_READY.
  * Does not silently shrink the KO field to directSlots only.
  */
 export function resolveOfficialQualificationReadiness(tournament, event, options = {}) {
@@ -177,6 +179,7 @@ export function resolveOfficialQualificationReadiness(tournament, event, options
       wildcardSlots: 0,
       wildcardQualifiedCount: 0,
       totalRequired: 0,
+      wildcardRequirement: null,
     };
   }
   if (!event) {
@@ -191,6 +194,7 @@ export function resolveOfficialQualificationReadiness(tournament, event, options
       wildcardSlots: 0,
       wildcardQualifiedCount: 0,
       totalRequired: 0,
+      wildcardRequirement: null,
     };
   }
 
@@ -209,6 +213,7 @@ export function resolveOfficialQualificationReadiness(tournament, event, options
       wildcardSlots: Number(planResolved.plan?.wildcardSlots) || 0,
       wildcardQualifiedCount: 0,
       totalRequired: Number(planResolved.plan?.totalQualifiers) || 0,
+      wildcardRequirement: null,
     };
   }
 
@@ -220,6 +225,11 @@ export function resolveOfficialQualificationReadiness(tournament, event, options
     source,
     plan,
   } = planResolved;
+
+  const wildcardRequirement = resolveContentWildcardRequirement(tournament, {
+    eventId,
+    group4WildcardResult: options.group4WildcardResult,
+  });
 
   const groupReady = officialQualificationReady(event, {
     qualifiersPerGroup: directQualifiersPerGroup,
@@ -237,9 +247,10 @@ export function resolveOfficialQualificationReadiness(tournament, event, options
       directSlots,
       directQualifiedCount: countDirectQualified(groupReady.standings),
       wildcardSlots,
-      wildcardQualifiedCount: 0,
+      wildcardQualifiedCount: wildcardRequirement.wildcardQualifiedCount || 0,
       totalRequired: totalQualifiers,
       directQualifiersPerGroup,
+      wildcardRequirement,
     };
   }
 
@@ -260,9 +271,10 @@ export function resolveOfficialQualificationReadiness(tournament, event, options
       directSlots,
       directQualifiedCount,
       wildcardSlots,
-      wildcardQualifiedCount: 0,
+      wildcardQualifiedCount: wildcardRequirement.wildcardQualifiedCount || 0,
       totalRequired: totalQualifiers,
       directQualifiersPerGroup,
+      wildcardRequirement,
     };
   }
 
@@ -279,19 +291,22 @@ export function resolveOfficialQualificationReadiness(tournament, event, options
       directSlots,
       directQualifiedCount,
       wildcardSlots,
-      wildcardQualifiedCount: 0,
+      wildcardQualifiedCount: wildcardRequirement.wildcardQualifiedCount || 0,
       totalRequired: totalQualifiers,
       directQualifiersPerGroup,
+      wildcardRequirement,
     };
   }
 
-  // Structural wildcard slots without candidate execution → fail closed (G2-D).
-  if (wildcardSlots > 0) {
+  // Structural wildcard slots without authoritative Group 4 result → fail closed.
+  if (!wildcardRequirement.ready) {
     return {
       ready: false,
       ok: false,
-      code: QUALIFICATION_NOT_READY,
-      error: `Còn ${wildcardSlots} suất wildcard — chưa có xếp hạng cross-group (G2-D/Group 4). Không tạo KO với ${directSlots}/${totalQualifiers} suất.`,
+      code: wildcardRequirement.code || QUALIFICATION_NOT_READY,
+      error:
+        wildcardRequirement.error ||
+        `Còn ${wildcardSlots} suất wildcard — chờ Nhóm 4. Không tạo KO với ${directSlots}/${totalQualifiers} suất.`,
       eventId,
       source,
       plan,
@@ -299,9 +314,10 @@ export function resolveOfficialQualificationReadiness(tournament, event, options
       directSlots,
       directQualifiedCount,
       wildcardSlots,
-      wildcardQualifiedCount: 0,
+      wildcardQualifiedCount: wildcardRequirement.wildcardQualifiedCount || 0,
       totalRequired: totalQualifiers,
       directQualifiersPerGroup,
+      wildcardRequirement,
       wildcardExecutionDeferred: true,
       silentSmallerKoFieldAllowed: false,
     };
@@ -318,10 +334,12 @@ export function resolveOfficialQualificationReadiness(tournament, event, options
     standings,
     directSlots,
     directQualifiedCount,
-    wildcardSlots: 0,
-    wildcardQualifiedCount: 0,
+    wildcardSlots,
+    wildcardQualifiedCount: wildcardRequirement.wildcardQualifiedCount || 0,
     totalRequired: totalQualifiers,
     directQualifiersPerGroup,
+    wildcardRequirement,
+    qualifiedWildcardEntries: wildcardRequirement.qualifiedWildcardEntries || [],
     wildcardExecutionDeferred: false,
     silentSmallerKoFieldAllowed: false,
   };

@@ -22,6 +22,7 @@ import {
   patchEventContentCompetitionRules,
   resolveContentCompetitionRules,
   resolveContentGroup2Settings,
+  resolveContentWildcardRequirement,
   CONTENT_RULES_SOURCE,
   CONTENT_COMPETITION_RULES_PROPERTY,
 } from "../../individual-tournament/engines/officialContentCompetitionRules.js";
@@ -219,6 +220,9 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
       const changeEnd = scoring.changeEnd || {};
       const plan = surface.deriveQualificationPlan({ eventId });
       const wildcard = surface.resolveWildcardRankingPolicy({ eventId });
+      const wildcardRequirement = resolveContentWildcardRequirement(tournament, {
+        eventId,
+      });
       const formDraft = Object.freeze({
         source: contentResolved?.source || CONTENT_RULES_SOURCE.CANONICAL_SYSTEM_DEFAULT,
         persistedSource: built.persistedSource,
@@ -292,6 +296,17 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
         contentRulesSource: contentResolved?.source || null,
         group2Source: group2?.ok ? group2.source : contentResolved?.source || null,
         group2LegacyActiveAuthority: false,
+        wildcardRequirement: Object.freeze({
+          wildcardRequired: wildcardRequirement.wildcardRequired === true,
+          wildcardSlots: wildcardRequirement.wildcardSlots || 0,
+          requiredWildcardCount: wildcardRequirement.requiredWildcardCount || 0,
+          ready: wildcardRequirement.ready === true,
+          wildcardRankingCapability: wildcardRequirement.wildcardRankingCapability,
+          wildcardAuthorityOwner: wildcardRequirement.wildcardAuthorityOwner,
+          group4RuntimeImplemented: false,
+          code: wildcardRequirement.code || null,
+          error: wildcardRequirement.error || null,
+        }),
         formDraft,
       };
     })(),

@@ -1159,6 +1159,13 @@ export default function OfficialContentFormatSettingsPanel({
                   Tổng suất knockout = {totalQ}
                   <br />
                   Còn {wildcard} suất wildcard
+                  {wildcard > 0 ? (
+                    <>
+                      <br />
+                      {wildcard} suất wildcard cần được xác định theo chính sách xếp hạng ở Nhóm 4
+                      (chưa thực thi).
+                    </>
+                  ) : null}
                 </Alert>
               </Grid>
             </Grid>
@@ -1709,8 +1716,8 @@ export default function OfficialContentFormatSettingsPanel({
             </Alert>
             {wildcard > 0 ? (
               <Alert severity="warning" sx={{ mt: 1, py: 0.75, fontSize: 12.5 }}>
-                Wildcard runtime fail-closed: còn {wildcard} suất wildcard — xếp hạng chéo bảng
-                chưa mở thực thi.
+                {wildcard} suất wildcard cần xếp hạng chéo bảng ở Nhóm 4 — chưa thực thi. Không tự
+                chọn theo rating / thứ tự đăng ký / ngẫu nhiên.
               </Alert>
             ) : null}
           </WorkspaceCard>

@@ -108,6 +108,26 @@ export const GROUP2_WILDCARD_RESPONSIBILITY = Object.freeze({
   GROUP4: "CANDIDATE_RANKING_AND_CROSS_GROUP_ORDER",
 });
 
+/**
+ * Persisted qualification.wildcardSlots is never editable authority.
+ * Always re-derived from totalQualifiers − (groupCount × directQualifiersPerGroup)
+ * on normalize (SERIALIZED_PROJECTION / DERIVED_CACHE).
+ */
+export const CONTENT_WILDCARD_SLOTS_FIELD_CLASS = Object.freeze({
+  class: "SERIALIZED_PROJECTION",
+  derivedFrom: "deriveQualificationPlan",
+  editableAuthority: false,
+  note: "events[].competitionRules.qualification.wildcardSlots mirrors canonical slot math only.",
+});
+
+export const GROUP4_WILDCARD_HANDOFF = Object.freeze({
+  requiredWildcardCountField: "requiredWildcardCount",
+  qualifiedWildcardEntriesField: "qualifiedWildcardEntries",
+  authorityToken: "GROUP_4",
+  runtimeImplemented: false,
+  rankingDeferred: true,
+});
+
 export const CONTENT_KNOCKOUT_PAIRING_POLICY = Object.freeze({
   CROSS_GROUP: "CROSS_GROUP",
   SEEDED: "SEEDED",
@@ -724,6 +744,7 @@ export function normalizeContentCompetitionRules(input = {}, options = {}) {
     qualification: Object.freeze({
       directQualifiersPerGroup,
       totalQualifiers,
+      // SERIALIZED_PROJECTION — always derived; never trust a conflicting stored edit.
       wildcardSlots: derivedWildcard,
       groupStageBypass: null,
       directKnockoutEntry: null,
@@ -1213,7 +1234,8 @@ export function resolveContentGroup2Settings(tournament, options = {}) {
     groupCountRuntime: "RUNTIME_ENFORCED",
     qualificationSlotMathRuntime: "RUNTIME_ENFORCED",
     directQualifiersRuntime: "RUNTIME_ENFORCED",
-    wildcardCandidateRuntime: "DEFERRED_TO_G2_D",
+    wildcardSlotMathRuntime: "RUNTIME_ENFORCED",
+    wildcardCandidateRuntime: "DEFERRED_TO_GROUP4",
     knockoutEnabledRuntime: "DEFERRED_TO_G2_E",
     qualifierCountRuntime: "DEFERRED_TO_G2_E",
     avoidSameGroupRuntime: "DEFERRED_TO_G2_E",
@@ -1479,6 +1501,121 @@ export function resolveContentQualificationPlan(tournament, options = {}) {
     formula: plan.details?.formula || null,
     wildcardCandidateSelection: false,
     wildcardRankingDeferredToGroup4: true,
+    wildcardSlotsFieldClass: CONTENT_WILDCARD_SLOTS_FIELD_CLASS,
+  };
+}
+
+/**
+ * Structural wildcard requirement + Group 4 handoff projection (G2-D).
+ * HOW MANY slots = Group 2. WHO fills them = Group 4 (not implemented here).
+ *
+ * Accepts optional authoritative Group 4 result only when:
+ *   options.group4WildcardResult.authority === "GROUP_4"
+ *   && ok === true
+ *   && qualifiedWildcardEntries.length === requiredWildcardCount
+ *
+ * Does not invent / rank / pick candidates.
+ */
+export function resolveContentWildcardRequirement(tournament, options = {}) {
+  const planResolved = resolveContentQualificationPlan(tournament, {
+    eventId: options.eventId,
+  });
+  if (!planResolved.ok) {
+    return {
+      ok: false,
+      ready: false,
+      code: planResolved.code,
+      error: planResolved.error,
+      eventId: planResolved.eventId || trim(options.eventId) || null,
+      source: planResolved.source || null,
+      wildcardRequired: false,
+      wildcardSlots: Number(planResolved.plan?.wildcardSlots) || 0,
+      wildcardCandidatesRequired: Number(planResolved.plan?.wildcardSlots) || 0,
+      requiredWildcardCount: Number(planResolved.plan?.wildcardSlots) || 0,
+      wildcardQualifiedCount: 0,
+      wildcardRankingCapability: "DEFERRED",
+      wildcardAuthorityOwner: GROUP2_WILDCARD_RESPONSIBILITY.GROUP4,
+      group4Handoff: GROUP4_WILDCARD_HANDOFF,
+      group4RuntimeImplemented: false,
+      qualifiedWildcardEntries: [],
+      plan: planResolved.plan || null,
+    };
+  }
+
+  const wildcardSlots = Number(planResolved.wildcardSlots) || 0;
+  const wildcardRequired = wildcardSlots > 0;
+  const group4 = options.group4WildcardResult;
+  const hasAuthoritativeGroup4 =
+    group4 &&
+    typeof group4 === "object" &&
+    group4.ok === true &&
+    String(group4.authority || "").toUpperCase() === GROUP4_WILDCARD_HANDOFF.authorityToken;
+
+  const suppliedEntries = hasAuthoritativeGroup4
+    ? Array.isArray(group4.qualifiedWildcardEntries)
+      ? group4.qualifiedWildcardEntries
+      : []
+    : [];
+  const wildcardQualifiedCount = suppliedEntries.length;
+  const group4Satisfied =
+    !wildcardRequired ||
+    (hasAuthoritativeGroup4 && wildcardQualifiedCount === wildcardSlots);
+
+  // Official KO unlock also requires GROUP4_WILDCARD_HANDOFF.runtimeImplemented
+  // (still false in G2-D — bracket does not consume wildcard entries yet).
+  let code = null;
+  let error = null;
+  let ready = true;
+  if (wildcardRequired && !hasAuthoritativeGroup4) {
+    ready = false;
+    code = "QUALIFICATION_NOT_READY";
+    error = `Cần ${wildcardSlots} suất wildcard — Nhóm 4 chưa cung cấp kết quả xếp hạng. Không tự chọn VĐV / rating / thứ tự đăng ký.`;
+  } else if (wildcardRequired && !group4Satisfied) {
+    ready = false;
+    code = "QUALIFICATION_NOT_READY";
+    error = `Nhóm 4 trả ${wildcardQualifiedCount}/${wildcardSlots} suất wildcard — chưa đủ để khóa field KO.`;
+  } else if (wildcardRequired && !GROUP4_WILDCARD_HANDOFF.runtimeImplemented) {
+    ready = false;
+    code = "QUALIFICATION_NOT_READY";
+    error = `Nhóm 4 handoff đã nhận ${wildcardSlots} suất, nhưng runtime xếp hạng / gắn KO chưa mở (DEFERRED_TO_GROUP4).`;
+  }
+
+  return {
+    ok: true,
+    ready,
+    readyForOfficialQualification: ready,
+    code,
+    error,
+    eventId: planResolved.eventId,
+    source: planResolved.source,
+    wildcardRequired,
+    wildcardSlots,
+    wildcardCandidatesRequired: wildcardSlots,
+    requiredWildcardCount: wildcardSlots,
+    wildcardQualifiedCount: wildcardRequired ? wildcardQualifiedCount : 0,
+    wildcardRankingCapability: wildcardRequired ? "DEFERRED" : "NOT_APPLICABLE",
+    wildcardSlotMathRuntime: "SUPPORTED",
+    wildcardCandidateRankingRuntime: wildcardRequired ? "DEFERRED" : "NOT_APPLICABLE",
+    wildcardAuthorityOwner: GROUP2_WILDCARD_RESPONSIBILITY.GROUP4,
+    group2Responsibility: GROUP2_WILDCARD_RESPONSIBILITY.GROUP2,
+    group4Responsibility: GROUP2_WILDCARD_RESPONSIBILITY.GROUP4,
+    group4Handoff: GROUP4_WILDCARD_HANDOFF,
+    group4RuntimeImplemented: GROUP4_WILDCARD_HANDOFF.runtimeImplemented,
+    group4ResultReceived: hasAuthoritativeGroup4,
+    group4Satisfied,
+    qualifiedWildcardEntries:
+      wildcardRequired && hasAuthoritativeGroup4 && group4Satisfied
+        ? suppliedEntries
+        : [],
+    directSlots: planResolved.directSlots,
+    totalQualifiers: planResolved.totalQualifiers,
+    groupDirectQualifierSlots: planResolved.directSlots,
+    plan: planResolved.plan,
+    wildcardSlotsFieldClass: CONTENT_WILDCARD_SLOTS_FIELD_CLASS,
+    silentKoShrinkAllowed: false,
+    randomWildcardFallback: false,
+    ratingWildcardFallback: false,
+    registrationOrderWildcardFallback: false,
   };
 }
 
@@ -1733,11 +1870,8 @@ export function patchEventContentCompetitionRules(tournament, eventId, patch = {
         draftSource.totalQualifiers ??
         draftSource.qualification?.totalQualifiers ??
         current.qualification.totalQualifiers,
-      wildcardSlots:
-        patch.wildcardSlots ??
-        draftSource.wildcardSlots ??
-        draftSource.qualification?.wildcardSlots ??
-        current.qualification.wildcardSlots,
+      // wildcardSlots is SERIALIZED_PROJECTION — normalizeContentCompetitionRules
+      // always re-derives from total − (groupCount × direct). Do not accept edits.
     },
     knockout: {
       ...current.knockout,
