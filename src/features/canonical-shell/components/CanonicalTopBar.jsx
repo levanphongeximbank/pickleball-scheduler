@@ -11,6 +11,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 
 import CanonicalBreadcrumbs from "./CanonicalBreadcrumbs.jsx";
 import CanonicalGlobalSearchTrigger from "./CanonicalGlobalSearchTrigger.jsx";
+import CanonicalHelpButton from "./CanonicalHelpButton.jsx";
 import CanonicalNotificationButton from "./CanonicalNotificationButton.jsx";
 import CanonicalTenantSwitcher from "./CanonicalTenantSwitcher.jsx";
 import CanonicalUserMenu from "./CanonicalUserMenu.jsx";
@@ -187,7 +188,9 @@ export default function CanonicalTopBar() {
           data-testid="canonical-topbar-actions-zone"
           sx={{ flexShrink: 0 }}
         >
+          {/* Batch 1C composition: notification → help (/support) → account */}
           <CanonicalNotificationButton />
+          <CanonicalHelpButton />
           <CanonicalUserMenu />
         </Stack>
       </Toolbar>
