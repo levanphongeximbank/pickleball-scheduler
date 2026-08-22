@@ -129,17 +129,14 @@ export function buildKnockoutDrawSnapshotFromQualifiers(input) {
 
   const candidates = qualifiers.map((q, index) => {
     const id = String(q.participantId || q.entryId);
-    let seedNumber = null;
-    if (placementMode === KNOCKOUT_QUALIFIER_PLACEMENT_MODE.SEEDED) {
-      seedNumber = Number(q.seedNumber);
-    } else if (placementMode === KNOCKOUT_QUALIFIER_PLACEMENT_MODE.OPEN) {
-      seedNumber = null;
-    } else {
-      seedNumber =
-        Number.isFinite(Number(q.seedNumber)) && Number(q.seedNumber) >= 1
-          ? Number(q.seedNumber)
-          : index + 1;
-    }
+    const seedNumber =
+      placementMode === KNOCKOUT_QUALIFIER_PLACEMENT_MODE.SEEDED
+        ? Number(q.seedNumber)
+        : placementMode === KNOCKOUT_QUALIFIER_PLACEMENT_MODE.OPEN
+          ? null
+          : Number.isFinite(Number(q.seedNumber)) && Number(q.seedNumber) >= 1
+            ? Number(q.seedNumber)
+            : index + 1;
     return createDrawCandidate({
       candidateId: id,
       candidateReference: id,

@@ -12,6 +12,7 @@ import {
 } from "../../competition-core/match-generation/index.js";
 import { buildKnockoutDrawSnapshotFromQualifiers } from "./adapters/drawSnapshotFromQualifiers.js";
 import { createKnockoutStageEvaluatedRules } from "./adapters/evaluatedRulesFromFormat.js";
+import { resolveEffectiveCompetitionScope } from "./core07SeedingProjection.js";
 import { E2E02_ERROR_CODE, failE2E02 } from "./errors.js";
 import { computeDeterministicFingerprint, deepFreeze } from "./fingerprint.js";
 
@@ -53,13 +54,18 @@ export function composeKnockoutStage(input) {
   // Odd qualifier counts are supported via power-of-two bye padding.
   void E2E02_ERROR_CODE.ODD_QUALIFIER_UNSUPPORTED;
 
-  const divisionId = String(input.divisionId || "div-1").trim();
-  const categoryId = input.categoryId ?? null;
+  const effectiveScope = resolveEffectiveCompetitionScope({
+    competitionId: input.competitionId,
+    divisionId: input.divisionId,
+    categoryId: input.categoryId,
+  });
+  const divisionId = effectiveScope.effectiveDivisionId;
+  const categoryId = effectiveScope.effectiveCategoryId;
   const stageId = "stage-knockout";
 
   const { drawSnapshot, bracketSize, byeCount, placementMode } =
     buildKnockoutDrawSnapshotFromQualifiers({
-      competitionId: input.competitionId,
+      competitionId: effectiveScope.competitionId,
       divisionId,
       categoryId,
       stageId,

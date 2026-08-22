@@ -14,6 +14,61 @@ import {
 import { E2E02_ERROR_CODE, failE2E02 } from "./errors.js";
 
 /**
+ * Normalize a scope id dimension for exact null-vs-value comparison.
+ * Empty string → null (matches CORE-07 opaque-id empty handling).
+ * @param {unknown} value
+ * @returns {string|null}
+ */
+export function normalizeEffectiveScopeId(value) {
+  if (value == null || value === "") return null;
+  const s = String(value).trim();
+  return s === "" ? null : s;
+}
+
+/**
+ * Resolve the SAME effective competition scope used by E2E02 draw/match composition.
+ * Historical pool/knockout execution uses division fallback `"div-1"` when omitted —
+ * validation must use that same effective division, never a divergent null.
+ *
+ * @param {{
+ *   competitionId: string,
+ *   divisionId?: string|null,
+ *   categoryId?: string|null,
+ * }} input
+ * @returns {{ competitionId: string, effectiveDivisionId: string, effectiveCategoryId: string|null }}
+ */
+export function resolveEffectiveCompetitionScope(input) {
+  const competitionId = String(input?.competitionId || "").trim();
+  if (!competitionId) {
+    failE2E02(
+      E2E02_ERROR_CODE.MISSING_COMPETITION_IDENTITY,
+      "competitionId required to resolve effective competition scope",
+      { UNKNOWN_EFFECTIVE_SCOPE: true }
+    );
+  }
+
+  const suppliedDivision = normalizeEffectiveScopeId(input?.divisionId);
+  // Must match poolStage / poolGrouping / knockoutStage draw context fallback.
+  const effectiveDivisionId = suppliedDivision || "div-1";
+  const effectiveCategoryId = normalizeEffectiveScopeId(input?.categoryId);
+
+  return Object.freeze({
+    competitionId,
+    effectiveDivisionId,
+    effectiveCategoryId,
+  });
+}
+
+/**
+ * Exact null-aware equality for CORE-07 scope dimensions (null ≠ concrete id).
+ * @param {string|null} expected
+ * @param {string|null} actual
+ */
+function scopeIdsExactEqual(expected, actual) {
+  return expected === actual;
+}
+
+/**
  * @param {string|null|undefined} unitKind
  * @returns {string|null}
  */
@@ -79,15 +134,19 @@ export function resolveCore07AuthoritativeProjection(input) {
 }
 
 /**
+ * Exact effective-scope match for canonical admission-aware CORE-07 consumption.
+ * divisionId/categoryId null on the projection is NOT a wildcard.
+ * stageId null remains competition-wide (may serve GROUP/KNOCKOUT).
+ *
  * @param {object} projection
  * @param {{
  *   competitionId: string,
- *   divisionId?: string|null,
- *   categoryId?: string|null,
+ *   divisionId: string,
+ *   categoryId: string|null,
  *   stageId?: string|null,
  *   competitionUnitKind?: string|null,
  *   role: "GROUP" | "KNOCKOUT",
- * }} expected
+ * }} expected — divisionId/categoryId MUST be the resolved effective scope
  */
 export function assertCore07ProjectionScopeCompatible(projection, expected) {
   const scope = projection?.seedingScope || projection?.scope || {};
@@ -104,43 +163,66 @@ export function assertCore07ProjectionScopeCompatible(projection, expected) {
     );
   }
 
-  if (expected.divisionId != null && String(expected.divisionId).trim()) {
-    const want = String(expected.divisionId).trim();
-    const got = scope.divisionId == null ? null : String(scope.divisionId).trim();
-    if (got != null && got !== want) {
-      failE2E02(
-        E2E02_ERROR_CODE.INVALID_CONFIGURATION,
-        "CORE-07 seeding projection divisionId mismatch",
-        { expected: want, actual: got, role: expected.role }
-      );
-    }
+  const wantDivision = normalizeEffectiveScopeId(expected.divisionId);
+  const gotDivision = normalizeEffectiveScopeId(scope.divisionId);
+  if (wantDivision == null || wantDivision === "") {
+    failE2E02(
+      E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+      "effective division scope unknown — cannot validate CORE-07 projection",
+      { UNKNOWN_EFFECTIVE_SCOPE: true, role: expected.role }
+    );
+  }
+  if (!scopeIdsExactEqual(wantDivision, gotDivision)) {
+    failE2E02(
+      E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+      "CORE-07 seeding projection divisionId mismatch against effective execution scope",
+      {
+        expected: wantDivision,
+        actual: gotDivision,
+        role: expected.role,
+        DIVISION_NULL_AS_WILDCARD: false,
+        CROSS_DIVISION_SEED_PROJECTION: true,
+      }
+    );
   }
 
-  if (expected.categoryId != null && String(expected.categoryId).trim()) {
-    const want = String(expected.categoryId).trim();
-    const got = scope.categoryId == null ? null : String(scope.categoryId).trim();
-    if (got != null && got !== want) {
-      failE2E02(
-        E2E02_ERROR_CODE.INVALID_CONFIGURATION,
-        "CORE-07 seeding projection categoryId mismatch",
-        { expected: want, actual: got, role: expected.role }
-      );
-    }
+  const wantCategory = normalizeEffectiveScopeId(expected.categoryId);
+  const gotCategory = normalizeEffectiveScopeId(scope.categoryId);
+  if (!scopeIdsExactEqual(wantCategory, gotCategory)) {
+    failE2E02(
+      E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+      "CORE-07 seeding projection categoryId mismatch against effective execution scope",
+      {
+        expected: wantCategory,
+        actual: gotCategory,
+        role: expected.role,
+        CATEGORY_NULL_AS_WILDCARD: false,
+        CROSS_CATEGORY_SEED_PROJECTION: true,
+      }
+    );
   }
 
   const expectedEntryType = mapCompetitionUnitKindToSeedingEntryType(
     expected.competitionUnitKind
   );
-  if (expectedEntryType && scope.entryType) {
-    const got = String(scope.entryType).trim().toUpperCase();
+  if (expectedEntryType) {
+    const got = normalizeEffectiveScopeId(scope.entryType);
+    if (!got) {
+      failE2E02(
+        E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+        "CORE-07 seeding projection missing entryType",
+        { expectedEntryType, role: expected.role }
+      );
+    }
+    const gotUpper = String(got).toUpperCase();
     // ENTRY is a generic competition-entry scope; accept alongside mapped kind.
-    if (got !== expectedEntryType && got !== "ENTRY") {
+    if (gotUpper !== expectedEntryType && gotUpper !== "ENTRY") {
       failE2E02(
         E2E02_ERROR_CODE.INVALID_CONFIGURATION,
         "CORE-07 seeding projection entryType incompatible with competition unit kind",
         {
           expectedEntryType,
-          actual: got,
+          actual: gotUpper,
           competitionUnitKind: expected.competitionUnitKind,
           role: expected.role,
         }
@@ -150,13 +232,18 @@ export function assertCore07ProjectionScopeCompatible(projection, expected) {
 
   if (expected.stageId != null && String(expected.stageId).trim()) {
     const want = String(expected.stageId).trim();
-    const got = scope.stageId == null ? null : String(scope.stageId).trim();
+    const got = normalizeEffectiveScopeId(scope.stageId);
     // Null stageId on projection = competition-wide; allowed for either stage.
     if (got != null && got !== want) {
       failE2E02(
         E2E02_ERROR_CODE.INVALID_CONFIGURATION,
         "CORE-07 seeding projection stageId incompatible with composition stage",
-        { expected: want, actual: got, role: expected.role }
+        {
+          expected: want,
+          actual: got,
+          role: expected.role,
+          WRONG_STAGE_SEED_PROJECTION: true,
+        }
       );
     }
   }
@@ -173,8 +260,8 @@ export function projectionMayServeStage(projectionOrResult, stageId) {
   if (!projectionOrResult || typeof projectionOrResult !== "object") return false;
   const scope =
     projectionOrResult.seedingScope || projectionOrResult.scope || {};
-  const got = scope.stageId == null ? null : String(scope.stageId).trim();
-  if (got == null || got === "") return true;
+  const got = normalizeEffectiveScopeId(scope.stageId);
+  if (got == null) return true;
   return got === String(stageId || "").trim();
 }
 

@@ -53,6 +53,7 @@ export {
   resolveAuthoritativeSeedMapFromCore07,
   selectCore07SeedingProjectionForStage,
   resolveCore07AuthoritativeProjection,
+  resolveEffectiveCompetitionScope,
 } from "./core07SeedingProjection.js";
 
 export { buildGroupDrawSnapshotFromPools } from "./adapters/drawSnapshotFromGroups.js";

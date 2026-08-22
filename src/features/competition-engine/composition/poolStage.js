@@ -13,6 +13,7 @@ import {
 import { buildGroupDrawSnapshotFromPools } from "./adapters/drawSnapshotFromGroups.js";
 import { createPoolStageEvaluatedRules } from "./adapters/evaluatedRulesFromFormat.js";
 import { composePoolGrouping } from "./poolGrouping.js";
+import { resolveEffectiveCompetitionScope } from "./core07SeedingProjection.js";
 import { E2E02_ERROR_CODE, failE2E02 } from "./errors.js";
 import { computeDeterministicFingerprint, deepFreeze } from "./fingerprint.js";
 
@@ -60,12 +61,17 @@ export function composePoolStage(input) {
     knockoutSeedingProjection: input.knockoutSeedingProjection,
   });
 
-  const divisionId = String(input.divisionId || "div-1").trim();
-  const categoryId = input.categoryId ?? null;
+  const effectiveScope = resolveEffectiveCompetitionScope({
+    competitionId: input.competitionId,
+    divisionId: input.divisionId,
+    categoryId: input.categoryId,
+  });
+  const divisionId = effectiveScope.effectiveDivisionId;
+  const categoryId = effectiveScope.effectiveCategoryId;
   const stageId = "stage-pool";
 
   const drawSnapshot = buildGroupDrawSnapshotFromPools({
-    competitionId: input.competitionId,
+    competitionId: effectiveScope.competitionId,
     divisionId,
     categoryId,
     stageId,

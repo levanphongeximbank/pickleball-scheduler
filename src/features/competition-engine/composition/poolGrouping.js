@@ -18,6 +18,7 @@ import {
 } from "./constants.js";
 import {
   resolveAuthoritativeSeedMapFromCore07,
+  resolveEffectiveCompetitionScope,
   selectCore07SeedingProjectionForStage,
 } from "./core07SeedingProjection.js";
 import { E2E02_ERROR_CODE, failE2E02 } from "./errors.js";
@@ -99,6 +100,11 @@ export function composePoolGrouping(input) {
 
   const strategy = input.format.poolStage.groupingStrategy;
   const poolStageId = "stage-pool";
+  const effectiveScope = resolveEffectiveCompetitionScope({
+    competitionId,
+    divisionId: input.divisionId,
+    categoryId: input.categoryId,
+  });
 
   if (applyBypass) {
     // Admission-aware: SNAKE/SEEDED/SERPENTINE require proven CORE-07 group seeding
@@ -127,9 +133,9 @@ export function composePoolGrouping(input) {
         groupProjection,
         normalized.map((p) => p.entryId),
         {
-          competitionId,
-          divisionId: input.divisionId ?? null,
-          categoryId: input.categoryId ?? null,
+          competitionId: effectiveScope.competitionId,
+          divisionId: effectiveScope.effectiveDivisionId,
+          categoryId: effectiveScope.effectiveCategoryId,
           stageId: poolStageId,
           competitionUnitKind: input.competitionUnitKind,
           role: "GROUP",
@@ -169,7 +175,7 @@ export function composePoolGrouping(input) {
   }
 
   const poolCount = resolvePoolCount(normalized.length, input.format);
-  const divisionId = String(input.divisionId || "div-1").trim();
+  const divisionId = effectiveScope.effectiveDivisionId;
   const drawIdentityKey = buildDrawIdentityKey({
     competitionId,
     contextId: `${divisionId}:pool`,

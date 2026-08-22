@@ -21,6 +21,7 @@ import {
 import { rankCrossGroupWildcardCandidates } from "../../competition-core/standings/index.js";
 import {
   resolveAuthoritativeSeedMapFromCore07,
+  resolveEffectiveCompetitionScope,
   selectCore07SeedingProjectionForStage,
 } from "./core07SeedingProjection.js";
 import { E2E02_ERROR_CODE, failE2E02 } from "./errors.js";
@@ -332,13 +333,11 @@ export function composeKnockoutAdmission(input) {
   const competitionId = String(
     input.competitionId || plan.competitionId || ""
   ).trim();
-  if (!competitionId) {
-    failE2E02(
-      E2E02_ERROR_CODE.MISSING_COMPETITION_IDENTITY,
-      "competitionId required for CORE-07 seeding scope validation on admission path",
-      {}
-    );
-  }
+  const effectiveScope = resolveEffectiveCompetitionScope({
+    competitionId,
+    divisionId: input.divisionId ?? plan.divisionId,
+    categoryId: input.categoryId ?? plan.categoryId,
+  });
 
   const knockoutStageId = "stage-knockout";
   const knockoutProjectionInput = selectCore07SeedingProjectionForStage(
@@ -346,15 +345,7 @@ export function composeKnockoutAdmission(input) {
     "KNOCKOUT",
     knockoutStageId
   );
-
-  /** @type {Record<string, number>} */
-  let authSeeds = {};
-  let usedCore07Projection = false;
-
-  if (knockoutProjectionInput) {
-    // Seeds resolved after admission field is known (coverage of admitted only).
-    usedCore07Projection = true;
-  }
+  const usedCore07Projection = Boolean(knockoutProjectionInput);
 
   const precedence = resolveAdmissionSourcePrecedence({
     directEntrants: directEntrants.map((e) => {
@@ -442,13 +433,13 @@ export function composeKnockoutAdmission(input) {
   }
 
   if (usedCore07Projection) {
-    authSeeds = resolveAuthoritativeSeedMapFromCore07(
+    const authSeeds = resolveAuthoritativeSeedMapFromCore07(
       knockoutProjectionInput,
       admitted.map((a) => a.entryId),
       {
-        competitionId,
-        divisionId: input.divisionId ?? plan.divisionId ?? null,
-        categoryId: input.categoryId ?? plan.categoryId ?? null,
+        competitionId: effectiveScope.competitionId,
+        divisionId: effectiveScope.effectiveDivisionId,
+        categoryId: effectiveScope.effectiveCategoryId,
         stageId: knockoutStageId,
         competitionUnitKind: input.competitionUnitKind,
         role: "KNOCKOUT",
