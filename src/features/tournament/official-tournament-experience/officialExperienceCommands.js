@@ -376,6 +376,8 @@ export function projectOfficialParticipants(tournament, { selectedEventId } = {}
  * Competition rules persist onto event.competitionRules (Content-owned).
  * Requires draft.eventId / draft.selectedEventId for rules saves.
  * Does NOT write competition-rule fields into settings.officialCompetition.
+ * Does NOT dual-write settings.eligibilityRules or registration maxEntries
+ * (CONFLICTING_LEGACY_RUNTIME — G1-B/C will switch gates).
  */
 export function buildOfficialSettingsSavePatch(tournament, draft = {}) {
   const nameResult = normalizeOfficialTournamentName(
@@ -423,9 +425,16 @@ export function buildOfficialSettingsSavePatch(tournament, draft = {}) {
     }
 
     try {
+      // Group 1 overlays stay explicit so Save round-trips even when
+      // draft.contentRules is present (outer capacity/eligibility/seeding
+      // must not be dropped). Mutation requires eventId (fail-closed).
       const patched = patchEventContentCompetitionRules(next, eventId, {
         contentRules: draft.contentRules || draft,
         registrationMode: draft.registrationMode,
+        capacity: draft.capacity,
+        seedingPolicy: draft.seedingPolicy,
+        maxParticipants: draft.maxParticipants,
+        maxPairs: draft.maxPairs,
         scoringMethod,
         matchFormat,
         groupCount: draft.groupCount,
@@ -471,7 +480,7 @@ export function buildOfficialSettingsSavePatch(tournament, draft = {}) {
     patch: {
       ...identity,
       events: next.events,
-      // Preserve settings for non-rules tournament fields; do not re-author competition rules here.
+      // Preserve settings blob as-is (legacy fields untouched; not re-authored).
       settings: next.settings,
     },
     contentRulesProperty: CONTENT_COMPETITION_RULES_PROPERTY,

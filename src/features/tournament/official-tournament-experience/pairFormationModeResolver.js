@@ -1,6 +1,8 @@
 /**
  * Wave O3 — Official Pair Formation mode resolver (Screen 06).
  * Pair Formation ≠ Draw. Resolves from officialMode + registrationMode only.
+ * seedingPolicy is NOT an input — Content seeding metadata must not drive
+ * Open individual / fixed-pair formation (see CONTENT_SEEDING_SCOPE).
  */
 
 import { OFFICIAL_MODE } from "../../../models/tournament/constants.js";

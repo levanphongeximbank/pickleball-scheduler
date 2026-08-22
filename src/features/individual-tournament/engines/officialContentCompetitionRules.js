@@ -39,6 +39,48 @@ export const CONTENT_RULES_SOURCE = Object.freeze({
   CANONICAL_SYSTEM_DEFAULT: "CANONICAL_SYSTEM_DEFAULT",
 });
 
+/**
+ * Group 1 (Nội dung & đăng ký) field ownership — G1-A lock.
+ * Event identity fields stay on the Event record; registration/eligibility/
+ * capacity/seeding policy live on events[].competitionRules.
+ */
+export const CONTENT_GROUP1_FIELD_AUTHORITY = Object.freeze({
+  eventName: "EVENT_IDENTITY",
+  eventType: "EVENT_IDENTITY",
+  gender: "DERIVED_FROM_EVENT_TYPE",
+  registrationMode: "CONTENT_COMPETITION_RULES",
+  capacity: "CONTENT_COMPETITION_RULES",
+  eligibility: "CONTENT_COMPETITION_RULES",
+  seedingPolicy: "CONTENT_COMPETITION_RULES_METADATA",
+});
+
+export const CONTENT_CAPACITY_UNIT = Object.freeze({
+  PARTICIPANTS: "PARTICIPANTS",
+  PAIRS: "PAIRS",
+});
+
+/**
+ * Legacy field classification (G1-A). Do not delete; do not re-author as
+ * Content authority on Save. Runtime gate switches deferred to G1-B/C/E.
+ */
+export const LEGACY_GROUP1_FIELD_CLASS = Object.freeze({
+  officialCompetition: "LEGACY_COMPATIBILITY_DRAFT",
+  eligibilityRules: "CONFLICTING_LEGACY_RUNTIME",
+  maxEntries: "CONFLICTING_LEGACY_RUNTIME",
+});
+
+/**
+ * Seeding policy is Content-persisted metadata. It must NOT drive Open
+ * individual pair formation, fixed-pair re-pairing, or Open/AI Balance
+ * group-draw ranking. Bracket/KO placement wiring is a later wave.
+ */
+export const CONTENT_SEEDING_SCOPE = Object.freeze({
+  OPEN_INDIVIDUAL_PAIR_FORMATION: false,
+  OPEN_FIXED_PAIR_REPAIRING: false,
+  OPEN_OR_AI_BALANCE_GROUP_DRAW_RANKING: false,
+  BRACKET_OR_KO_PLACEMENT: "DEFERRED",
+});
+
 function trim(value) {
   return value != null ? String(value).trim() : "";
 }
@@ -84,6 +126,49 @@ function normalizeRegistrationMode(value, fallback = OFFICIAL_REGISTRATION_MODE.
     return OFFICIAL_REGISTRATION_MODE.INDIVIDUAL;
   }
   return fallback;
+}
+
+/**
+ * Unit-safe Content capacity view. Does not collapse PAIRS → PARTICIPANTS.
+ * Adapter B currently still lossily maps both into competitionUnit.maxParticipants
+ * for profile translation only (G1-B may fix representation without Adapter A change).
+ */
+export function normalizeContentCapacity(capacity = {}, registrationMode) {
+  const mode = normalizeRegistrationMode(registrationMode);
+  const maxParticipants = toPositiveInt(capacity?.maxParticipants, null);
+  const maxPairs = toPositiveInt(capacity?.maxPairs, null);
+  const unit =
+    mode === OFFICIAL_REGISTRATION_MODE.PAIR
+      ? CONTENT_CAPACITY_UNIT.PAIRS
+      : CONTENT_CAPACITY_UNIT.PARTICIPANTS;
+  return Object.freeze({
+    unit,
+    maxParticipants,
+    maxPairs,
+    effectiveLimit:
+      unit === CONTENT_CAPACITY_UNIT.PAIRS ? maxPairs : maxParticipants,
+    adapterBLossyCollapseToMaxParticipants: true,
+  });
+}
+
+/**
+ * Seeding is not an Open pair-formation authority. Returns false always for
+ * Open/AI Balance pair formation and registered-pair re-pairing callers.
+ */
+export function isContentSeedingAllowedForPairFormation() {
+  return CONTENT_SEEDING_SCOPE.OPEN_INDIVIDUAL_PAIR_FORMATION === true;
+}
+
+export function assertContentSeedingNotPairFormationAuthority(consumer = "") {
+  if (isContentSeedingAllowedForPairFormation()) return;
+  const label = trim(consumer) || "caller";
+  // Soft guard for future callers — does not throw (would change runtime if thrown today).
+  return {
+    ok: false,
+    code: "SEEDING_NOT_PAIR_FORMATION_AUTHORITY",
+    error: `seedingPolicy must not drive pair formation (${label}). Open individual = RANDOM; fixed pair = registered pair.`,
+    scope: CONTENT_SEEDING_SCOPE,
+  };
 }
 
 function normalizeStageOverrides(input = {}, baseScoring) {
@@ -546,6 +631,10 @@ export function deriveCanonicalDefaultContentRules(options = {}) {
 /**
  * Legacy tournament.settings.officialCompetition → draft for ONE event.
  * Compatibility read only. Not ongoing inheritance. Not auto-persisted.
+ *
+ * eligibility here may be seeded from settings.eligibilityRules
+ * (CONFLICTING_LEGACY_RUNTIME) for draft display only — Content Save must
+ * persist to events[].competitionRules.eligibility, not dual-write back.
  */
 export function deriveLegacyCompatibilityContentRulesDraft(tournament, options = {}) {
   const competition = getOfficialCompetitionSettings(tournament);
@@ -599,12 +688,18 @@ export function deriveLegacyCompatibilityContentRulesDraft(tournament, options =
   );
 }
 
-function resolveExplicitEvent(tournament, eventId) {
+function resolveExplicitEvent(tournament, eventId, options = {}) {
   const events = listTournamentEvents(tournament);
   const wanted = trim(eventId);
+  const allowSoleEventInference = options.allowSoleEventInference !== false;
   if (!wanted) {
-    if (events.length === 1) {
-      return { ok: true, event: events[0], eventId: String(events[0].id), inferredSoleEvent: true };
+    if (allowSoleEventInference && events.length === 1) {
+      return {
+        ok: true,
+        event: events[0],
+        eventId: String(events[0].id),
+        inferredSoleEvent: true,
+      };
     }
     return {
       ok: false,
@@ -623,13 +718,23 @@ function resolveExplicitEvent(tournament, eventId) {
   return { ok: true, event, eventId: wanted, inferredSoleEvent: false };
 }
 
+/** Mutations must never infer sole event / events[0]. */
+function resolveExplicitEventForMutation(tournament, eventId) {
+  return resolveExplicitEvent(tournament, eventId, {
+    allowSoleEventInference: false,
+  });
+}
+
 /**
  * Resolve effective Content rules input for Adapter B / consumers.
  * Explicit Content rules win. Else legacy draft. Else canonical defaults.
  * Never auto-persists.
+ * READ path may infer sole-event when eventId omitted (compatibility).
  */
 export function resolveContentCompetitionRules(tournament, options = {}) {
-  const scoped = resolveExplicitEvent(tournament, options.eventId);
+  const scoped = resolveExplicitEvent(tournament, options.eventId, {
+    allowSoleEventInference: options.allowSoleEventInference !== false,
+  });
   if (!scoped.ok) return scoped;
 
   if (hasExplicitContentCompetitionRules(scoped.event)) {
@@ -660,6 +765,7 @@ export function resolveContentCompetitionRules(tournament, options = {}) {
       source: CONTENT_RULES_SOURCE.LEGACY_COMPATIBILITY_DRAFT,
       persistedSource: "settings.officialCompetition (legacy compatibility only)",
       legacyActiveAuthority: false,
+      legacyClass: LEGACY_GROUP1_FIELD_CLASS.officialCompetition,
       note: "Legacy tournament blob used as draft only until Content Save materializes event.competitionRules.",
     };
   }
@@ -678,13 +784,68 @@ export function resolveContentCompetitionRules(tournament, options = {}) {
 }
 
 /**
+ * Group 1 Content resolver surface (registration / capacity / eligibility / seeding).
+ * Does NOT gate registration. Does NOT read tournament.settings.eligibilityRules
+ * or maxEntries as Content authority.
+ */
+export function resolveContentGroup1Settings(tournament, options = {}) {
+  const resolved = resolveContentCompetitionRules(tournament, {
+    eventId: options.eventId,
+    allowSoleEventInference: options.allowSoleEventInference,
+  });
+  if (!resolved.ok) return resolved;
+
+  const { rules, source, eventId, event, inferredSoleEvent } = resolved;
+  const capacity = normalizeContentCapacity(rules.capacity, rules.registrationMode);
+  return {
+    ok: true,
+    eventId,
+    event,
+    inferredSoleEvent: inferredSoleEvent === true,
+    source,
+    authority: CONTENT_GROUP1_FIELD_AUTHORITY,
+    registrationMode: rules.registrationMode,
+    capacity,
+    eligibility: rules.eligibility,
+    seedingPolicy: rules.seedingPolicy,
+    seedingScope: CONTENT_SEEDING_SCOPE,
+    legacyClassification: LEGACY_GROUP1_FIELD_CLASS,
+    // Observability for future G1-B/C — not a runtime gate.
+    conflictingLegacyRuntime: Object.freeze({
+      eligibilityRules: LEGACY_GROUP1_FIELD_CLASS.eligibilityRules,
+      maxEntries: LEGACY_GROUP1_FIELD_CLASS.maxEntries,
+    }),
+  };
+}
+
+/** Content eligibility bounds only. Does not switch registrationEngine. */
+export function resolveContentEligibilityBounds(tournament, options = {}) {
+  const group1 = resolveContentGroup1Settings(tournament, options);
+  if (!group1.ok) return group1;
+  return {
+    ok: true,
+    eventId: group1.eventId,
+    source: group1.source,
+    authority: CONTENT_GROUP1_FIELD_AUTHORITY.eligibility,
+    eligibility: group1.eligibility,
+    ratingValueAuthority: "CANONICAL_RATING_ADAPTER",
+    legacyRuntimeCompatibility: LEGACY_GROUP1_FIELD_CLASS.eligibilityRules,
+  };
+}
+
+/**
  * Persist Content rules onto ONE event. Does not touch other events.
  * Does not write tournament.settings.officialCompetition competition-rule fields.
+ * Does not dual-write tournament.settings.eligibilityRules or registration maxEntries.
  *
  * Prefer draft.contentRules (full object) when provided by Settings UI.
+ * Outer Group 1 overlays (registrationMode/capacity/eligibility/seedingPolicy)
+ * still apply so Save round-trips even when both contentRules + overlays are passed.
+ *
+ * MUTATION requires explicit eventId (no sole-event inference / no events[0]).
  */
 export function patchEventContentCompetitionRules(tournament, eventId, patch = {}) {
-  const scoped = resolveExplicitEvent(tournament, eventId);
+  const scoped = resolveExplicitEventForMutation(tournament, eventId);
   if (!scoped.ok) {
     const err = new Error(scoped.error || "EVENT_REQUIRED");
     err.code = scoped.code || "EVENT_REQUIRED";
@@ -695,19 +856,40 @@ export function patchEventContentCompetitionRules(tournament, eventId, patch = {
     ? normalizeContentCompetitionRules(
         scoped.event[CONTENT_COMPETITION_RULES_PROPERTY]
       )
-    : resolveContentCompetitionRules(tournament, { eventId: scoped.eventId }).rules;
+    : resolveContentCompetitionRules(tournament, {
+        eventId: scoped.eventId,
+        allowSoleEventInference: false,
+      }).rules;
 
-  const draftSource =
+  const contentBlob =
     patch.contentRules && typeof patch.contentRules === "object"
       ? patch.contentRules
-      : patch;
+      : null;
+  const draftSource = contentBlob || patch;
+
+  const mergedCapacity = {
+    ...current.capacity,
+    ...(draftSource.capacity || {}),
+    ...(patch.capacity || {}),
+  };
+  // Preserve unit fields; do not invent maxEntries or collapse pairs→participants.
+  if (Object.prototype.hasOwnProperty.call(patch, "maxParticipants")) {
+    mergedCapacity.maxParticipants = patch.maxParticipants;
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, "maxPairs")) {
+    mergedCapacity.maxPairs = patch.maxPairs;
+  }
 
   const mergedInput = {
     ...current,
     ...draftSource,
-    registrationMode: draftSource.registrationMode ?? current.registrationMode,
-    capacity: { ...current.capacity, ...(draftSource.capacity || {}) },
-    seedingPolicy: draftSource.seedingPolicy ?? current.seedingPolicy,
+    registrationMode:
+      patch.registrationMode ??
+      draftSource.registrationMode ??
+      current.registrationMode,
+    capacity: mergedCapacity,
+    seedingPolicy:
+      patch.seedingPolicy ?? draftSource.seedingPolicy ?? current.seedingPolicy,
     matchScoring: {
       ...current.matchScoring,
       ...(draftSource.matchScoring || {}),
@@ -758,12 +940,31 @@ export function patchEventContentCompetitionRules(tournament, eventId, patch = {
     eligibility: {
       ...current.eligibility,
       ...(draftSource.eligibility || {}),
-      minLevel: draftSource.minLevel ?? draftSource.eligibility?.minLevel ?? current.eligibility.minLevel,
-      maxLevel: draftSource.maxLevel ?? draftSource.eligibility?.maxLevel ?? current.eligibility.maxLevel,
+      ...(patch.eligibility || {}),
+      minLevel:
+        patch.minLevel ??
+        patch.eligibility?.minLevel ??
+        draftSource.minLevel ??
+        draftSource.eligibility?.minLevel ??
+        current.eligibility.minLevel,
+      maxLevel:
+        patch.maxLevel ??
+        patch.eligibility?.maxLevel ??
+        draftSource.maxLevel ??
+        draftSource.eligibility?.maxLevel ??
+        current.eligibility.maxLevel,
       minRating:
-        draftSource.minRating ?? draftSource.eligibility?.minRating ?? current.eligibility.minRating,
+        patch.minRating ??
+        patch.eligibility?.minRating ??
+        draftSource.minRating ??
+        draftSource.eligibility?.minRating ??
+        current.eligibility.minRating,
       maxRating:
-        draftSource.maxRating ?? draftSource.eligibility?.maxRating ?? current.eligibility.maxRating,
+        patch.maxRating ??
+        patch.eligibility?.maxRating ??
+        draftSource.maxRating ??
+        draftSource.eligibility?.maxRating ??
+        current.eligibility.maxRating,
     },
     inGroupTieBreak: {
       ...current.inGroupTieBreak,
@@ -815,10 +1016,21 @@ export function patchEventContentCompetitionRules(tournament, eventId, patch = {
     tournament: {
       ...tournament,
       events: nextEvents,
+      // Intentionally omit settings.eligibilityRules / registration maxEntries /
+      // officialCompetition re-authoring — Content Save is event.competitionRules only.
     },
     eventId: scoped.eventId,
     rules: nextRules,
     source: CONTENT_RULES_SOURCE.CONTENT_EXPLICIT,
+    group1: {
+      registrationMode: nextRules.registrationMode,
+      capacity: normalizeContentCapacity(
+        nextRules.capacity,
+        nextRules.registrationMode
+      ),
+      eligibility: nextRules.eligibility,
+      seedingPolicy: nextRules.seedingPolicy,
+    },
   };
 }
 
@@ -846,10 +1058,48 @@ export function resolveContentGroupCount(tournament, options = {}) {
   return resolved.rules.groupStage.groupCount;
 }
 
+/**
+ * Registration mode for Content. Prefer explicit eventId.
+ * Return value shape unchanged (string) so pairing/runtime callers stay stable.
+ * Use resolveContentRegistrationModeDetailed for source observability (G1-A).
+ *
+ * Resolution sources (detailed):
+ *   CONTENT_EXPLICIT | LEGACY_COMPATIBILITY_DRAFT | CANONICAL_SYSTEM_DEFAULT
+ */
 export function resolveContentRegistrationMode(tournament, options = {}) {
+  const detailed = resolveContentRegistrationModeDetailed(tournament, options);
+  return detailed.registrationMode;
+}
+
+export function resolveContentRegistrationModeDetailed(tournament, options = {}) {
   const resolved = resolveContentCompetitionRules(tournament, {
     eventId: options.eventId,
+    allowSoleEventInference: options.allowSoleEventInference,
   });
-  if (!resolved.ok) return OFFICIAL_REGISTRATION_MODE.INDIVIDUAL;
-  return resolved.rules.registrationMode;
+  if (!resolved.ok) {
+    return {
+      ok: false,
+      code: resolved.code,
+      error: resolved.error,
+      registrationMode: OFFICIAL_REGISTRATION_MODE.INDIVIDUAL,
+      source: CONTENT_RULES_SOURCE.CANONICAL_SYSTEM_DEFAULT,
+      resolutionClass: "DEFAULT",
+      authority: CONTENT_GROUP1_FIELD_AUTHORITY.registrationMode,
+    };
+  }
+  const resolutionClass =
+    resolved.source === CONTENT_RULES_SOURCE.CONTENT_EXPLICIT
+      ? "CONTENT"
+      : resolved.source === CONTENT_RULES_SOURCE.LEGACY_COMPATIBILITY_DRAFT
+        ? "LEGACY_COMPATIBILITY"
+        : "DEFAULT";
+  return {
+    ok: true,
+    eventId: resolved.eventId,
+    inferredSoleEvent: resolved.inferredSoleEvent === true,
+    registrationMode: resolved.rules.registrationMode,
+    source: resolved.source,
+    resolutionClass,
+    authority: CONTENT_GROUP1_FIELD_AUTHORITY.registrationMode,
+  };
 }

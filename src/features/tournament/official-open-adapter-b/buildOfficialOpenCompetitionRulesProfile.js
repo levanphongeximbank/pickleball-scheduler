@@ -182,6 +182,10 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
     Number(rules.roundTargets?.[OFFICIAL_ROUND_SCORE_KEY.GROUP]) ||
     CANONICAL_OFFICIAL_POINTS_TO_WIN_DEFAULT;
 
+  // G1-A: LOSSY Adapter B capacity mapping (runtime unchanged).
+  // Content authority keeps unit truth: INDIVIDUAL → capacity.maxParticipants,
+  // FIXED_PAIR → capacity.maxPairs. Profile contract only has maxParticipants,
+  // so FIXED_PAIR maxPairs is collapsed here. Fix deferred to G1-B.
   const unit = {
     ...mapCompetitionUnit(event, rules.registrationMode),
     minParticipants: null,
