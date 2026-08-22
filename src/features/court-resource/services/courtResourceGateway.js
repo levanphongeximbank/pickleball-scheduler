@@ -33,7 +33,7 @@ import {
   buildTournamentReservationId,
   isActiveTournamentReservation,
   isTournamentReservation,
-} from "../legacy/index.js";
+} from "../adapters/legacyReservationAdapter.js";
 import {
   defaultLegacyGatewaySubstrateDeps,
 } from "../legacy/gatewayLegacyDeps.js";

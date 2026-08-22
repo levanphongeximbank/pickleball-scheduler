@@ -31,9 +31,8 @@ export {
   projectLegacyCourtCompatibility,
 } from "../services/legacyCourtCompatibilityProjection.js";
 
-export {
-  planLegacyBookingMigrationDryRun,
-} from "../services/legacyBookingMigrationDryRun.js";
+// Node-only booking migration dry-run (createHash) is intentionally NOT
+// re-exported here — import the leaf module from Court Ops Node scripts only.
 
 export {
   planLegacyLiveStateMigrationDryRun,
