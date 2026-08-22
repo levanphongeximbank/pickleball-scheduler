@@ -277,6 +277,9 @@ describe("OFFICIAL_OPEN_CANONICAL_RULES_ADAPTER_B_ADOPTION_01", () => {
     const winBy = resolveOfficialEffectiveCapability(
       COMPETITION_RULES_CAPABILITY_ID.WIN_BY
     );
+    const pointCap = resolveOfficialEffectiveCapability(
+      COMPETITION_RULES_CAPABILITY_ID.POINT_CAP
+    );
     const changeEnd = resolveOfficialEffectiveCapability(
       COMPETITION_RULES_CAPABILITY_ID.CHANGE_END
     );
@@ -291,6 +294,7 @@ describe("OFFICIAL_OPEN_CANONICAL_RULES_ADAPTER_B_ADOPTION_01", () => {
     assert.equal(bo1.effectiveSelectable, true);
     assert.equal(bo3.effectiveSelectable, false);
     assert.equal(winBy.effectiveSelectable, true);
+    assert.equal(pointCap.effectiveSelectable, true);
     assert.equal(changeEnd.effectiveSelectable, false);
     assert.equal(wildcard.failClosed, true);
 
@@ -300,6 +304,7 @@ describe("OFFICIAL_OPEN_CANONICAL_RULES_ADAPTER_B_ADOPTION_01", () => {
     assert.equal(projected.scoringCapabilities.rally, true);
     assert.equal(projected.scoringCapabilities.sideOut, true);
     assert.equal(projected.scoringCapabilities.bestOf3, false);
+    assert.equal(projected.scoringCapabilities.pointCap, true);
     assert.equal(projected.rulesAdoption.ok, true);
     assert.equal(projected.rulesAdoption.qualification.wildcardSlots, 2);
     assert.equal(projected.rulesAdoption.wildcardFailClosed, true);

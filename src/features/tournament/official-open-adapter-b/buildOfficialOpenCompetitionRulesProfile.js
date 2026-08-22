@@ -261,9 +261,7 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
           changeEnd.changeEndsAtPoints != null &&
           Number(changeEnd.changeEndsAtPoints) >= 1
             ? Math.floor(Number(changeEnd.changeEndsAtPoints))
-            : scoringMethodRequested === SCORING_METHOD.RALLY
-              ? 11
-              : null,
+            : null,
         changeEndsBetweenGames: changeEnd.changeEndsBetweenGames !== false,
         decidingGameChangeEndsAt:
           changeEnd.decidingGameChangeEndsAt != null &&

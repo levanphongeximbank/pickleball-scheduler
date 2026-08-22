@@ -336,6 +336,7 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
   const base = draft?.matchScoring || {};
   const win = base.winCondition || {};
   const baseChange = base.changeEnd || {};
+  const pointCapUnsupported = scoringCaps.pointCap !== true;
   const changeUnsupported = scoringCaps.changeEnd !== true;
 
   const cellSelectSx = {
@@ -541,7 +542,8 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                         select
                         fullWidth
                         value={pointCapOn ? "on" : "off"}
-                        disabled={disabled}
+                        disabled={disabled || pointCapUnsupported}
+                        title={pointCapUnsupported ? "Chưa vận hành đầy đủ" : undefined}
                         onChange={(e) =>
                           updateStage(
                             row.key,
@@ -564,8 +566,14 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                             : ""
                         }
                         placeholder="—"
-                        disabled={disabled || !pointCapOn}
-                        title={!pointCapOn ? "Chỉ áp dụng khi bật điểm trần" : undefined}
+                        disabled={disabled || pointCapUnsupported || !pointCapOn}
+                        title={
+                          pointCapUnsupported
+                            ? "Chưa vận hành đầy đủ"
+                            : !pointCapOn
+                              ? "Chỉ áp dụng khi bật điểm trần"
+                              : undefined
+                        }
                         onChange={(e) =>
                           updateStage(
                             row.key,
@@ -575,7 +583,7 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                         }
                         sx={{
                           ...cellSelectSx,
-                          ...(!pointCapOn ? inactiveControlSx : null),
+                          ...(!pointCapOn || pointCapUnsupported ? inactiveControlSx : null),
                         }}
                         inputProps={{ min: 1 }}
                       />
@@ -1448,7 +1456,10 @@ export default function OfficialContentFormatSettingsPanel({
                             ? "on"
                             : "off"
                         }
-                        disabled={disabled}
+                        disabled={disabled || scoringCaps.pointCap !== true}
+                        title={
+                          scoringCaps.pointCap !== true ? "Chưa vận hành đầy đủ" : undefined
+                        }
                         onChange={(e) =>
                           patch(
                             "matchScoring.winCondition.pointCapEnabled",
@@ -1470,12 +1481,16 @@ export default function OfficialContentFormatSettingsPanel({
                         }
                         placeholder="—"
                         disabled={
-                          disabled || !draft.matchScoring?.winCondition?.pointCapEnabled
+                          disabled ||
+                          scoringCaps.pointCap !== true ||
+                          !draft.matchScoring?.winCondition?.pointCapEnabled
                         }
                         title={
-                          !draft.matchScoring?.winCondition?.pointCapEnabled
-                            ? "Chỉ áp dụng khi bật điểm trần"
-                            : undefined
+                          scoringCaps.pointCap !== true
+                            ? "Chưa vận hành đầy đủ"
+                            : !draft.matchScoring?.winCondition?.pointCapEnabled
+                              ? "Chỉ áp dụng khi bật điểm trần"
+                              : undefined
                         }
                         helperText={
                           !draft.matchScoring?.winCondition?.pointCapEnabled
@@ -1491,7 +1506,8 @@ export default function OfficialContentFormatSettingsPanel({
                         }
                         sx={{
                           flex: 1,
-                          ...(!draft.matchScoring?.winCondition?.pointCapEnabled
+                          ...(scoringCaps.pointCap !== true ||
+                          !draft.matchScoring?.winCondition?.pointCapEnabled
                             ? inactiveControlSx
                             : null),
                         }}

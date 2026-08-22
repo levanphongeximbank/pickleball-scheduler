@@ -80,6 +80,12 @@ export const OFFICIAL_CLASSIC_EXECUTION_BINDING = Object.freeze({
     bindingGap: false,
     bindingGapReason: null,
   }),
+  [COMPETITION_RULES_CAPABILITY_ID.POINT_CAP]: Object.freeze({
+    policy: CAPABILITY_STATE.SUPPORTED,
+    execution: CAPABILITY_STATE.SUPPORTED,
+    bindingGap: false,
+    bindingGapReason: null,
+  }),
   [COMPETITION_RULES_CAPABILITY_ID.CHANGE_END]: Object.freeze({
     policy: CAPABILITY_STATE.SUPPORTED,
     execution: CAPABILITY_STATE.PARTIAL,

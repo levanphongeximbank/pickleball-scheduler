@@ -261,19 +261,19 @@ describe("official-open-tournament-phase2c-owner-visual-01", () => {
     assert.equal(entry.playerIds[0], "p9");
   });
 
-  it("Side-out remains fail-closed; backend package required; no new default yet", () => {
-    assert.equal(SIDEOUT_OPERATIONAL, false);
-    assert.equal(SIDEOUT_SELECTION_FAIL_CLOSED, true);
-    assert.equal(SIDEOUT_BACKEND_PACKAGE_REQUIRED, true);
+  it("Side-out remains operational/selectable while new Content defaults Rally", () => {
+    assert.equal(SIDEOUT_OPERATIONAL, true);
+    assert.equal(SIDEOUT_SELECTION_FAIL_CLOSED, false);
+    assert.equal(SIDEOUT_BACKEND_PACKAGE_REQUIRED, false);
     assert.equal(SIDEOUT_DEFAULT_FOR_NEW_TOURNAMENT, false);
     assert.equal(SIDEOUT_SHARED_EXTRACTION_RECONCILE_AFTER_PR418, false);
-    assert.equal(INTENDED_NEW_TOURNAMENT_SCORING_METHOD, OFFICIAL_SCORING_METHOD.SIDE_OUT);
+    assert.equal(INTENDED_NEW_TOURNAMENT_SCORING_METHOD, OFFICIAL_SCORING_METHOD.RALLY);
     assert.equal(resolveNewOfficialTournamentScoringDefault(), OFFICIAL_SCORING_METHOD.RALLY);
 
     const t = patchOfficialCompetitionSettings(baseTournament(), {
       scoringMethod: OFFICIAL_SCORING_METHOD.SIDE_OUT,
     });
-    assert.equal(getOfficialCompetitionSettings(t).scoringMethod, OFFICIAL_SCORING_METHOD.RALLY);
+    assert.equal(getOfficialCompetitionSettings(t).scoringMethod, OFFICIAL_SCORING_METHOD.SIDE_OUT);
 
     const rallyKept = patchOfficialCompetitionSettings(baseTournament(), {
       scoringMethod: OFFICIAL_SCORING_METHOD.RALLY,

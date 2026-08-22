@@ -73,27 +73,31 @@ describe("official-open-tournament-phase2b-hardening-01", () => {
     assert.equal(rules.targetPoints, DEFAULT_TIME_PREDICTION.pointsToWin);
   });
 
-  it("B. rally is the only operable scoring method", () => {
+  it("B. Rally remains operational and resolves with explicit Content identity", () => {
     let t = patchOfficialCompetitionSettings(baseTournament(), {
       scoringMethod: OFFICIAL_SCORING_METHOD.RALLY,
     });
     assert.equal(getOfficialCompetitionSettings(t).scoringMethod, "rally");
-    const rules = resolveOfficialMatchScoringRules(t, { stage: "final" });
+    const rules = resolveOfficialMatchScoringRules(t, {
+      stage: "final",
+      eventId: "ev1",
+    });
     assert.equal(rules.scoringMethod, "rally");
     assert.match(rules.summaryLabel, /Rally/);
   });
 
-  it("C. side-out selection fail-closed — cannot activate as operable mode", () => {
-    assert.equal(SIDEOUT_OPERATIONAL, false);
-    assert.equal(SIDEOUT_SELECTION_FAIL_CLOSED, true);
-    assert.equal(SIDEOUT_POINT_BY_POINT_RUNTIME_BLOCKED, true);
+  it("C. Side-out is operational and explicit selection remains Side-out", () => {
+    assert.equal(SIDEOUT_OPERATIONAL, true);
+    assert.equal(SIDEOUT_SELECTION_FAIL_CLOSED, false);
+    assert.equal(SIDEOUT_POINT_BY_POINT_RUNTIME_BLOCKED, false);
     const t = patchOfficialCompetitionSettings(baseTournament(), {
       scoringMethod: OFFICIAL_SCORING_METHOD.SIDE_OUT,
     });
-    assert.equal(getOfficialCompetitionSettings(t).scoringMethod, "rally");
+    assert.equal(getOfficialCompetitionSettings(t).scoringMethod, "side_out");
     assert.equal(
-      resolveOfficialMatchScoringRules(t, { stage: "group" }).scoringMethod,
-      "rally"
+      resolveOfficialMatchScoringRules(t, { stage: "group", eventId: "ev1" })
+        .scoringMethod,
+      "side_out"
     );
   });
 
@@ -186,9 +190,9 @@ describe("official-open-tournament-phase2b-hardening-01", () => {
     assert.equal(REFEREE_SCORING_RULE_TRANSPORT_BLOCKED, true);
   });
 
-  it("G. groupCount single authority under officialCompetition", () => {
+  it("G. legacy Group 2 patch does not restore tournament rule authority", () => {
     const t = patchOfficialCompetitionSettings(baseTournament(), { groupCount: 6 });
-    assert.equal(getOfficialCompetitionSettings(t).groupCount, 6);
+    assert.equal(getOfficialCompetitionSettings(t).groupCount, 4);
     assert.equal(t.settings.officialCompetition.maxIndividualLevel, undefined);
     assert.equal(t.settings.officialCompetition.maxPairLevel, undefined);
   });
@@ -209,17 +213,20 @@ describe("official-open-tournament-phase2b-hardening-01", () => {
     assert.equal("maxIndividualLevel" in competition, false);
   });
 
-  it("I. F5 hydration of settings", () => {
+  it("I. legacy scoring override hydrates without restoring Group 2 authority", () => {
+    const explicitLegacyFinalOverride = 15;
     let t = patchOfficialCompetitionSettings(baseTournament(), {
       registrationMode: OFFICIAL_REGISTRATION_MODE.INDIVIDUAL,
       scoringMethod: OFFICIAL_SCORING_METHOD.RALLY,
-      roundTargets: { [OFFICIAL_ROUND_SCORE_KEY.FINAL]: 15 },
+      roundTargets: {
+        [OFFICIAL_ROUND_SCORE_KEY.FINAL]: explicitLegacyFinalOverride,
+      },
       groupCount: 3,
     });
     const hydrated = getOfficialCompetitionSettings(JSON.parse(JSON.stringify(t)));
     assert.equal(hydrated.registrationMode, "individual");
-    assert.equal(hydrated.roundTargets.final, 15);
-    assert.equal(hydrated.groupCount, 3);
+    assert.equal(hydrated.roundTargets.final, explicitLegacyFinalOverride);
+    assert.equal(hydrated.groupCount, 4);
   });
 
   it("scoring consumers share one resolver target", () => {
@@ -230,18 +237,35 @@ describe("official-open-tournament-phase2b-hardening-01", () => {
         final: 21,
       },
     });
-    const organizer = resolveOfficialMatchScoringRules(t, { stage: "group" });
-    const refereeSame = resolveOfficialMatchScoringRules(t, { stage: "group", groupId: "A" });
+    const organizer = resolveOfficialMatchScoringRules(t, {
+      stage: "group",
+      eventId: "ev1",
+    });
+    const refereeSame = resolveOfficialMatchScoringRules(t, {
+      stage: "group",
+      groupId: "A",
+      eventId: "ev1",
+    });
     assert.equal(organizer.targetPoints, refereeSame.targetPoints);
     assert.equal(organizer.scoringMethod, refereeSame.scoringMethod);
     assert.equal(validateOfficialFinishedScore(organizer, 11, 9).ok, true);
-    assert.equal(validateOfficialFinishedScore(organizer, 11, 10).ok, true);
+    assert.equal(validateOfficialFinishedScore(organizer, 11, 10).ok, false);
     assert.equal(
-      resolveOfficialMatchScoringRules(t, { roundName: "Chung ket" }).targetPoints,
+      resolveOfficialMatchScoringRules(t, {
+        roundName: "Chung ket",
+        eventId: "ev1",
+      }).targetPoints,
       21
     );
-    assert.equal(resolveOfficialMatchScoringRules(t, { stage: "group" }).winBy, null);
-    assert.equal(resolveOfficialMatchScoringRules(t, { stage: "group" }).winByPolicyDeferred, true);
+    assert.equal(
+      resolveOfficialMatchScoringRules(t, { stage: "group", eventId: "ev1" }).winBy,
+      2
+    );
+    assert.equal(
+      resolveOfficialMatchScoringRules(t, { stage: "group", eventId: "ev1" })
+        .winByPolicyDeferred,
+      false
+    );
   });
 
   it("bridge does not mutate stageLabel with scoring summary", async () => {

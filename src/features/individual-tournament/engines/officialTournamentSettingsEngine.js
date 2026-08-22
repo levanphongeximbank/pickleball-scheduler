@@ -110,13 +110,10 @@ export const DEFAULT_OFFICIAL_ROUND_TARGETS = Object.freeze({
 
 export const DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP = 2;
 
-/**
- * Product intent: NEW Official/Open defaults to Side-out once runtime is operational.
- * Until SIDEOUT_OPERATIONAL=true, operable default remains Rally (fail-closed).
- */
-export const INTENDED_NEW_TOURNAMENT_SCORING_METHOD = OFFICIAL_SCORING_METHOD.SIDE_OUT;
 export const DEFAULT_OFFICIAL_SCORING_METHOD = OFFICIAL_SCORING_METHOD.RALLY;
-export const SIDEOUT_DEFAULT_FOR_NEW_TOURNAMENT = true;
+/** Product decision G3-PD-01: new Official/Open Content defaults to Rally. */
+export const INTENDED_NEW_TOURNAMENT_SCORING_METHOD = DEFAULT_OFFICIAL_SCORING_METHOD;
+export const SIDEOUT_DEFAULT_FOR_NEW_TOURNAMENT = false;
 export const SIDEOUT_BACKEND_PACKAGE_REQUIRED = false;
 export const SIDEOUT_SHARED_EXTRACTION_RECONCILE_AFTER_PR418 = false;
 export const SIDEOUT_BACKEND_PACKAGE_PATH =

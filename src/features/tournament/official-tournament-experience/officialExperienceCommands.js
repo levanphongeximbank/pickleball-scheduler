@@ -185,6 +185,9 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
       winBy: resolveOfficialEffectiveCapability(
         COMPETITION_RULES_CAPABILITY_ID.WIN_BY
       ).effectiveSelectable,
+      pointCap: resolveOfficialEffectiveCapability(
+        COMPETITION_RULES_CAPABILITY_ID.POINT_CAP
+      ).effectiveSelectable,
       changeEnd: resolveOfficialEffectiveCapability(
         COMPETITION_RULES_CAPABILITY_ID.CHANGE_END
       ).effectiveSelectable,

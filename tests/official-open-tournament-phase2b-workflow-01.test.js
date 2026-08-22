@@ -92,51 +92,65 @@ describe("official-open-tournament-phase2b-workflow-01", () => {
     assert.equal(deriveLegacyOfficialRegistrationMode(t), OFFICIAL_REGISTRATION_MODE.INDIVIDUAL);
   });
 
-  it("settings: scoringMethod + round targets persist/hydrate", () => {
+  it("legacy fixture: explicit Side-out and explicit 15-point overrides persist/hydrate", () => {
+    const explicitOverrideTarget = 15;
     let t = baseTournament();
     t = patchOfficialCompetitionSettings(t, {
       scoringMethod: OFFICIAL_SCORING_METHOD.SIDE_OUT,
       roundTargets: {
         [OFFICIAL_ROUND_SCORE_KEY.GROUP]: 11,
-        [OFFICIAL_ROUND_SCORE_KEY.FINAL]: 15,
-        [OFFICIAL_ROUND_SCORE_KEY.QUARTERFINAL]: 15,
+        [OFFICIAL_ROUND_SCORE_KEY.FINAL]: explicitOverrideTarget,
+        [OFFICIAL_ROUND_SCORE_KEY.QUARTERFINAL]: explicitOverrideTarget,
       },
       groupCount: 4,
     });
     const s = getOfficialCompetitionSettings(t);
-    // Side-out is fail-closed: persisted operable method remains rally.
-    assert.equal(s.scoringMethod, "rally");
+    assert.equal(s.scoringMethod, "side_out");
     assert.equal(s.roundTargets.group, 11);
-    assert.equal(s.roundTargets.final, 15);
-    assert.equal(s.roundTargets.quarterfinal, 15);
+    assert.equal(s.roundTargets.final, explicitOverrideTarget);
+    assert.equal(s.roundTargets.quarterfinal, explicitOverrideTarget);
     assert.equal(s.groupCount, 4);
   });
 
-  it("scoring resolver: round-specific target + method summary shared", () => {
+  it("legacy compatibility resolver: explicit stage overrides are non-default fixtures", () => {
+    const explicitOverrideTarget = 15;
     const t = patchOfficialCompetitionSettings(baseTournament(), {
       scoringMethod: OFFICIAL_SCORING_METHOD.RALLY,
       roundTargets: {
         group: 11,
         round_of_16: 11,
-        quarterfinal: 15,
-        semifinal: 15,
-        final: 15,
+        quarterfinal: explicitOverrideTarget,
+        semifinal: explicitOverrideTarget,
+        final: explicitOverrideTarget,
       },
     });
-    const group = resolveOfficialMatchScoringRules(t, { stage: "group", groupId: "A" });
+    const group = resolveOfficialMatchScoringRules(t, {
+      stage: "group",
+      groupId: "A",
+      eventId: "ev1",
+    });
     assert.equal(group.targetPoints, 11);
     assert.match(group.summaryLabel, /11 điểm/);
-    assert.equal(resolveOfficialMatchScoringRules(t, { roundName: "Vong 16" }).targetPoints, 11);
-    const qf = resolveOfficialMatchScoringRules(t, { roundName: "Tu ket" });
+    assert.equal(
+      resolveOfficialMatchScoringRules(t, { roundName: "Vong 16", eventId: "ev1" })
+        .targetPoints,
+      11
+    );
+    const qf = resolveOfficialMatchScoringRules(t, {
+      roundName: "Tu ket",
+      eventId: "ev1",
+    });
     assert.equal(qf.roundKey, OFFICIAL_ROUND_SCORE_KEY.QUARTERFINAL);
-    assert.equal(qf.targetPoints, 15);
-    const finalRule = resolveOfficialMatchScoringRules(t, { stage: "final" });
-    assert.equal(finalRule.targetPoints, 15);
-    assert.equal(SIDEOUT_POINT_BY_POINT_RUNTIME_BLOCKED, true);
+    assert.equal(qf.targetPoints, explicitOverrideTarget);
+    const finalRule = resolveOfficialMatchScoringRules(t, {
+      stage: "final",
+      eventId: "ev1",
+    });
+    assert.equal(finalRule.targetPoints, explicitOverrideTarget);
+    assert.equal(SIDEOUT_POINT_BY_POINT_RUNTIME_BLOCKED, false);
     assert.equal(validateOfficialFinishedScore(group, 5, 3).ok, false);
     assert.equal(validateOfficialFinishedScore(group, 11, 7).ok, true);
-    // Official has no win-by authority — 11-10 is valid once target is reached.
-    assert.equal(validateOfficialFinishedScore(group, 11, 10).ok, true);
+    assert.equal(validateOfficialFinishedScore(group, 11, 10).ok, false);
     assert.equal(validateOfficialFinishedScore(group, 12, 10).ok, true);
   });
 

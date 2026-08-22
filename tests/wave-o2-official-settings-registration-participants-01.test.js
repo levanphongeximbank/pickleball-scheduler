@@ -124,10 +124,12 @@ describe("wave-o2-official-settings-registration-participants-01", () => {
     assert.equal(settings.scoringCapabilities.rally, true);
     assert.equal(settings.scoringCapabilities.sideOut, SIDEOUT_OPERATIONAL);
     assert.equal(settings.scoringCapabilities.bestOf3, BEST_OF_3_OPERATIONAL);
-    assert.equal(settings.scoringCapabilities.winBy, false);
+    assert.equal(settings.scoringCapabilities.winBy, true);
+    assert.equal(settings.scoringCapabilities.pointCap, true);
     assert.equal(settings.scoringCapabilities.changeEnd, false);
 
     const saved = buildOfficialSettingsSavePatch(tournament, {
+      eventId: "ev-a",
       name: "Official O2 Renamed",
       hostClubName: "CLB B",
       officialMode: OFFICIAL_MODE.OPEN,
@@ -141,20 +143,30 @@ describe("wave-o2-official-settings-registration-participants-01", () => {
     assert.equal(saved.ok, true);
     assert.equal(saved.patch.name, "Official O2 Renamed");
     assert.ok(saved.patch.settings.officialCompetition);
-    assert.equal(saved.patch.settings.officialCompetition.groupCount, 6);
+    assert.equal(saved.patch.settings.officialCompetition.groupCount, 4);
+    assert.equal(
+      saved.patch.events.find((event) => event.id === "ev-a").competitionRules.groupStage
+        .groupCount,
+      6
+    );
     assert.equal(saved.authority, OFFICIAL_EXPERIENCE_AUTHORITY.OFFICIAL_SETTINGS);
 
     const sideOutBlocked = buildOfficialSettingsSavePatch(tournament, {
+      eventId: "ev-a",
       name: "X",
       scoringMethod: OFFICIAL_SCORING_METHOD.SIDE_OUT,
       matchFormat: OFFICIAL_MATCH_FORMAT.BEST_OF_1,
     });
-    if (!SIDEOUT_OPERATIONAL) {
-      assert.equal(sideOutBlocked.ok, false);
-      assert.equal(sideOutBlocked.code, "SIDE_OUT_UNSUPPORTED");
-    }
+    assert.equal(SIDEOUT_OPERATIONAL, true);
+    assert.equal(sideOutBlocked.ok, true);
+    assert.equal(
+      sideOutBlocked.patch.events.find((event) => event.id === "ev-a").competitionRules
+        .matchScoring.scoringMethod,
+      OFFICIAL_SCORING_METHOD.SIDE_OUT
+    );
 
     const bestOf3Blocked = buildOfficialSettingsSavePatch(tournament, {
+      eventId: "ev-a",
       name: "X",
       scoringMethod: OFFICIAL_SCORING_METHOD.RALLY,
       matchFormat: OFFICIAL_MATCH_FORMAT.BEST_OF_3,
