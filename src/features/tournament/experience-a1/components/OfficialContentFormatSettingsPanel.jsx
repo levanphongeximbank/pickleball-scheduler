@@ -6,8 +6,12 @@
 
 import { useMemo, useState } from "react";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -325,21 +329,22 @@ const inactiveControlSx = {
 function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringCaps }) {
   const base = draft?.matchScoring || {};
   const win = base.winCondition || {};
+  const baseChange = base.changeEnd || {};
+  const changeUnsupported = scoringCaps.changeEnd !== true;
 
   const cellSelectSx = {
     width: "100%",
-    "& .MuiInputBase-root": { fontSize: 12, bgcolor: "#fff" },
-    "& .MuiSelect-select": { py: 0.45, pr: "28px !important" },
-    "& .MuiInputBase-input": { py: 0.45, px: 0.75 },
+    "& .MuiInputBase-root": { fontSize: 11.5, bgcolor: "#fff" },
+    "& .MuiSelect-select": { py: 0.4, pr: "24px !important" },
+    "& .MuiInputBase-input": { py: 0.4, px: 0.5 },
   };
 
   return (
     <Box>
       <Box
         sx={{
-          // Desktop (lg+): fit center workspace — no forced min-width scroll.
-          // Tablet/mobile: controlled horizontal scroll inside this container only.
-          overflowX: { xs: "auto", lg: "visible" },
+          // 10 columns: controlled scroll below xl; prefer fit at 1920 (xl).
+          overflowX: { xs: "auto", xl: "visible" },
           border: `1px solid ${TOURNAMENT_COLOR.divider}`,
           borderRadius: "8px",
           WebkitOverflowScrolling: "touch",
@@ -349,36 +354,38 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
           component="table"
           sx={{
             width: "100%",
-            minWidth: { xs: 560, lg: 0 },
+            minWidth: { xs: 860, xl: 0 },
             tableLayout: "fixed",
             borderCollapse: "collapse",
             "& th, & td": {
               borderBottom: `1px solid ${TOURNAMENT_COLOR.divider}`,
-              px: { xs: 0.5, lg: 0.4 },
-              py: 0.65,
+              px: { xs: 0.4, xl: 0.35 },
+              py: 0.55,
               textAlign: "left",
               verticalAlign: "middle",
-              fontSize: 12,
+              fontSize: 11.5,
             },
             "& th": {
               bgcolor: "#F8FAFC",
               fontWeight: 700,
               color: TOURNAMENT_COLOR.textMuted,
               whiteSpace: "normal",
-              lineHeight: 1.2,
-              fontSize: 11,
+              lineHeight: 1.15,
+              fontSize: 10.5,
             },
           }}
         >
           <colgroup>
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "11%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "8%" }} />
             <col style={{ width: "12%" }} />
-            <col style={{ width: "13%" }} />
+            <col style={{ width: "8%" }} />
             <col style={{ width: "10%" }} />
-            <col style={{ width: "10%" }} />
-            <col style={{ width: "10%" }} />
-            <col style={{ width: "10%" }} />
-            <col style={{ width: "18%" }} />
-            <col style={{ width: "17%" }} />
+            <col style={{ width: "16%" }} />
           </colgroup>
           <thead>
             <tr>
@@ -389,6 +396,8 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
               <th>Win-by</th>
               <th>Cách biệt</th>
               <th>Điểm trần</th>
+              <th>Đổi bên</th>
+              <th>Điểm đổi bên</th>
               <th>Ghi chú</th>
             </tr>
           </thead>
@@ -402,7 +411,7 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                     <td>
                       <Typography sx={{ fontWeight: 700, fontSize: 12 }}>{row.label}</Typography>
                     </td>
-                    <td colSpan={6}>
+                    <td colSpan={8}>
                       <StatusBadge label="Dùng rule cơ sở" tone="ok" />
                     </td>
                     <td>
@@ -410,7 +419,7 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                         size="small"
                         disabled={disabled}
                         onClick={() => updateStage(row.key, "inheritBase", false)}
-                        sx={{ fontSize: 11, textTransform: "none", minWidth: 0, px: 0.75 }}
+                        sx={{ fontSize: 11, textTransform: "none", minWidth: 0, px: 0.5 }}
                       >
                         Ghi đè
                       </Button>
@@ -422,6 +431,8 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                 (stage.winCondition?.winByEnabled ?? win.winByEnabled) !== false;
               const pointCapOn =
                 (stage.winCondition?.pointCapEnabled ?? win.pointCapEnabled) === true;
+              const changeOn =
+                (stage.changeEnd?.changeEndsEnabled ?? baseChange.changeEndsEnabled) === true;
               return (
                 <tr key={row.key}>
                   <td>
@@ -518,7 +529,7 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                     />
                   </td>
                   <td>
-                    <Stack spacing={0.35}>
+                    <Stack spacing={0.3}>
                       <TextField
                         size="small"
                         select
@@ -565,6 +576,64 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
                     </Stack>
                   </td>
                   <td>
+                    <TextField
+                      size="small"
+                      select
+                      fullWidth
+                      value={changeOn ? "on" : "off"}
+                      disabled={disabled || changeUnsupported}
+                      title={
+                        changeUnsupported
+                          ? "Chưa vận hành đầy đủ"
+                          : "Đổi bên / đổi đầu sân"
+                      }
+                      onChange={(e) =>
+                        updateStage(
+                          row.key,
+                          "changeEnd.changeEndsEnabled",
+                          e.target.value === "on"
+                        )
+                      }
+                      sx={cellSelectSx}
+                    >
+                      <MenuItem value="on">Có</MenuItem>
+                      <MenuItem value="off">Không</MenuItem>
+                    </TextField>
+                  </td>
+                  <td>
+                    <TextField
+                      size="small"
+                      type="number"
+                      fullWidth
+                      value={
+                        changeOn
+                          ? (stage.changeEnd?.changeEndsAtPoints ??
+                            baseChange.changeEndsAtPoints ??
+                            "")
+                          : ""
+                      }
+                      placeholder="—"
+                      disabled={disabled || changeUnsupported || !changeOn}
+                      title={
+                        !changeOn
+                          ? "Chỉ áp dụng khi bật đổi bên"
+                          : "Đổi phía thi đấu trong cùng một sân; không phải chuyển trận sang sân vật lý khác."
+                      }
+                      onChange={(e) =>
+                        updateStage(
+                          row.key,
+                          "changeEnd.changeEndsAtPoints",
+                          e.target.value === "" ? null : Number(e.target.value)
+                        )
+                      }
+                      sx={{
+                        ...cellSelectSx,
+                        ...(!changeOn || changeUnsupported ? inactiveControlSx : null),
+                      }}
+                      inputProps={{ min: 1 }}
+                    />
+                  </td>
+                  <td>
                     <Button
                       size="small"
                       disabled={disabled}
@@ -590,7 +659,8 @@ function StageRuleTable({ draft, disabled, updateStage, resetAllStages, scoringC
         </Box>
       </Box>
       <Alert severity="info" sx={{ mt: 1, py: 0.5, fontSize: 12 }}>
-        Nếu một giai đoạn để trống, hệ thống sẽ dùng rule cơ sở của Nội dung.
+        Nếu một giai đoạn để trống, hệ thống sẽ dùng rule cơ sở của Nội dung. Đổi bên = đổi phía /
+        đổi đầu sân trong cùng một sân — không phải chuyển sân vật lý.
       </Alert>
       <Stack direction="row" justifyContent="flex-end" sx={{ mt: 1 }}>
         <Button
@@ -725,6 +795,7 @@ export default function OfficialContentFormatSettingsPanel({
           matchFormat: prev.matchScoring?.matchFormat,
           targetPoints: prev.matchScoring?.targetPoints || 11,
           winCondition: { ...(prev.matchScoring?.winCondition || {}) },
+          changeEnd: { ...(prev.matchScoring?.changeEnd || {}) },
         };
       } else {
         current.inheritBase = false;
@@ -780,10 +851,23 @@ export default function OfficialContentFormatSettingsPanel({
         : pointCapEnabled
           ? pointCap
           : null;
+    const changeOn =
+      stage?.inheritBase === false && stage?.changeEnd?.changeEndsEnabled != null
+        ? stage.changeEnd.changeEndsEnabled === true
+        : draft?.matchScoring?.changeEnd?.changeEndsEnabled === true;
+    const changeAt =
+      stage?.inheritBase === false && stage?.changeEnd?.changeEndsAtPoints != null
+        ? stage.changeEnd.changeEndsAtPoints
+        : draft?.matchScoring?.changeEnd?.changeEndsAtPoints;
     const series = "BO1";
+    const changeText = changeOn
+      ? changeAt != null
+        ? ` – đổi bên tại ${changeAt}`
+        : " – có đổi bên"
+      : "";
     return {
       label: row.label,
-      text: `${series} – ${pts} điểm – thắng cách biệt ${margin}${cap != null ? ` – điểm trần ${cap}` : ""}`,
+      text: `${series} – ${pts} điểm – thắng cách biệt ${margin}${cap != null ? ` – điểm trần ${cap}` : ""}${changeText}`,
     };
   });
 
@@ -1165,11 +1249,15 @@ export default function OfficialContentFormatSettingsPanel({
             Nhóm 3. Luật trận đấu & đổi bên
           </Typography>
           <Typography sx={{ fontSize: 13, color: TOURNAMENT_COLOR.textMuted, mb: 1.5 }}>
-            Cấu hình cách tính điểm, thể thức trận và quy tắc đổi bên theo từng giai đoạn thi đấu.
+            Cấu hình toàn bộ luật trận đấu của Nội dung, bao gồm cách tính điểm, thể thức, điểm
+            thắng, thắng cách biệt, điểm trần và đổi bên theo từng giai đoạn thi đấu.
           </Typography>
 
           <WorkspaceCard title="A. Rule cơ sở của Nội dung">
             <Stack spacing={1.25}>
+              <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted }}>
+                Một hồ sơ luật trận đầy đủ của Nội dung (bao gồm đổi bên / đổi đầu sân).
+              </Typography>
               <CompactField label="Cách tính điểm">
                 <RadioGroup
                   row
@@ -1196,7 +1284,7 @@ export default function OfficialContentFormatSettingsPanel({
                 </RadioGroup>
               </CompactField>
 
-              <CompactField label="Thể thức trận">
+              <CompactField label="Thể thức">
                 <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" useFlexGap>
                   <RadioGroup
                     row
@@ -1230,8 +1318,8 @@ export default function OfficialContentFormatSettingsPanel({
               </CompactField>
 
               <Grid container spacing={1}>
-                <Grid size={{ xs: 6, sm: 3 }}>
-                  <CompactField label="Điểm thắng mỗi game">
+                <Grid size={{ xs: 6, sm: 3, md: 1.5 }}>
+                  <CompactField label="Điểm thắng">
                     <TextField
                       size="small"
                       fullWidth
@@ -1244,7 +1332,7 @@ export default function OfficialContentFormatSettingsPanel({
                     />
                   </CompactField>
                 </Grid>
-                <Grid size={{ xs: 6, sm: 3 }}>
+                <Grid size={{ xs: 6, sm: 3, md: 1.5 }}>
                   <CompactField label="Win-by">
                     <TextField
                       size="small"
@@ -1266,7 +1354,7 @@ export default function OfficialContentFormatSettingsPanel({
                     </TextField>
                   </CompactField>
                 </Grid>
-                <Grid size={{ xs: 6, sm: 3 }}>
+                <Grid size={{ xs: 6, sm: 3, md: 1.5 }}>
                   <CompactField label="Cách biệt">
                     <TextField
                       size="small"
@@ -1304,7 +1392,7 @@ export default function OfficialContentFormatSettingsPanel({
                     />
                   </CompactField>
                 </Grid>
-                <Grid size={{ xs: 6, sm: 3 }}>
+                <Grid size={{ xs: 6, sm: 3, md: 2.5 }}>
                   <CompactField label="Điểm trần">
                     <Stack direction="row" spacing={0.75} alignItems="flex-start">
                       <TextField
@@ -1322,7 +1410,7 @@ export default function OfficialContentFormatSettingsPanel({
                             e.target.value === "on"
                           )
                         }
-                        sx={{ minWidth: 88 }}
+                        sx={{ minWidth: 80 }}
                       >
                         <MenuItem value="on">Có</MenuItem>
                         <MenuItem value="off">Không</MenuItem>
@@ -1366,6 +1454,76 @@ export default function OfficialContentFormatSettingsPanel({
                     </Stack>
                   </CompactField>
                 </Grid>
+                <Grid size={{ xs: 6, sm: 3, md: 1.5 }}>
+                  <CompactField label="Đổi bên">
+                    <TextField
+                      size="small"
+                      fullWidth
+                      select
+                      value={
+                        draft.matchScoring?.changeEnd?.changeEndsEnabled === true ? "on" : "off"
+                      }
+                      disabled={disabled || scoringCaps.changeEnd !== true}
+                      title="Đổi bên / đổi đầu sân"
+                      onChange={(e) =>
+                        patch(
+                          "matchScoring.changeEnd.changeEndsEnabled",
+                          e.target.value === "on"
+                        )
+                      }
+                      helperText={
+                        scoringCaps.changeEnd !== true ? "Chưa vận hành đầy đủ" : " "
+                      }
+                      FormHelperTextProps={{ sx: { mx: 0, minHeight: 18 } }}
+                    >
+                      <MenuItem value="on">Có</MenuItem>
+                      <MenuItem value="off">Không</MenuItem>
+                    </TextField>
+                  </CompactField>
+                </Grid>
+                <Grid size={{ xs: 6, sm: 3, md: 2 }}>
+                  <CompactField label="Điểm đổi bên">
+                    <TextField
+                      size="small"
+                      fullWidth
+                      type="number"
+                      value={
+                        draft.matchScoring?.changeEnd?.changeEndsEnabled === true
+                          ? (draft.matchScoring?.changeEnd?.changeEndsAtPoints ?? "")
+                          : ""
+                      }
+                      placeholder="—"
+                      disabled={
+                        disabled ||
+                        scoringCaps.changeEnd !== true ||
+                        draft.matchScoring?.changeEnd?.changeEndsEnabled !== true
+                      }
+                      title={
+                        draft.matchScoring?.changeEnd?.changeEndsEnabled !== true
+                          ? "Chỉ áp dụng khi bật đổi bên"
+                          : "Đổi phía thi đấu trong cùng một sân; không phải chuyển trận sang sân vật lý khác."
+                      }
+                      helperText={
+                        draft.matchScoring?.changeEnd?.changeEndsEnabled !== true
+                          ? "Chỉ áp dụng khi bật đổi bên"
+                          : "11→6 · 15→8 · 21→11"
+                      }
+                      FormHelperTextProps={{ sx: { mx: 0, minHeight: 18 } }}
+                      onChange={(e) =>
+                        patch(
+                          "matchScoring.changeEnd.changeEndsAtPoints",
+                          e.target.value === "" ? null : Number(e.target.value)
+                        )
+                      }
+                      sx={
+                        draft.matchScoring?.changeEnd?.changeEndsEnabled !== true ||
+                        scoringCaps.changeEnd !== true
+                          ? inactiveControlSx
+                          : undefined
+                      }
+                    />
+                  </CompactField>
+                </Grid>
               </Grid>
 
               <Alert
@@ -1378,8 +1536,76 @@ export default function OfficialContentFormatSettingsPanel({
                   "& .MuiAlert-icon": { color: TOURNAMENT_COLOR.primary },
                 }}
               >
-                {infoTie}
+                {infoTie} Đổi bên = đổi phía thi đấu trong cùng một sân; không phải chuyển trận
+                sang sân vật lý khác.
               </Alert>
+
+              <Accordion
+                disableGutters
+                elevation={0}
+                sx={{
+                  border: `1px solid ${TOURNAMENT_COLOR.divider}`,
+                  borderRadius: "8px !important",
+                  "&:before": { display: "none" },
+                }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography sx={{ fontWeight: 700, fontSize: 13 }}>
+                      Nâng cao — Đổi bên
+                    </Typography>
+                    {scoringCaps.changeEnd !== true ? (
+                      <StatusBadge label="Chưa vận hành đầy đủ" tone="warn" />
+                    ) : null}
+                  </Stack>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Typography sx={{ fontSize: 12, color: TOURNAMENT_COLOR.textMuted, mb: 1 }}>
+                    Đổi bên / đổi đầu sân — không phải đổi sân vật lý (Sân 1 → Sân 2).
+                  </Typography>
+                  <Grid container spacing={1.25}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <TextField
+                        size="small"
+                        fullWidth
+                        select
+                        label="Đổi bên giữa các game"
+                        value={
+                          draft.matchScoring?.changeEnd?.changeEndsBetweenGames !== false
+                            ? "yes"
+                            : "no"
+                        }
+                        disabled={disabled || scoringCaps.changeEnd !== true}
+                        onChange={(e) =>
+                          patch(
+                            "matchScoring.changeEnd.changeEndsBetweenGames",
+                            e.target.value === "yes"
+                          )
+                        }
+                      >
+                        <MenuItem value="yes">Có</MenuItem>
+                        <MenuItem value="no">Không</MenuItem>
+                      </TextField>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <TextField
+                        size="small"
+                        fullWidth
+                        type="number"
+                        label="Game quyết định đổi bên tại điểm"
+                        value={draft.matchScoring?.changeEnd?.decidingGameChangeEndsAt ?? ""}
+                        disabled={disabled || scoringCaps.changeEnd !== true}
+                        onChange={(e) =>
+                          patch(
+                            "matchScoring.changeEnd.decidingGameChangeEndsAt",
+                            e.target.value === "" ? null : Number(e.target.value)
+                          )
+                        }
+                      />
+                    </Grid>
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
             </Stack>
           </WorkspaceCard>
 
@@ -1393,105 +1619,8 @@ export default function OfficialContentFormatSettingsPanel({
             />
           </WorkspaceCard>
 
-          
-          {(() => {
-            const changeUnsupported = scoringCaps.changeEnd !== true;
-            return (
-              <WorkspaceCard
-                title="C. Đổi bên / đổi đầu sân"
-                action={
-                  changeUnsupported ? (
-                    <StatusBadge label="Chưa vận hành đầy đủ" tone="warn" />
-                  ) : null
-                }
-              >
-                <Typography sx={{ fontSize: 12.5, color: TOURNAMENT_COLOR.textMuted, mb: 1.25 }}>
-                  Đổi phía thi đấu trong cùng một sân; không phải chuyển trận sang sân vật lý khác.
-                </Typography>
-                <Grid container spacing={1.25}>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <TextField
-                      size="small"
-                      fullWidth
-                      select
-                      label="Có đổi bên"
-                      value={draft.matchScoring?.changeEnd?.changeEndsEnabled === true ? "on" : "off"}
-                      disabled={disabled || changeUnsupported}
-                      onChange={(e) =>
-                        patch("matchScoring.changeEnd.changeEndsEnabled", e.target.value === "on")
-                      }
-                    >
-                      <MenuItem value="on">Có</MenuItem>
-                      <MenuItem value="off">Không</MenuItem>
-                    </TextField>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <TextField
-                      size="small"
-                      fullWidth
-                      type="number"
-                      label="Điểm đổi bên"
-                      value={draft.matchScoring?.changeEnd?.changeEndsAtPoints ?? ""}
-                      disabled={
-                        disabled ||
-                        changeUnsupported ||
-                        !draft.matchScoring?.changeEnd?.changeEndsEnabled
-                      }
-                      onChange={(e) =>
-                        patch(
-                          "matchScoring.changeEnd.changeEndsAtPoints",
-                          e.target.value === "" ? null : Number(e.target.value)
-                        )
-                      }
-                      helperText="11 điểm → đổi tại 6 · 15 → 8 · 21 → 11"
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <TextField
-                      size="small"
-                      fullWidth
-                      select
-                      label="Đổi bên giữa các game"
-                      value={
-                        draft.matchScoring?.changeEnd?.changeEndsBetweenGames !== false
-                          ? "yes"
-                          : "no"
-                      }
-                      disabled={disabled || changeUnsupported}
-                      onChange={(e) =>
-                        patch(
-                          "matchScoring.changeEnd.changeEndsBetweenGames",
-                          e.target.value === "yes"
-                        )
-                      }
-                    >
-                      <MenuItem value="yes">Có</MenuItem>
-                      <MenuItem value="no">Không</MenuItem>
-                    </TextField>
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <TextField
-                      size="small"
-                      fullWidth
-                      type="number"
-                      label="Game quyết định đổi bên tại điểm"
-                      value={draft.matchScoring?.changeEnd?.decidingGameChangeEndsAt ?? ""}
-                      disabled={disabled || changeUnsupported}
-                      onChange={(e) =>
-                        patch(
-                          "matchScoring.changeEnd.decidingGameChangeEndsAt",
-                          e.target.value === "" ? null : Number(e.target.value)
-                        )
-                      }
-                    />
-                  </Grid>
-                </Grid>
-              </WorkspaceCard>
-            );
-          })()}
-
           <Box sx={{ ...cardSx }}>
-            <Typography sx={{ fontWeight: 800, fontSize: 14, mb: 1 }}>D. Ví dụ minh họa</Typography>
+            <Typography sx={{ fontWeight: 800, fontSize: 14, mb: 1 }}>C. Ví dụ minh họa</Typography>
             <Grid container spacing={1.5}>
               <Grid size={{ xs: 12, md: 7 }}>
                 <Stack spacing={0.75}>
@@ -1500,6 +1629,12 @@ export default function OfficialContentFormatSettingsPanel({
                       <strong>{line.label}:</strong> {line.text}
                     </Typography>
                   ))}
+                  <Typography sx={{ fontSize: 12.5, mt: 0.5 }}>
+                    <strong>Đổi bên:</strong> 11 điểm → đổi tại 6 · 15 → 8 · 21 → 11
+                  </Typography>
+                  <Typography sx={{ fontSize: 12.5 }}>
+                    Trận BO1, Rally, 15 điểm, thắng cách biệt 2, đổi bên khi một bên đạt 8 điểm.
+                  </Typography>
                 </Stack>
               </Grid>
               <Grid size={{ xs: 12, md: 5 }}>
@@ -2060,6 +2195,16 @@ export default function OfficialContentFormatSettingsPanel({
               .includes("BEST_OF_3")
               ? "Best of 3"
               : "Best of 1"
+          }
+        />
+        <InfoRow
+          label="Đổi bên"
+          value={
+            draft.matchScoring?.changeEnd?.changeEndsEnabled === true
+              ? draft.matchScoring?.changeEnd?.changeEndsAtPoints != null
+                ? `Có · tại ${draft.matchScoring.changeEnd.changeEndsAtPoints} điểm`
+                : "Có"
+              : "Không"
           }
         />
         <Stack spacing={0.55} sx={{ mt: 0.75 }}>
