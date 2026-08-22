@@ -4,21 +4,13 @@ import { useSearchParams } from "react-router-dom";
 import {
   Box,
   Button,
-  Chip,
+  Checkbox,
   FormControl,
   FormControlLabel,
-  Checkbox,
   InputLabel,
   MenuItem,
-  Paper,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
 } from "@mui/material";
@@ -41,6 +33,25 @@ import { usePlatformRuntime } from "../../core/platform/app/usePlatformRuntime.j
 import { buildRuntimeAccessState } from "../../core/platform/app/runtimeAccess.js";
 import BookingForm from "./BookingForm.jsx";
 import BookingDetail from "./BookingDetail.jsx";
+import {
+  AuthFilterBar,
+  AuthPageHeader,
+  AuthResponsiveDataView,
+  StatusToneChip,
+} from "../../features/web-app-ui/index.js";
+
+const BOOKING_TONE_BY_MUI_COLOR = Object.freeze({
+  default: "neutral",
+  primary: "primary",
+  info: "info",
+  success: "success",
+  warning: "warning",
+  error: "error",
+});
+
+function resolveBookingTone(color) {
+  return BOOKING_TONE_BY_MUI_COLOR[color] || "neutral";
+}
 
 export default function BookingList({ clubId, tenantId = null, courts = [], bookings = [], onRefresh }) {
   const runtime = usePlatformRuntime();
@@ -168,14 +179,124 @@ export default function BookingList({ clubId, tenantId = null, courts = [], book
       });
   }, [bookings, dateFilter, showAllDates, search, typeFilter, paymentFilter, statusFilter, sortBy]);
 
+  const columns = useMemo(
+    () => [
+      { field: "bookingCode", headerName: "Mã" },
+      { field: "customerName", headerName: "Khách" },
+      {
+        field: "bookingType",
+        headerName: "Loại",
+        render: (booking) => BOOKING_TYPE_LABELS[booking.bookingType] || booking.bookingType,
+      },
+      { field: "courtName", headerName: "Sân" },
+      {
+        field: "time",
+        headerName: "Thời gian",
+        render: (booking) => (
+          <Stack spacing={0.25}>
+            <Typography variant="body2">{formatDisplayDate(booking.date)}</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {formatTimeRange(booking.startTime, booking.endTime)}
+            </Typography>
+          </Stack>
+        ),
+      },
+      {
+        field: "totalAmount",
+        headerName: "Tổng tiền",
+        render: (booking) => `${formatCurrency(booking.totalAmount)} đ`,
+      },
+      {
+        field: "bookingStatus",
+        headerName: "Trạng thái",
+        render: (booking) => {
+          const display = getBookingDisplayStatus(booking);
+          return (
+            <StatusToneChip
+              label={display.label}
+              tone={resolveBookingTone(display.color)}
+            />
+          );
+        },
+      },
+      {
+        field: "paymentStatus",
+        headerName: "Thanh toán",
+        render: (booking) => {
+          const remaining = getRemainingAmount(booking.totalAmount, booking.paidAmount);
+          return (
+            <Box>
+              <Typography variant="body2">
+                {PAYMENT_STATUS_LABELS[booking.paymentStatus] || booking.paymentStatus}
+              </Typography>
+              {remaining > 0 && (
+                <Typography variant="caption" display="block" color="error.main">
+                  Nợ {formatCurrency(remaining)} đ
+                </Typography>
+              )}
+            </Box>
+          );
+        },
+      },
+    ],
+    []
+  );
+
   return (
     <Box>
-      <Stack spacing={2} sx={{ mb: 2 }}>
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={2}
-          alignItems={{ xs: "stretch", sm: "center" }}
-        >
+      <AuthPageHeader
+        title="Booking sân"
+        subtitle="Quản lý booking theo đúng sân, khách hàng, khung giờ và trạng thái nghiệp vụ."
+        status={
+          <StatusToneChip
+            label={`Quyền runtime: ${accessAllowed ? "được phép" : "bị từ chối"}`}
+            tone={accessAllowed ? "success" : "warning"}
+          />
+        }
+        primaryAction={
+          <PermissionGate
+            permissions={[PERMISSIONS.BOOKING_CREATE, PERMISSIONS.BOOKING_UPDATE]}
+          >
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                if (!accessAllowed) {
+                  return;
+                }
+                setFormOpen(true);
+              }}
+            >
+              Tạo booking
+            </Button>
+          </PermissionGate>
+        }
+        secondaryActions={
+          <Button
+            variant="outlined"
+            onClick={() =>
+              downloadTextFile(
+                `booking-${dateFilter || "all"}.csv`,
+                buildBookingsCsv(filtered)
+              )
+            }
+          >
+            Xuất CSV
+          </Button>
+        }
+      />
+
+      <AuthFilterBar
+        search={
+          <TextField
+            label="Tìm khách, SĐT hoặc mã booking"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            fullWidth
+          />
+        }
+        dateControls={
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
           <TextField
             label="Lọc theo ngày"
             type="date"
@@ -194,15 +315,26 @@ export default function BookingList({ clubId, tenantId = null, courts = [], book
             }
             label="Tất cả ngày"
           />
-          <TextField
-            label="Tìm khách / SĐT / mã"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            sx={{ flex: 1 }}
-          />
-          <FormControl sx={{ minWidth: 160 }}>
-            <InputLabel>Trạng thái</InputLabel>
+          </Stack>
+        }
+        filters={
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "minmax(0, 1fr)",
+                sm: "repeat(2, minmax(160px, 1fr))",
+                lg: "repeat(4, minmax(160px, 1fr))",
+              },
+              gap: 1,
+              width: "100%",
+              minWidth: 0,
+            }}
+          >
+          <FormControl sx={{ minWidth: 0 }}>
+            <InputLabel id="booking-status-filter-label">Trạng thái</InputLabel>
             <Select
+              labelId="booking-status-filter-label"
               label="Trạng thái"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value)}
@@ -213,9 +345,10 @@ export default function BookingList({ clubId, tenantId = null, courts = [], book
               <MenuItem value="cancelled">Hủy / No-show</MenuItem>
             </Select>
           </FormControl>
-          <FormControl sx={{ minWidth: 160 }}>
-            <InputLabel>Thanh toán</InputLabel>
+          <FormControl sx={{ minWidth: 0 }}>
+            <InputLabel id="booking-payment-filter-label">Thanh toán</InputLabel>
             <Select
+              labelId="booking-payment-filter-label"
               label="Thanh toán"
               value={paymentFilter}
               onChange={(event) => setPaymentFilter(event.target.value)}
@@ -226,9 +359,10 @@ export default function BookingList({ clubId, tenantId = null, courts = [], book
               <MenuItem value="paid">Đã thanh toán</MenuItem>
             </Select>
           </FormControl>
-          <FormControl sx={{ minWidth: 160 }}>
-            <InputLabel>Sắp xếp</InputLabel>
+          <FormControl sx={{ minWidth: 0 }}>
+            <InputLabel id="booking-sort-filter-label">Sắp xếp</InputLabel>
             <Select
+              labelId="booking-sort-filter-label"
               label="Sắp xếp"
               value={sortBy}
               onChange={(event) => setSortBy(event.target.value)}
@@ -239,9 +373,10 @@ export default function BookingList({ clubId, tenantId = null, courts = [], book
               <MenuItem value="customer">Tên khách A–Z</MenuItem>
             </Select>
           </FormControl>
-          <FormControl sx={{ minWidth: 160 }}>
-            <InputLabel>Loại booking</InputLabel>
+          <FormControl sx={{ minWidth: 0 }}>
+            <InputLabel id="booking-type-filter-label">Loại booking</InputLabel>
             <Select
+              labelId="booking-type-filter-label"
               label="Loại booking"
               value={typeFilter}
               onChange={(event) => setTypeFilter(event.target.value)}
@@ -254,89 +389,28 @@ export default function BookingList({ clubId, tenantId = null, courts = [], book
               ))}
             </Select>
           </FormControl>
-          <Button variant="outlined" onClick={() => downloadTextFile(`booking-${dateFilter || "all"}.csv`, buildBookingsCsv(filtered))}>
-            Xuất CSV
-          </Button>
-          <Chip
+          </Box>
+        }
+        resultCount={filtered.length}
+        resultCountLabel="booking"
+      />
+
+      <AuthResponsiveDataView
+        columns={columns}
+        rows={filtered}
+        getRowId={(booking) => booking.id}
+        emptyTitle="Không có booking phù hợp"
+        emptyDescription="Hãy điều chỉnh bộ lọc hoặc tạo booking mới."
+        renderRowActions={(booking) => (
+          <Button
             size="small"
-            label={`Runtime access: ${accessAllowed ? "allowed" : "denied"}`}
-            color={accessAllowed ? "success" : "warning"}
-          />
-          <PermissionGate
-            permissions={[PERMISSIONS.BOOKING_CREATE, PERMISSIONS.BOOKING_UPDATE]}
+            onClick={() => setDetailBooking(booking)}
+            aria-label={`Xem chi tiết booking ${booking.bookingCode || booking.id}`}
           >
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => { if (!accessAllowed) { return; } setFormOpen(true); }}>
-              Tạo booking
-            </Button>
-          </PermissionGate>
-        </Stack>
-      </Stack>
-
-      <TableContainer component={Paper} elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Mã</TableCell>
-              <TableCell>Khách</TableCell>
-              <TableCell>Loại</TableCell>
-              <TableCell>Sân</TableCell>
-              <TableCell>Thời gian</TableCell>
-              <TableCell>Tổng tiền</TableCell>
-              <TableCell>Trạng thái</TableCell>
-              <TableCell>Thanh toán</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filtered.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={8}>
-                  <Typography color="text.secondary" sx={{ py: 2, textAlign: "center" }}>
-                    Không có booking phù hợp.
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            )}
-
-            {filtered.map((booking) => {
-              const display = getBookingDisplayStatus(booking);
-              const remaining = getRemainingAmount(booking.totalAmount, booking.paidAmount);
-
-              return (
-                <TableRow
-                  key={booking.id}
-                  hover
-                  sx={{ cursor: "pointer" }}
-                  onClick={() => setDetailBooking(booking)}
-                >
-                  <TableCell>{booking.bookingCode}</TableCell>
-                  <TableCell>{booking.customerName}</TableCell>
-                  <TableCell>
-                    {BOOKING_TYPE_LABELS[booking.bookingType] || booking.bookingType}
-                  </TableCell>
-                  <TableCell>{booking.courtName}</TableCell>
-                  <TableCell>
-                    {formatDisplayDate(booking.date)}
-                    <br />
-                    {formatTimeRange(booking.startTime, booking.endTime)}
-                  </TableCell>
-                  <TableCell>{formatCurrency(booking.totalAmount)} đ</TableCell>
-                  <TableCell>
-                    <Chip size="small" label={display.label} color={display.color} />
-                  </TableCell>
-                  <TableCell>
-                    {PAYMENT_STATUS_LABELS[booking.paymentStatus]}
-                    {remaining > 0 && (
-                      <Typography variant="caption" display="block" color="error.main">
-                        Nợ {formatCurrency(remaining)} đ
-                      </Typography>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            Xem chi tiết
+          </Button>
+        )}
+      />
 
       <BookingForm
         open={formOpen}

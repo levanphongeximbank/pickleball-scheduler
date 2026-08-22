@@ -295,6 +295,10 @@ export default function CourtManagementLayout() {
   const tabIndex = resolveTabIndex(location.pathname, visibleTabs);
 
   const isHomeTab = visibleTabs[tabIndex]?.path === "/court-management";
+  const hasAdoptedPageHeader = [
+    "/court-management/calendar",
+    "/court-management/bookings",
+  ].includes(location.pathname);
 
 
 
@@ -302,7 +306,7 @@ export default function CourtManagementLayout() {
 
     <Box>
 
-      {!isHomeTab && (
+      {!isHomeTab && !hasAdoptedPageHeader && (
 
         <Stack spacing={1} sx={{ mb: 3 }}>
 

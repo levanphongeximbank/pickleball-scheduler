@@ -58,14 +58,20 @@ export default function CourtCalendarToolbar({
   const todayLabel = view === "month" ? "Tháng này" : view === "week" ? "Tuần này" : "Hôm nay";
 
   return (
-    <Box sx={{ mb: 2 }}>
+    <Box sx={{ mb: 2, width: "100%", minWidth: 0 }}>
       <Stack
         direction={{ xs: "column", lg: "row" }}
         spacing={2}
         alignItems={{ xs: "stretch", lg: "center" }}
         justifyContent="space-between"
       >
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          useFlexGap
+          sx={{ flexWrap: "wrap", minWidth: 0 }}
+        >
           <Button variant="outlined" size="small" startIcon={<ChevronLeftIcon />} onClick={onPrev}>
             {prevLabel}
           </Button>
@@ -80,7 +86,13 @@ export default function CourtCalendarToolbar({
           </Typography>
         </Stack>
 
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          useFlexGap
+          sx={{ flexWrap: "wrap", minWidth: 0 }}
+        >
           {clustersEnabled && (
             <FormControl size="small" sx={{ minWidth: 180 }}>
               <InputLabel id="calendar-cluster-label">Cụm sân</InputLabel>
@@ -109,11 +121,12 @@ export default function CourtCalendarToolbar({
               bgcolor: "background.paper",
               border: CALENDAR_SHELL.cardBorder,
               borderRadius: 2,
+              maxWidth: "100%",
               "& .MuiToggleButton-root": {
                 textTransform: "none",
                 fontWeight: 600,
                 border: 0,
-                px: 1.5,
+                px: { xs: 1, sm: 1.5 },
               },
               "& .Mui-selected": {
                 color: CALENDAR_SHELL.primary,
@@ -134,7 +147,12 @@ export default function CourtCalendarToolbar({
         </Stack>
       </Stack>
 
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.5 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        useFlexGap
+        sx={{ mt: 1.5, flexWrap: "wrap", minWidth: 0 }}
+      >
         <Chip
           size="small"
           label={`${kpis.bookableCount}/${kpis.totalCourts} sân hoạt động`}
