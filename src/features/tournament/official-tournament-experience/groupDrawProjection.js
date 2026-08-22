@@ -28,6 +28,7 @@ import {
 } from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
 import {
   assertContentSeedingNotGroupDrawAuthority,
+  resolveContentGroup2Settings,
   resolveContentGroupCount,
   resolveContentRegistrationMode,
 } from "../../individual-tournament/engines/officialContentCompetitionRules.js";
@@ -434,10 +435,13 @@ export function projectOfficialGroupDraw(tournament, { selectedEventId } = {}) {
     ? projectOfficialGroupDrawUnitMetrics(tournament, { selectedEventId: event.id })
     : null;
   const sub = event ? projectOfficialDrawSubsteps(tournament, event.id) : null;
-  const competition = getOfficialCompetitionSettings(tournament);
-  const contentGroupCount = event
-    ? resolveContentGroupCount(tournament, { eventId: event.id })
-    : competition.groupCount;
+  const group2 = event
+    ? resolveContentGroup2Settings(tournament, {
+        eventId: event.id,
+        allowSoleEventInference: false,
+      })
+    : null;
+  const contentGroupCount = group2?.ok ? group2.groupStage.groupCount : null;
   const publish = getDrawPublishStatus(tournament);
   const groups = Array.isArray(event?.groups) ? event.groups : [];
   const downstream = event
@@ -474,6 +478,8 @@ export function projectOfficialGroupDraw(tournament, { selectedEventId } = {}) {
     selectedEventExplicit: Boolean(eventId) || events.length === 1,
     needsEventChoice,
     groupCount: contentGroupCount,
+    groupCountSource: group2?.ok ? group2.source : null,
+    groupCountAuthority: group2?.ok ? group2.authority?.groupCount : null,
     unitsReady: units.ok === true,
     unitCount: units.units?.length || 0,
     unitsSource: units.source || null,
@@ -569,7 +575,13 @@ export function buildOfficialCreateGroupDrawPatch(tournament, options = {}) {
     };
   }
 
-  const groupCount = resolveContentGroupCount(tournament, { eventId: event.id });
+  const group2 = resolveContentGroup2Settings(tournament, {
+    eventId: event.id,
+    allowSoleEventInference: false,
+  });
+  const groupCount = group2.ok
+    ? group2.groupStage.groupCount
+    : resolveContentGroupCount(tournament, { eventId: event.id });
   if (groupCount < 1) {
     return {
       ok: false,

@@ -36,6 +36,8 @@ import {
 import {
   resolveContentCompetitionRules,
   CONTENT_RULES_SOURCE,
+  CONTENT_KNOCKOUT_PAIRING_RUNTIME,
+  GROUP2_WILDCARD_RESPONSIBILITY,
 } from "../../individual-tournament/engines/officialContentCompetitionRules.js";
 
 const ROUND_KEY_TO_STAGE = Object.freeze({
@@ -353,6 +355,47 @@ export function buildOfficialOpenCompetitionRulesProfile(tournament, options = {
           rules.capacity?.maxParticipants == null,
       },
       wildcardSlotsDerived: Number(rules.qualification?.wildcardSlots) || 0,
+      // G2-A: non-authoritative Content structure truth. Adapter A groupStage
+      // has no maxUnitsPerGroup; do not invent Adapter A fields.
+      officialGroupStage: {
+        groupStageEnabled: rules.groupStage.groupStageEnabled !== false,
+        groupCount,
+        maxUnitsPerGroup:
+          rules.groupStage.maxUnitsPerGroup != null
+            ? Number(rules.groupStage.maxUnitsPerGroup)
+            : null,
+        roundRobinPolicy: rules.groupStage.roundRobinPolicy || "SINGLE",
+        allowUnevenGroups: rules.groupStage.allowUnevenGroups !== false,
+        maxUnitsRuntime: "DEFERRED_TO_G2_B",
+        allowUnevenGroupsRuntime: "DEFERRED_TO_G2_B",
+        groupStageEnabledRuntime: "DEFERRED_TO_G2_B",
+        roundRobinRuntimeSupported: "SINGLE",
+        roundRobinDoubleRuntimeEnabled: false,
+      },
+      officialQualification: {
+        totalQualifiers,
+        directQualifiersPerGroup,
+        wildcardSlots: Number(rules.qualification?.wildcardSlots) || 0,
+        wildcardScope: GROUP2_WILDCARD_RESPONSIBILITY.GROUP2,
+        wildcardRankingDeferredToGroup4: true,
+      },
+      officialKnockout: {
+        knockoutEnabled: rules.knockout.knockoutEnabled !== false,
+        qualifierCount: totalQualifiers,
+        pairingPolicyConfigured: rules.knockout.pairingPolicy || "CROSS_GROUP",
+        pairingPolicyRuntimeSupported:
+          CONTENT_KNOCKOUT_PAIRING_RUNTIME.runtimeSupported,
+        pairingPolicyRuntimeDeferred: CONTENT_KNOCKOUT_PAIRING_RUNTIME.runtimeDeferred,
+        seededRuntimeClaimedSupported:
+          CONTENT_KNOCKOUT_PAIRING_RUNTIME.seededRuntimeClaimedSupported,
+        randomRuntimeClaimedSupported:
+          CONTENT_KNOCKOUT_PAIRING_RUNTIME.randomRuntimeClaimedSupported,
+        avoidSameGroupFirstRoundConfigured:
+          rules.knockout.avoidSameGroupFirstRound !== false,
+        avoidSameGroupRuntime: "DEFERRED_TO_G2_E",
+        knockoutEnabledRuntime: "DEFERRED_TO_G2_C",
+        qualifierCountRuntime: "DEFERRED_TO_G2_C",
+      },
     },
   };
 

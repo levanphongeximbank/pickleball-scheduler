@@ -75,6 +75,62 @@ export const LEGACY_GROUP1_FIELD_CLASS = Object.freeze({
 });
 
 /**
+ * Group 2 (Cấu trúc thi đấu) field ownership — G2-A lock.
+ * Structure lives on events[].competitionRules.{groupStage,qualification,knockout}.
+ * settings.officialCompetition Group 2 fields are LEGACY_COMPATIBILITY_DRAFT only.
+ */
+export const CONTENT_GROUP2_FIELD_AUTHORITY = Object.freeze({
+  groupStageEnabled: "CONTENT_COMPETITION_RULES",
+  groupCount: "CONTENT_COMPETITION_RULES",
+  maxUnitsPerGroup: "CONTENT_COMPETITION_RULES",
+  roundRobinPolicy: "CONTENT_COMPETITION_RULES",
+  allowUnevenGroups: "CONTENT_COMPETITION_RULES",
+  totalQualifiers: "CONTENT_COMPETITION_RULES",
+  directQualifiersPerGroup: "CONTENT_COMPETITION_RULES",
+  wildcardSlots: "CONTENT_COMPETITION_RULES_STRUCTURAL",
+  knockoutEnabled: "CONTENT_COMPETITION_RULES",
+  qualifierCount: "CONTENT_COMPETITION_RULES",
+  pairingPolicy: "CONTENT_COMPETITION_RULES_METADATA",
+  avoidSameGroupFirstRound: "CONTENT_COMPETITION_RULES_METADATA",
+});
+
+export const LEGACY_GROUP2_FIELD_CLASS = Object.freeze({
+  officialCompetition: "LEGACY_COMPATIBILITY_DRAFT",
+  groupCount: "LEGACY_COMPATIBILITY_DRAFT",
+  qualifiersPerGroup: "LEGACY_COMPATIBILITY_DRAFT",
+  totalQualifiers: "LEGACY_COMPATIBILITY_DRAFT",
+  wildcardSlots: "LEGACY_COMPATIBILITY_DRAFT",
+});
+
+export const GROUP2_WILDCARD_RESPONSIBILITY = Object.freeze({
+  GROUP2: "STRUCTURAL_SLOT_COUNT_ONLY",
+  GROUP4: "CANDIDATE_RANKING_AND_CROSS_GROUP_ORDER",
+});
+
+export const CONTENT_KNOCKOUT_PAIRING_POLICY = Object.freeze({
+  CROSS_GROUP: "CROSS_GROUP",
+  SEEDED: "SEEDED",
+  RANDOM: "RANDOM",
+});
+
+/** Runtime truth: Official classic bracket placement remains hardcoded CROSS_GROUP. */
+export const CONTENT_KNOCKOUT_PAIRING_RUNTIME = Object.freeze({
+  runtimeSupported: CONTENT_KNOCKOUT_PAIRING_POLICY.CROSS_GROUP,
+  runtimeDeferred: Object.freeze([
+    CONTENT_KNOCKOUT_PAIRING_POLICY.SEEDED,
+    CONTENT_KNOCKOUT_PAIRING_POLICY.RANDOM,
+  ]),
+  seededRuntimeClaimedSupported: false,
+  randomRuntimeClaimedSupported: false,
+});
+
+export const CONTENT_ROUND_ROBIN_RUNTIME = Object.freeze({
+  SINGLE: "SUPPORTED",
+  DOUBLE: "DEFERRED",
+  doubleRuntimeEnabled: false,
+});
+
+/**
  * Sole-event inference classification (G1-E).
  * MUTATION / Official business runtime must NOT use this.
  * DISPLAY/READ may opt-in with allowSoleEventInference=true when events.length === 1.
@@ -657,8 +713,10 @@ export function normalizeContentCompetitionRules(input = {}, options = {}) {
       maxUnitsPerGroup: toPositiveInt(groupStageIn.maxUnitsPerGroup, null),
       groupSizingPolicy: groupStageIn.groupSizingPolicy || "FIXED_GROUP_COUNT",
       roundRobinPolicy:
+        // Fail-closed: persist SINGLE only. DOUBLE remains DEFERRED — do not store
+        // DOUBLE as if it were operational authority.
         String(groupStageIn.roundRobinPolicy || "SINGLE").toUpperCase() === "DOUBLE"
-          ? "SINGLE" // DOUBLE not operational on Official classic path
+          ? "SINGLE"
           : "SINGLE",
       allowUnevenGroups: boolOr(groupStageIn.allowUnevenGroups, true),
     }),
@@ -888,11 +946,16 @@ export function deriveCanonicalDefaultContentRules(options = {}) {
 
 /**
  * Legacy tournament.settings.officialCompetition → draft for ONE event.
- * Compatibility read only. Not ongoing inheritance. Not auto-persisted.
+ * Compatibility read / bootstrap only. Not ongoing inheritance. Not auto-persisted.
+ * Not active Group 2 authority when CONTENT_EXPLICIT exists.
  *
  * eligibility here may be seeded from settings.eligibilityRules
  * (CONFLICTING_LEGACY_RUNTIME) for draft display only — Content Save must
  * persist to events[].competitionRules.eligibility, not dual-write back.
+ *
+ * Group 2 fields (groupCount / qualifiersPerGroup / totalQualifiers / wildcardSlots)
+ * prefill unmaterialized Content only. Content Save materializes
+ * events[].competitionRules — never re-authors settings.officialCompetition.
  */
 export function deriveLegacyCompatibilityContentRulesDraft(tournament, options = {}) {
   const competition = getOfficialCompetitionSettings(tournament);
@@ -1037,7 +1100,7 @@ export function resolveContentCompetitionRules(tournament, options = {}) {
       persistedSource: "settings.officialCompetition (legacy compatibility only)",
       legacyActiveAuthority: false,
       legacyClass: LEGACY_GROUP1_FIELD_CLASS.officialCompetition,
-      note: "Legacy tournament blob used as draft only until Content Save materializes event.competitionRules.",
+      note: "Legacy tournament blob used as draft only until Content Save materializes event.competitionRules. Not active Group 2 authority.",
     };
   }
 
@@ -1087,6 +1150,70 @@ export function resolveContentGroup1Settings(tournament, options = {}) {
       eligibilityRules: LEGACY_GROUP1_FIELD_CLASS.eligibilityRules,
       maxEntries: LEGACY_GROUP1_FIELD_CLASS.maxEntries,
     }),
+  };
+}
+
+function knockoutPairingRuntimeMetadata(pairingPolicy) {
+  const configured = ["CROSS_GROUP", "SEEDED", "RANDOM"].includes(
+    String(pairingPolicy || "").toUpperCase()
+  )
+    ? String(pairingPolicy).toUpperCase()
+    : CONTENT_KNOCKOUT_PAIRING_POLICY.CROSS_GROUP;
+  const runtimeSupported = CONTENT_KNOCKOUT_PAIRING_RUNTIME.runtimeSupported;
+  return Object.freeze({
+    policyConfigured: configured,
+    runtimeSupported,
+    runtimeDeferred: CONTENT_KNOCKOUT_PAIRING_RUNTIME.runtimeDeferred,
+    runtimeExecuted: runtimeSupported,
+    seededRuntimeClaimedSupported:
+      CONTENT_KNOCKOUT_PAIRING_RUNTIME.seededRuntimeClaimedSupported,
+    randomRuntimeClaimedSupported:
+      CONTENT_KNOCKOUT_PAIRING_RUNTIME.randomRuntimeClaimedSupported,
+  });
+}
+
+/**
+ * Group 2 Content resolver surface (group stage / qualification / knockout structure).
+ * CONTENT_EXPLICIT wins. Legacy draft never overrides Content.
+ * Does NOT enforce draw/qualification/knockout runtime (G2-B/C/D/E).
+ */
+export function resolveContentGroup2Settings(tournament, options = {}) {
+  const resolved = resolveContentCompetitionRules(tournament, {
+    eventId: options.eventId,
+    allowSoleEventInference: options.allowSoleEventInference,
+  });
+  if (!resolved.ok) return resolved;
+
+  const { rules, source, eventId, event, inferredSoleEvent } = resolved;
+  const pairingRuntime = knockoutPairingRuntimeMetadata(rules.knockout.pairingPolicy);
+  return {
+    ok: true,
+    eventId,
+    event,
+    inferredSoleEvent: inferredSoleEvent === true,
+    source,
+    authority: CONTENT_GROUP2_FIELD_AUTHORITY,
+    groupStage: rules.groupStage,
+    qualification: rules.qualification,
+    knockout: rules.knockout,
+    wildcardScope: GROUP2_WILDCARD_RESPONSIBILITY,
+    knockoutPairingRuntime: pairingRuntime,
+    roundRobinRuntime: Object.freeze({
+      policyConfigured: rules.groupStage.roundRobinPolicy,
+      runtimeSupported: "SINGLE",
+      doubleRuntimeEnabled: CONTENT_ROUND_ROBIN_RUNTIME.doubleRuntimeEnabled,
+      doubleStatus: CONTENT_ROUND_ROBIN_RUNTIME.DOUBLE,
+    }),
+    maxUnitsPerGroupRuntime: "DEFERRED_TO_G2_B",
+    allowUnevenGroupsRuntime: "DEFERRED_TO_G2_B",
+    groupStageEnabledRuntime: "DEFERRED_TO_G2_B",
+    knockoutEnabledRuntime: "DEFERRED_TO_G2_C",
+    qualifierCountRuntime: "DEFERRED_TO_G2_C",
+    avoidSameGroupRuntime: "DEFERRED_TO_G2_E",
+    legacyClassification: LEGACY_GROUP2_FIELD_CLASS,
+    legacyActiveAuthority: false,
+    persistedSource: resolved.persistedSource,
+    compatibilityClass: resolved.compatibilityClass,
   };
 }
 
@@ -1303,23 +1430,74 @@ export function patchEventContentCompetitionRules(tournament, eventId, patch = {
       ...current.groupStage,
       ...(draftSource.groupStage || {}),
       groupCount:
+        patch.groupCount ??
         draftSource.groupCount ??
         draftSource.groupStage?.groupCount ??
         current.groupStage.groupCount,
+      groupStageEnabled:
+        patch.groupStageEnabled ??
+        draftSource.groupStageEnabled ??
+        draftSource.groupStage?.groupStageEnabled ??
+        current.groupStage.groupStageEnabled,
+      maxUnitsPerGroup:
+        patch.maxUnitsPerGroup ??
+        draftSource.maxUnitsPerGroup ??
+        draftSource.groupStage?.maxUnitsPerGroup ??
+        current.groupStage.maxUnitsPerGroup,
+      allowUnevenGroups:
+        patch.allowUnevenGroups ??
+        draftSource.allowUnevenGroups ??
+        draftSource.groupStage?.allowUnevenGroups ??
+        current.groupStage.allowUnevenGroups,
+      roundRobinPolicy:
+        patch.roundRobinPolicy ??
+        draftSource.roundRobinPolicy ??
+        draftSource.groupStage?.roundRobinPolicy ??
+        current.groupStage.roundRobinPolicy,
     },
     qualification: {
       ...current.qualification,
       ...(draftSource.qualification || {}),
       directQualifiersPerGroup:
+        patch.qualifiersPerGroup ??
         draftSource.qualifiersPerGroup ??
         draftSource.qualification?.directQualifiersPerGroup ??
         current.qualification.directQualifiersPerGroup,
       totalQualifiers:
+        patch.totalQualifiers ??
         draftSource.totalQualifiers ??
         draftSource.qualification?.totalQualifiers ??
         current.qualification.totalQualifiers,
+      wildcardSlots:
+        patch.wildcardSlots ??
+        draftSource.wildcardSlots ??
+        draftSource.qualification?.wildcardSlots ??
+        current.qualification.wildcardSlots,
     },
-    knockout: { ...current.knockout, ...(draftSource.knockout || {}) },
+    knockout: {
+      ...current.knockout,
+      ...(draftSource.knockout || {}),
+      knockoutEnabled:
+        patch.knockoutEnabled ??
+        draftSource.knockoutEnabled ??
+        draftSource.knockout?.knockoutEnabled ??
+        current.knockout.knockoutEnabled,
+      pairingPolicy:
+        patch.pairingPolicy ??
+        draftSource.pairingPolicy ??
+        draftSource.knockout?.pairingPolicy ??
+        current.knockout.pairingPolicy,
+      avoidSameGroupFirstRound:
+        patch.avoidSameGroupFirstRound ??
+        draftSource.avoidSameGroupFirstRound ??
+        draftSource.knockout?.avoidSameGroupFirstRound ??
+        current.knockout.avoidSameGroupFirstRound,
+      qualifierCount:
+        patch.qualifierCount ??
+        draftSource.qualifierCount ??
+        draftSource.knockout?.qualifierCount ??
+        current.knockout.qualifierCount,
+    },
     eligibility: {
       ...current.eligibility,
       ...(draftSource.eligibility || {}),
@@ -1414,6 +1592,11 @@ export function patchEventContentCompetitionRules(tournament, eventId, patch = {
       eligibility: nextRules.eligibility,
       seedingPolicy: nextRules.seedingPolicy,
     },
+    group2: {
+      groupStage: nextRules.groupStage,
+      qualification: nextRules.qualification,
+      knockout: nextRules.knockout,
+    },
   };
 }
 
@@ -1421,24 +1604,26 @@ export function resolveContentQualifiersPerGroup(tournament, options = {}) {
   if (options.qualifiersPerGroup != null) {
     return toPositiveInt(options.qualifiersPerGroup, DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP);
   }
-  const resolved = resolveContentCompetitionRules(tournament, {
+  const group2 = resolveContentGroup2Settings(tournament, {
     eventId: options.eventId,
+    allowSoleEventInference: options.allowSoleEventInference,
   });
-  if (!resolved.ok) {
+  if (!group2.ok) {
     return DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP;
   }
-  return resolved.rules.qualification.directQualifiersPerGroup;
+  return group2.qualification.directQualifiersPerGroup;
 }
 
 export function resolveContentGroupCount(tournament, options = {}) {
   if (options.groupCount != null) {
     return toPositiveInt(options.groupCount, 4);
   }
-  const resolved = resolveContentCompetitionRules(tournament, {
+  const group2 = resolveContentGroup2Settings(tournament, {
     eventId: options.eventId,
+    allowSoleEventInference: options.allowSoleEventInference,
   });
-  if (!resolved.ok) return 4;
-  return resolved.rules.groupStage.groupCount;
+  if (!group2.ok) return 4;
+  return group2.groupStage.groupCount;
 }
 
 /**

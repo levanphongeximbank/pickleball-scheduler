@@ -232,7 +232,9 @@ function deriveOfficialGroupDrawModel(tournament, { selectedEventId } = {}) {
     {
       label: `groupCount cấu hình = ${projection.groupCount}`,
       ready: Number(projection.groupCount) > 0,
-      note: "Từ officialCompetition.groupCount",
+      note: projection.groupCountSource
+        ? `Từ Content ${projection.groupCountSource} (events[].competitionRules.groupStage.groupCount)`
+        : "Cần eventId — không dùng settings.officialCompetition.groupCount",
     },
     {
       label: "Group Draw rating-neutral",

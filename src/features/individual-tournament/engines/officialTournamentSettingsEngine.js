@@ -5,8 +5,11 @@
  * Authority boundaries:
  * - tournament identity name → tournament.name (top-level; not duplicated in blob)
  * - registrationMode / scoringMethod / roundTargets / matchFormat → officialCompetition
- * - groupCount → officialCompetition.groupCount (single persisted draw-config authority;
- *   Setup UI hydrates from here; no parallel blob)
+ *   (Group 1: LEGACY_COMPATIBILITY_DRAFT when Content rules exist)
+ * - groupCount → officialCompetition.groupCount is LEGACY_COMPATIBILITY_DRAFT /
+ *   leftover blob only. Not active Group 2 authority when
+ *   events[].competitionRules.groupStage.groupCount exists. Official Content
+ *   callers must use resolveContentGroup2Settings / resolveContentGroupCount.
  * - eligibility max skill/rating → settings.eligibilityRules (eligibilityEngine) ONLY
  * - Side-out enum preserved but NOT operational on classic Official live path
  * - matchFormat BEST_OF_1 is operational (legacy single-game); BEST_OF_3 fail-closed
@@ -477,12 +480,15 @@ export function getOfficialCompetitionSettings(tournament) {
       blob.changeEndsAtPoints != null && Number(blob.changeEndsAtPoints) >= 1
         ? Math.floor(Number(blob.changeEndsAtPoints))
         : null,
+    // LEGACY_COMPATIBILITY_DRAFT / leftover blob. Not Group 2 runtime
+    // authority for an explicit Content (use resolveContentGroupCount).
     groupCount:
       blob.groupCount != null
         ? toPositiveInt(blob.groupCount, 4)
         : event?.groups?.length
           ? toPositiveInt(event.groups.length, 4)
           : 4,
+    // LEGACY_COMPATIBILITY_DRAFT — Content qualification.directQualifiersPerGroup wins.
     qualifiersPerGroup: toPositiveInt(
       blob.qualifiersPerGroup,
       DEFAULT_OFFICIAL_QUALIFIERS_PER_GROUP

@@ -21,6 +21,7 @@ import {
 import {
   patchEventContentCompetitionRules,
   resolveContentCompetitionRules,
+  resolveContentGroup2Settings,
   CONTENT_RULES_SOURCE,
   CONTENT_COMPETITION_RULES_PROPERTY,
 } from "../../individual-tournament/engines/officialContentCompetitionRules.js";
@@ -103,6 +104,12 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
       })
     : null;
   const rules = contentResolved?.ok ? contentResolved.rules : null;
+  const group2 = eventId
+    ? resolveContentGroup2Settings(tournament, {
+        eventId,
+        allowSoleEventInference: false,
+      })
+    : null;
 
   return {
     identity: {
@@ -135,6 +142,17 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
           registrationMode: rules.registrationMode,
           groupCount: rules.groupStage.groupCount,
           qualifiersPerGroup: rules.qualification.directQualifiersPerGroup,
+          groupStageEnabled: rules.groupStage.groupStageEnabled,
+          maxUnitsPerGroup: rules.groupStage.maxUnitsPerGroup,
+          allowUnevenGroups: rules.groupStage.allowUnevenGroups,
+          roundRobinPolicy: rules.groupStage.roundRobinPolicy,
+          totalQualifiers: rules.qualification.totalQualifiers,
+          wildcardSlots: rules.qualification.wildcardSlots,
+          knockoutEnabled: rules.knockout.knockoutEnabled,
+          pairingPolicy: rules.knockout.pairingPolicy,
+          avoidSameGroupFirstRound: rules.knockout.avoidSameGroupFirstRound,
+          qualifierCount: rules.knockout.qualifierCount,
+          group2Source: contentResolved.source,
           scoringMethod: rules.matchScoring.scoringMethod,
           scoringMethodRequested: rules.matchScoring.scoringMethod,
           matchFormat: rules.matchScoring.matchFormat,
@@ -229,6 +247,7 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
         groupCount: Number(profile.groupStage?.groupCount) || rules?.groupStage?.groupCount || 4,
         maxUnitsPerGroup: rules?.groupStage?.maxUnitsPerGroup ?? null,
         allowUnevenGroups: rules?.groupStage?.allowUnevenGroups !== false,
+        roundRobinPolicy: rules?.groupStage?.roundRobinPolicy || "SINGLE",
         qualifiersPerGroup:
           Number(profile.qualification?.directQualifiersPerGroup) ||
           rules?.qualification?.directQualifiersPerGroup ||
@@ -237,10 +256,15 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
           Number(profile.qualification?.totalQualifiers) ||
           Number(plan?.totalQualifiers) ||
           null,
+        wildcardSlots:
+          Number(rules?.qualification?.wildcardSlots) ||
+          Number(plan?.wildcardSlots) ||
+          0,
         groupStageEnabled: profile.groupStage?.groupStageEnabled !== false,
         knockoutEnabled: profile.knockout?.knockoutEnabled !== false,
         pairingPolicy: rules?.knockout?.pairingPolicy,
         avoidSameGroupFirstRound: rules?.knockout?.avoidSameGroupFirstRound,
+        qualifierCount: rules?.knockout?.qualifierCount ?? null,
         minLevel: rules?.eligibility?.minLevel ?? null,
         maxLevel: rules?.eligibility?.maxLevel ?? null,
         minRating: rules?.eligibility?.minRating ?? null,
@@ -266,6 +290,8 @@ export function projectOfficialSettings(tournament, { selectedEventId } = {}) {
         wildcardFailClosed: wildcard.failClosed === true,
         wildcardCode: wildcard.code || null,
         contentRulesSource: contentResolved?.source || null,
+        group2Source: group2?.ok ? group2.source : contentResolved?.source || null,
+        group2LegacyActiveAuthority: false,
         formDraft,
       };
     })(),
@@ -447,8 +473,17 @@ export function buildOfficialSettingsSavePatch(tournament, draft = {}) {
         scoringMethod,
         matchFormat,
         groupCount: draft.groupCount,
+        groupStageEnabled: draft.groupStageEnabled,
+        maxUnitsPerGroup: draft.maxUnitsPerGroup,
+        allowUnevenGroups: draft.allowUnevenGroups,
+        roundRobinPolicy: draft.roundRobinPolicy,
         qualifiersPerGroup: draft.qualifiersPerGroup,
         totalQualifiers: draft.totalQualifiers,
+        wildcardSlots: draft.wildcardSlots,
+        knockoutEnabled: draft.knockoutEnabled,
+        pairingPolicy: draft.pairingPolicy,
+        avoidSameGroupFirstRound: draft.avoidSameGroupFirstRound,
+        qualifierCount: draft.qualifierCount,
         roundTargets: draft.roundTargets,
         stageOverrides: draft.stageOverrides,
         targetPoints:
