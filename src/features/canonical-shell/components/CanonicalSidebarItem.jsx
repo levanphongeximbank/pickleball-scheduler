@@ -1,5 +1,5 @@
 import { NavLink as RouterNavLink } from "react-router-dom";
-import { Box, ListItemButton, ListItemIcon, ListItemText, Typography } from "@mui/material";
+import { Box, ListItemButton, ListItemIcon, ListItemText, Tooltip, Typography } from "@mui/material";
 
 import { useCanonicalShell } from "../hooks/useCanonicalShell.js";
 import { renderNavIcon } from "../utils/resolveNavIcon.jsx";
@@ -16,7 +16,7 @@ export default function CanonicalSidebarItem({
 }) {
   const { palette, layout } = useCanonicalShell();
 
-  return (
+  const button = (
     <ListItemButton
       component={node.route ? RouterNavLink : "div"}
       to={node.route || undefined}
@@ -96,5 +96,15 @@ export default function CanonicalSidebarItem({
         />
       )}
     </ListItemButton>
+  );
+
+  if (!collapsed) return button;
+
+  return (
+    <Tooltip title={node.label} placement="right" enterDelay={400}>
+      <Box component="span" sx={{ display: "block" }}>
+        {button}
+      </Box>
+    </Tooltip>
   );
 }

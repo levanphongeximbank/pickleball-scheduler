@@ -1286,7 +1286,8 @@ test("Phase 19B — venue/court labels trong navigation config", () => {
   const labels = collectMenuItemLabels(visible);
 
   assert.ok(groupLabels.includes("Vận hành sân"));
-  assert.ok(labels.includes("Sân"));
+  // Batch 1B: single courts leaf under venue-ops ("Quản lý sân"); admin "Sân" duplicate removed.
+  assert.ok(labels.includes("Quản lý sân") || labels.includes("Sân"));
 });
 
 test("Phase 19B — PLAYER không thấy admin routes", () => {

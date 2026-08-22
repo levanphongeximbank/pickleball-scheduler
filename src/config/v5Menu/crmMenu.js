@@ -28,7 +28,7 @@ export const CRM_MENU_ROOT = menuFolder({
 
       icon: "messages",
 
-      text: "Tin nhắn",
+      text: "Tin nhắn CRM",
 
       path: "/crm/messages",
 

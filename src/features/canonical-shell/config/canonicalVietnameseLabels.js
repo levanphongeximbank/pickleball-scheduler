@@ -78,7 +78,7 @@ export const ROUTE_VIETNAMESE_LABELS = Object.freeze({
   "/player/skill": "Trình độ của tôi",
   "/player/skill-assessment": "Đánh giá lần đầu",
   "/club": "Quản lý CLB",
-  "/manage/clubs": "Quản trị CLB",
+  "/manage/clubs": "Quản lý CLB",
   "/platform/clubs": "Tất cả CLB",
   "/discover-clubs": "Khám phá CLB",
   "/my-club": "CLB của tôi",

@@ -6,11 +6,13 @@ import {
   IconButton,
   Stack,
   Toolbar,
+  Typography,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 
 import CanonicalBreadcrumbs from "./CanonicalBreadcrumbs.jsx";
 import CanonicalGlobalSearchTrigger from "./CanonicalGlobalSearchTrigger.jsx";
+import CanonicalHelpButton from "./CanonicalHelpButton.jsx";
 import CanonicalNotificationButton from "./CanonicalNotificationButton.jsx";
 import CanonicalTenantSwitcher from "./CanonicalTenantSwitcher.jsx";
 import CanonicalUserMenu from "./CanonicalUserMenu.jsx";
@@ -26,12 +28,14 @@ import {
   collapseCanonicalBreadcrumbItems,
   resolveCanonicalTopbarZoneStyles,
 } from "../layout/canonicalTopbarLayout.js";
+import { APP_PRODUCT_NAME } from "../../../config/appVersion.js";
 
 /**
  * Compact Figure 1 top navigation (56px).
  * Wave 4: zone-based flex layout — breadcrumbs / organization / search / actions
  * never share unconstrained width (closes OBSERVATION_CANONICAL_TOPBAR_01).
- * Wave 1 Platform Context: Club selection parity with mobile AppContextBar.
+ * Batch 1D: mobile relocates Tenant/Venue/Club into CanonicalMobileDrawer;
+ * topbar keeps menu + compact title + search + notification/help/account.
  */
 export default function CanonicalTopBar() {
   const location = useLocation();
@@ -56,6 +60,9 @@ export default function CanonicalTopBar() {
     });
     return collapseCanonicalBreadcrumbItems(full, zones.breadcrumb.maxItems);
   }, [location.pathname, registryTree, auth, params, zones.breadcrumb.maxItems]);
+
+  const mobileTitle =
+    breadcrumbs[breadcrumbs.length - 1]?.label || APP_PRODUCT_NAME;
 
   return (
     <AppBar
@@ -108,6 +115,22 @@ export default function CanonicalTopBar() {
           </IconButton>
         )}
 
+        {isMobile ? (
+          <Typography
+            data-testid="canonical-topbar-mobile-title"
+            noWrap
+            sx={{
+              flex: "1 1 auto",
+              minWidth: 0,
+              fontWeight: 700,
+              fontSize: 14,
+              lineHeight: 1.3,
+            }}
+          >
+            {mobileTitle}
+          </Typography>
+        ) : null}
+
         {zones.context.visible && (
           <Box
             data-testid="canonical-topbar-context-zone"
@@ -128,18 +151,19 @@ export default function CanonicalTopBar() {
           spacing={1}
           data-testid="canonical-topbar-center-zone"
           sx={{
-            flex: "1 1 auto",
+            flex: isMobile ? "0 1 auto" : "1 1 auto",
             minWidth: 0,
-            justifyContent: "center",
+            justifyContent: isMobile ? "flex-end" : "center",
             overflow: "hidden",
+            maxWidth: isMobile ? zones.search.maxWidth : "100%",
           }}
         >
-          {zones.organization.visible && isSuperAdmin ? (
+          {/* Batch 1D: selectors stay on tablet/desktop topbar; mobile → drawer context. */}
+          {!isMobile && zones.organization.visible && isSuperAdmin ? (
             <Box
               data-testid="canonical-topbar-organization-zone"
               sx={{
                 flex: zones.organization.flex,
-                // Keep widthMin as floor so selected Tenant/Venue label cannot clip to blank.
                 minWidth: zones.organization.widthMin,
                 maxWidth: zones.organization.maxWidth,
                 width: "100%",
@@ -152,18 +176,20 @@ export default function CanonicalTopBar() {
               />
             </Box>
           ) : null}
-          <Box
-            data-testid="canonical-topbar-venue-zone"
-            sx={{ flexShrink: 0, minWidth: isMobile ? 120 : 160, maxWidth: 220 }}
-          >
-            <VenueSwitcher variant="light" minWidth={isMobile ? 120 : 160} />
-          </Box>
-          {showClubSwitcher ? (
+          {!isMobile ? (
+            <Box
+              data-testid="canonical-topbar-venue-zone"
+              sx={{ flexShrink: 0, minWidth: isTablet ? 140 : 160, maxWidth: 220 }}
+            >
+              <VenueSwitcher variant="light" minWidth={isTablet ? 140 : 160} />
+            </Box>
+          ) : null}
+          {!isMobile && showClubSwitcher ? (
             <Box
               data-testid="canonical-topbar-club-zone"
-              sx={{ flexShrink: 0, minWidth: isMobile ? 120 : 160, maxWidth: 220 }}
+              sx={{ flexShrink: 0, minWidth: isTablet ? 140 : 160, maxWidth: 220 }}
             >
-              <ClubSwitcher variant="light" minWidth={isMobile ? 120 : 160} />
+              <ClubSwitcher variant="light" minWidth={isTablet ? 140 : 160} />
             </Box>
           ) : null}
           <Box
@@ -172,7 +198,7 @@ export default function CanonicalTopBar() {
               flex: zones.search.flex,
               minWidth: zones.search.minWidth,
               maxWidth: zones.search.maxWidth,
-              width: "100%",
+              width: isMobile ? "100%" : "100%",
               overflow: "hidden",
             }}
           >
@@ -187,7 +213,9 @@ export default function CanonicalTopBar() {
           data-testid="canonical-topbar-actions-zone"
           sx={{ flexShrink: 0 }}
         >
+          {/* Batch 1C composition: notification → help (/support) → account */}
           <CanonicalNotificationButton />
+          <CanonicalHelpButton />
           <CanonicalUserMenu />
         </Stack>
       </Toolbar>

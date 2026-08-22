@@ -74,8 +74,9 @@ export const CANONICAL_TOPBAR_LAYOUT = Object.freeze({
       flex: "1 1 auto",
       minWidth: 0,
       maxWidth: Object.freeze({
-        mobile: 160,
-        tablet: 220,
+        // Batch 1D: compact mobile search field (icon+input) — not a second search system.
+        mobile: 132,
+        tablet: 200,
         desktop: 420,
         // HELPER_ONLY_NON_RUNTIME_PRESET — not used by CanonicalTopBar
         wide: 520,

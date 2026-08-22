@@ -11,4 +11,5 @@ export { default as CanonicalMobileDrawer } from "./components/CanonicalMobileDr
 export { default as CanonicalTenantSwitcher } from "./components/CanonicalTenantSwitcher.jsx";
 export { default as CanonicalUserMenu } from "./components/CanonicalUserMenu.jsx";
 export { default as CanonicalNotificationButton } from "./components/CanonicalNotificationButton.jsx";
+export { default as CanonicalHelpButton } from "./components/CanonicalHelpButton.jsx";
 export { default as CanonicalGlobalSearchTrigger } from "./components/CanonicalGlobalSearchTrigger.jsx";
