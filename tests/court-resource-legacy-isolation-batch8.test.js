@@ -476,7 +476,10 @@ test("Gateway does not import clubStorage directly — legacy boundary only", ()
   for (const spec of importedModules(gateway)) {
     assert.doesNotMatch(spec, /clubStorage/);
     assert.doesNotMatch(spec, /legacyCourtIdentityMapping/);
-    assert.doesNotMatch(spec, /legacyReservationAdapter/);
+    assert.doesNotMatch(spec, /legacyBookingMigrationDryRun/);
   }
-  assert.match(gateway, /from ["']\.\.\/legacy\//);
+  // Browser-safe reservation helpers may come from the adapter leaf;
+  // Node-only migration dry-run must never enter this graph.
+  assert.match(gateway, /from ["']\.\.\/(?:legacy\/|adapters\/)/);
+  assert.doesNotMatch(gateway, /legacyBookingMigrationDryRun/);
 });
