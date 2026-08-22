@@ -67,7 +67,9 @@ Canonical identity: `entryId` (seeding/standings vocabulary).
 - Required (via policy default or per-entrant) when direct entry is configured.
 - Must be compatible with bracket-wide entry round (same or later stage).
 - Example: `totalKnockoutSlots=8` → `QUARTERFINAL` bracket; allow `QUARTERFINAL|SEMIFINAL|FINAL`; reject `ROUND_OF_16|ROUND_OF_32`.
-- Execution remains DEFERRED.
+- First-playable execution (`effectiveTargetStage == bracketWideEntryRound`) is
+  supported on certified group-stage and no-group paths. Later-stage DIRECT
+  remains `DEFERRED`.
 
 **No-group slot accounting (`groupStageEnabled=false`):**
 
@@ -75,6 +77,18 @@ Canonical identity: `entryId` (seeding/standings vocabulary).
   `directKnockoutEntrySlots >= 0`, `directKnockoutEntrySlots <= totalKnockoutSlots`
 - `wildcardSlots=0`, `requiresCrossGroupWildcardRanking=false`
 - `remainingSlots = totalKnockoutSlots - directKnockoutEntrySlots` — base knockout population slots, **not** cross-group wildcards
+- Base population is every eligible canonical `competitionPopulationEntryIds`
+  member except resolved DIRECT entry IDs and entries removed by the certified
+  explicit/status exclusions (`WITHDRAWN`, `DISQUALIFIED`, `DQ`, `VOID`,
+  `INVALID`, `UNACCEPTED`).
+- Exact fill is mandatory:
+  `resolvedDirect.length == directKnockoutEntrySlots`,
+  `eligibleBasePopulation.length == remainingSlots`, and
+  `finalAdmitted.length == totalKnockoutSlots`.
+- Base underfill and overpopulation both fail closed. CE does not truncate,
+  rank, seed, randomize, or otherwise select a subset for admission.
+- `remainingSlots` is not `WILDCARD`, `GROUP_DIRECT`, or `BYE`.
+  `DIRECT` is not `BYE` and does not create a seed.
 
 **Raw input integrity (fail-closed):**
 
@@ -94,7 +108,7 @@ Canonical identity: `entryId` (seeding/standings vocabulary).
 | ID | Policy | Execution |
 |----|--------|-----------|
 | GROUP_STAGE_BYPASS | SUPPORTED | PARTIAL |
-| DIRECT_KNOCKOUT_ENTRY | SUPPORTED | DEFERRED |
+| DIRECT_KNOCKOUT_ENTRY | SUPPORTED | PARTIAL — first-playable group-stage and exact-fill no-group paths; later-stage deferred |
 | KNOCKOUT_BYE | SUPPORTED | SUPPORTED (SE first-round power-of-two only; configured only when `byePolicy !== NONE`) |
 | CROSS_GROUP_WILDCARD_RANKING | SUPPORTED | DEFERRED (preserved) |
 
@@ -108,7 +122,10 @@ Canonical identity: `entryId` (seeding/standings vocabulary).
 
 ## Lifecycle (no new RULE_CLASS)
 
-Composes `GROUP_ALLOCATION` @ `AFTER_GROUP_DRAW` and `KNOCKOUT` @ `AFTER_MATCH_CREATION`.
+Composes `GROUP_ALLOCATION` @ `AFTER_GROUP_DRAW` and `KNOCKOUT` @
+`AFTER_MATCH_CREATION`. No-group DIRECT and its final population reuse
+`KNOCKOUT` @ `AFTER_MATCH_CREATION` as bracket-creation evidence; post-bracket
+DIRECT/population mutation is denied. Existing group-stage locks are unchanged.
 
 Mandatory admission ceilings cannot be loosened by profile lockMap.
 Profile may tighten earlier only:
