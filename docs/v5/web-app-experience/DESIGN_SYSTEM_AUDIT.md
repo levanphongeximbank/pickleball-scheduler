@@ -9,15 +9,16 @@
 
 | Source | Path | Primary / font | Role today |
 |--------|------|----------------|------------|
-| Slate Enterprise (claimed SSoT) | `src/theme/designTokens.js` | Green `#10B981`, DM Sans | MUI default app theme |
-| MUI theme | `src/theme/theme.js` | From designTokens + hardcoded table greys | Components |
-| Figure 1 shell | `src/theme/figure1Tokens.js` + `src/features/canonical-shell/theme/figure1ShellTheme.js` | Blue `#3B82F6`, Inter | Canonical App Shell only |
+| Slate → Auth workspace (Wave 2B) | `src/theme/designTokens.js` | Primary `#3B82F6`, Success `#10B981`, Inter | MUI default app theme SSoT |
+| MUI theme | `src/theme/theme.js` | From designTokens + focus-visible foundation | Components |
+| Figure 1 shell | `src/theme/figure1Tokens.js` + `src/features/canonical-shell/theme/figure1ShellTheme.js` | Blue `#3B82F6`, Inter | Canonical App Shell only (FROZEN) |
 | Shell re-export | `src/components/shell/shellTokens.js` | Re-exports designTokens | Legacy shell |
 | Experience-a1 | `.../tournamentExperienceTokens.js` | Blue `#2563EB` | Frozen tournament screens |
 | Domain | `courtCalendarTokens.js`, `clubUiTokens.js`, `sidebarNavTokens.js` | Local palettes | Isolated |
 
-**Three competing primaries:** Slate green vs Figure 1 `#3B82F6` vs Experience `#2563EB`.  
-**Two fonts:** DM Sans (app) vs Inter (Canonical shell). Experience uses its own type scale.
+**Three competing primaries (pre-2B):** ~~Slate green vs~~ Figure 1 `#3B82F6` vs Experience `#2563EB`.  
+**Wave 2B Owner lock:** authenticated workspace **PRIMARY = `#3B82F6`**, **SUCCESS = `#10B981`** (green is no longer primary). Experience `#2563EB` and Public lime remain scoped.  
+**Fonts (Wave 2B):** Inter is authenticated canonical; DM Sans retained for Public isolation + fallback. Experience type scale unchanged.
 
 Approved untranslated brand tokens (`canonicalVietnameseLabels.js`): PICK_VN, AI, VPR, VPL, VPT, VPC, Zalo OA, API, CRM, QR.
 
@@ -89,4 +90,4 @@ Hot files/areas:
 | DS-07 | Form density: admin tables `small` vs Experience `control` radius 10 |
 | DS-08 | Inconsistent radius 8/10/12 |
 
-**Wave 2 implication:** introduce a **Web App** token layer aligned to Experience + Figure 1 (already closer to each other than to Slate green). Do **not** retokenize frozen tournament screens in the same PR as shell work.
+**Wave 2 implication (updated Batch 2B):** authenticated workspace tokens aligned to Figure 1 **blue primary** + emerald **success** + **Inter**. Experience language stays isolated — do **not** retokenize frozen tournament screens.

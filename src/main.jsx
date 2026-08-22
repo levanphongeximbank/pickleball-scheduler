@@ -1,3 +1,12 @@
+/**
+ * Wave 2B — authenticated workspace canonical font is Inter (loaded once at root).
+ * DM Sans remains loaded for PublicLayout isolation + stack fallback only.
+ * Figure 1 shell no longer re-imports Inter CSS (see figure1Fonts.js).
+ */
+import "@fontsource/inter/400.css";
+import "@fontsource/inter/500.css";
+import "@fontsource/inter/600.css";
+import "@fontsource/inter/700.css";
 import "@fontsource/dm-sans/400.css";
 import "@fontsource/dm-sans/500.css";
 import "@fontsource/dm-sans/600.css";

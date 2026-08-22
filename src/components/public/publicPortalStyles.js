@@ -1,5 +1,5 @@
 import { alpha } from "@mui/material/styles";
-import { PALETTE, SHELL } from "../../theme/designTokens.js";
+import { SHELL } from "../../theme/designTokens.js";
 
 /** Mockup-aligned palette: dark navy + lime CTA */
 export const PUBLIC_COLORS = {
@@ -13,7 +13,8 @@ export const PUBLIC_COLORS = {
   glass: "rgba(255,255,255,0.05)",
   glassBorder: "rgba(255,255,255,0.1)",
   primary: "#10B981",
-  primaryLight: PALETTE.primary.light,
+  /** Pinned — do not follow auth workspace primary (Wave 2B blue lock) */
+  primaryLight: "#34D399",
   lime: "#C5E831",
   limeDark: "#A8C929",
   accent: "#C5E831",

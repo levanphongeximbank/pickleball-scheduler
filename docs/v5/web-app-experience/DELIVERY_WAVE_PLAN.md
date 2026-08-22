@@ -29,7 +29,7 @@ PROPOSED_WAVE_COUNT=8
 
 ## WAVE 2 — Shared Design System
 
-**SCOPE=** Web App token layer aligned to Figure 1 + Experience blues (not Slate green). Shared PageHeader / Empty / Loading(skeleton) / Error / Table-or-ResponsiveDataView / Dialog density. Do **not** retokenize frozen Experience files in the same change set. Deduplicate chips outside Experience.
+**SCOPE=** Web App token layer: workspace primary Figure 1 `#3B82F6`, success `#10B981`, font Inter (Batch 2B Owner lock). Shared PageHeader / Empty / Loading / Error / Table / Dialog in later batches. Do **not** retokenize frozen Experience files. Deduplicate chips outside Experience.
 
 **SCREENS=** Token consumers: Dashboard, Players, Court, Club, Finance, Billing, Admin (pilot 1–2 modules first).
 
@@ -37,7 +37,7 @@ PROPOSED_WAVE_COUNT=8
 
 **RISK=** Global theme swap can regress Production shell. Keep Experience tokens isolated.
 
-**EXPECTED_OWNER_REVIEW=** GO on primary color (Experience `#2563EB` vs Figure 1 `#3B82F6`) and font (Inter vs DM Sans).
+**EXPECTED_OWNER_REVIEW=** ~~GO on primary color~~ **LOCKED 2B:** Primary `#3B82F6`, Success `#10B981`, Font Inter.
 
 ---
 

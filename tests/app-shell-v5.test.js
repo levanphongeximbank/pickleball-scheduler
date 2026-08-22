@@ -117,12 +117,16 @@ test("app shell — account menu dùng nhãn vai trò tiếng Việt tập trung
   assert.equal(/label=\{user\.role\}/.test(account), false);
 });
 
-test("app shell — design tokens V5 slate enterprise", () => {
+test("app shell — design tokens Wave 2B authenticated workspace", () => {
   const tokens = readSrc("src/theme/designTokens.js");
 
-  assert.ok(tokens.includes('DESIGN_DIRECTION = "slate-enterprise"'));
+  assert.ok(tokens.includes('DESIGN_DIRECTION = "authenticated-workspace-v2"'));
+  assert.ok(tokens.includes("LEGACY_DESIGN_DIRECTION"));
+  assert.ok(tokens.includes("slate-enterprise"));
   assert.ok(tokens.includes("#0F172A"));
+  assert.ok(tokens.includes("#3B82F6"));
   assert.ok(tokens.includes("#10B981"));
+  assert.ok(tokens.includes("Inter"));
   assert.ok(tokens.includes("DM Sans"));
 });
 

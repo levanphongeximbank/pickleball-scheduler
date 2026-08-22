@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Navigate } from "react-router-dom";
 
-import { Alert, Box, Button, Grid, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Grid, Typography } from "@mui/material";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 
 import { useAuth } from "../../../context/AuthContext.jsx";
@@ -18,10 +18,13 @@ import CourtHeatmap from "./CourtHeatmap.jsx";
 import DashboardRecentBookingsTable from "./DashboardRecentBookingsTable.jsx";
 import DashboardUpcomingTournamentsTable from "./DashboardUpcomingTournamentsTable.jsx";
 import DashboardRevenueBreakdown from "./DashboardRevenueBreakdown.jsx";
-import DashboardEmptyState, {
-  DashboardErrorState,
-  DashboardLoadingState,
-} from "./DashboardEmptyState.jsx";
+import {
+  AuthEmptyState,
+  AuthErrorState,
+  AuthFilterBar,
+  AuthLoadingState,
+  AuthPageHeader,
+} from "../../web-app-ui/index.js";
 import { DASHBOARD_LAYOUT } from "../constants/dashboardLayout.js";
 import { ActionQueuePanel } from "../../action-queue/index.js";
 
@@ -67,13 +70,41 @@ export default function DashboardAnalyticsView() {
 
   return (
     <Box sx={{ mb: 3, maxWidth: "100%" }}>
-      <StackHeader
-        activeClub={activeClub}
-        user={user}
-        timeRange={analytics.timeRange}
+      <AuthPageHeader
+        title="Tổng quan"
+        subtitle={`Chào mừng trở lại, ${user?.displayName || ROLE_LABELS[user?.role] || "Admin"}! Đây là tổng quan hoạt động của hệ thống${activeClub?.name ? ` — ${activeClub.name}` : ""}.`}
+        context={
+          <Typography variant="caption" color="text.secondary">
+            Phần vận hành CLB bên dưới (nếu có) là nguồn riêng — không đồng nghĩa toàn bộ trang đang dùng báo cáo trực tiếp.
+          </Typography>
+        }
+        primaryAction={
+          analytics.timeRange ? (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<CalendarMonthOutlinedIcon sx={{ fontSize: 18 }} />}
+              sx={{
+                flexShrink: 0,
+                borderRadius: 1.5,
+                textTransform: "none",
+                fontWeight: 600,
+                fontSize: 13,
+                py: 0.75,
+                color: "text.secondary",
+                borderColor: "divider",
+                bgcolor: "background.paper",
+              }}
+            >
+              {`${analytics.timeRange.from} → ${analytics.timeRange.to}`}
+            </Button>
+          ) : null
+        }
       />
 
-      <DashboardTimeFilter
+      <AuthFilterBar
+        dateControls={
+          <DashboardTimeFilter
         preset={analytics.preset}
         onPresetChange={analytics.setPreset}
         customFrom={analytics.customFrom}
@@ -83,13 +114,21 @@ export default function DashboardAnalyticsView() {
         sourceState={sourceState}
         onRefresh={reload}
       />
+        }
+      />
 
-      {loading && <DashboardLoadingState />}
+      {loading && <AuthLoadingState label="Đang tải dữ liệu dashboard…" />}
 
-      {!loading && error && <DashboardErrorState message={error} onRetry={reload} />}
+      {!loading && error && (
+        <AuthErrorState
+          title="Không tải được dashboard"
+          message={error}
+          onRetry={reload}
+        />
+      )}
 
       {!loading && !error && isEmpty && (
-        <DashboardEmptyState
+        <AuthEmptyState
           title="Chưa có dữ liệu dashboard"
           description="Thêm booking, người chơi hoặc phiên xếp sân để xem số liệu trực tiếp. Hệ thống không hiển thị KPI demo khi nguồn trống."
         />
@@ -154,50 +193,3 @@ export default function DashboardAnalyticsView() {
   );
 }
 
-function StackHeader({ activeClub, user, timeRange }) {
-  const displayName = user?.displayName || ROLE_LABELS[user?.role] || "Admin";
-  const dateLabel = timeRange ? `${timeRange.from} → ${timeRange.to}` : "";
-
-  return (
-    <Stack
-      direction={{ xs: "column", md: "row" }}
-      spacing={1.5}
-      sx={{ mb: 2, alignItems: { md: "flex-start" }, justifyContent: "space-between" }}
-    >
-      <Box sx={{ minWidth: 0 }}>
-        <Typography sx={{ fontSize: 28, fontWeight: 700, lineHeight: 1.2, mb: 0.75 }}>
-          Tổng quan
-        </Typography>
-        <Typography color="text.secondary" sx={{ fontSize: 14, lineHeight: 1.5 }}>
-          Chào mừng trở lại, {displayName}! Đây là tổng quan hoạt động của hệ thống
-          {activeClub?.name ? ` — ${activeClub.name}` : ""}.
-        </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75 }}>
-          Phần vận hành CLB bên dưới (nếu có) là nguồn riêng — không đồng nghĩa toàn bộ
-          trang đang dùng báo cáo trực tiếp.
-        </Typography>
-      </Box>
-
-      {dateLabel && (
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<CalendarMonthOutlinedIcon sx={{ fontSize: 18 }} />}
-          sx={{
-            flexShrink: 0,
-            borderRadius: 1.5,
-            textTransform: "none",
-            fontWeight: 600,
-            fontSize: 13,
-            py: 0.75,
-            color: "text.secondary",
-            borderColor: "divider",
-            bgcolor: "background.paper",
-          }}
-        >
-          {dateLabel}
-        </Button>
-      )}
-    </Stack>
-  );
-}

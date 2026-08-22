@@ -46,9 +46,19 @@ import PlayerCard from "../components/players/PlayerCard.jsx";
 import PlayerImportExportDialog, {
   PlayerImportExportButton,
 } from "../components/players/PlayerImportExport.jsx";
-import TournamentPageHeader from "../components/tournament/TournamentPageHeader.jsx";
-import TournamentEmptyState from "../components/tournament/TournamentEmptyState.jsx";
-import { TOURNAMENT_LAYOUT } from "../components/tournament/tournamentLayout.js";
+import {
+  AuthConfirmDialog,
+  AuthEmptyState,
+  AuthFilterBar,
+  AuthLoadingState,
+  AuthPageHeader,
+} from "../features/web-app-ui/index.js";
+
+/** Local spacing — authenticated Players must not import tournament layout. */
+const PLAYERS_LAYOUT = Object.freeze({
+  gridSpacing: 2.5,
+  sectionGap: 2.5,
+});
 import {
   computePlayerDashboardStats,
   filterPlayers,
@@ -65,23 +75,45 @@ const defaultPlayerForm = {
   level: 3.5,
 };
 
+/** Canonical clubId only — never invent or fall back to an arbitrary club. */
+function resolveExplicitClubId(clubId) {
+  const id = String(clubId || "").trim();
+  return id || null;
+}
+
+/**
+ * Shell: readiness gate must wrap club-dependent content as a child so
+ * hooks/useMemo inside do not run before readiness is established.
+ * Gate JSX alone does not protect parent-level club-scoped computations.
+ */
 export default function Players() {
+  const { user } = useAuth();
+  const platformMode = isPlatformAthleteViewer(user?.role);
+
+  return (
+    <PlatformContextReadinessGate requireClub={!platformMode} showClubSwitcher={!platformMode}>
+      <PlayersReadyContent platformMode={platformMode} />
+    </PlatformContextReadinessGate>
+  );
+}
+
+function PlayersReadyContent({ platformMode }) {
   const { activeClubId, activeClub, revision, clubs } = useClub();
   const { can, rbacEnabled, isAuthenticated, user } = useAuth();
-  const platformMode = isPlatformAthleteViewer(user?.role);
+  const explicitClubId = resolveExplicitClubId(activeClubId);
 
   const canViewClubSkillLevels =
     !rbacEnabled ||
     !isAuthenticated ||
     can(PERMISSIONS.SKILL_LEVEL_VIEW_PRIVATE, {
-      clubId: activeClubId,
+      clubId: explicitClubId,
       venueId: activeClub?.venueId || null,
     });
 
   const canViewPlayerSkill = (playerId) =>
     canViewPlayerSkillLevel(
       user,
-      { clubId: activeClubId, playerId },
+      { clubId: explicitClubId, playerId },
       { rbacEnabled }
     );
 
@@ -89,10 +121,10 @@ export default function Players() {
     !rbacEnabled ||
     !isAuthenticated ||
     can(PERMISSIONS.PLAYER_UPDATE, {
-      clubId: activeClubId,
+      clubId: explicitClubId,
       venueId: activeClub?.venueId || null,
     });
-  const [players, setPlayers] = useState(() => normalizePlayers(loadPlayersFromStorage()));
+  const [players, setPlayers] = useState(() => []);
   const [platformWarning, setPlatformWarning] = useState(null);
   const [platformLoading, setPlatformLoading] = useState(false);
   const [clubFilter, setClubFilter] = useState("all");
@@ -135,7 +167,7 @@ export default function Players() {
       return;
     }
 
-    if (!String(activeClubId || "").trim()) {
+    if (!explicitClubId) {
       setPlayers([]);
       return;
     }
@@ -143,7 +175,7 @@ export default function Players() {
     let cancelled = false;
     (async () => {
       if (isCanonicalPlayerRepositoryEnabled()) {
-        const result = await listPlayersForClubAware(activeClubId);
+        const result = await listPlayersForClubAware(explicitClubId);
         if (cancelled) return;
         if (result.ok) {
           setPlayers(normalizePlayers(result.legacyPlayers || []));
@@ -156,7 +188,7 @@ export default function Players() {
           return;
         }
       }
-      const nextPlayers = loadPlayersFromStorage(activeClubId);
+      const nextPlayers = loadPlayersFromStorage(explicitClubId);
       if (!cancelled) {
         setPlayers(normalizePlayers(nextPlayers));
         setPlatformWarning(null);
@@ -166,7 +198,7 @@ export default function Players() {
     return () => {
       cancelled = true;
     };
-  }, [activeClubId, revision, platformMode, loadPlatformPlayers]);
+  }, [explicitClubId, revision, platformMode, loadPlatformPlayers]);
 
   const clubFilterOptions = useMemo(() => {
     if (!platformMode) {
@@ -218,11 +250,11 @@ export default function Players() {
     if (!platformMode) {
       return players;
     }
-    if (!String(activeClubId || "").trim()) {
+    if (!explicitClubId) {
       return [];
     }
-    return loadPlayersForClub(activeClubId);
-  }, [activeClubId, platformMode, revision, players]);
+    return loadPlayersForClub(explicitClubId);
+  }, [explicitClubId, platformMode, revision, players]);
 
   const canManagePlayer = (player) => {
     if (!canManagePlayers) {
@@ -237,17 +269,20 @@ export default function Players() {
       return false;
     }
 
-    return String(player.sourceClubId || "") === String(activeClubId || "");
+    return String(player.sourceClubId || "") === String(explicitClubId || "");
   };
 
-  const checkedInIds = useMemo(
-    () => getTodayCheckedInPlayerIds(activeClubId),
-    [activeClubId, revision, players]
-  );
+  const checkedInIds = useMemo(() => {
+    if (!explicitClubId) {
+      return new Set();
+    }
+    return getTodayCheckedInPlayerIds(explicitClubId);
+  }, [explicitClubId, revision, players]);
 
-  const stats = useMemo(
-    () => computePlayerDashboardStats(scopedPlayers, platformMode ? null : activeClubId),
-    [scopedPlayers, activeClubId, platformMode]
+  const clubIdForStats = explicitClubId;
+  const stats = computePlayerDashboardStats(
+    scopedPlayers,
+    platformMode ? null : clubIdForStats
   );
 
   const filteredPlayers = useMemo(() => {
@@ -262,14 +297,19 @@ export default function Players() {
   }, [scopedPlayers, search, genderFilter, levelRange, statusFilter, checkedInIds]);
 
   const savePlayers = (updatedPlayers) => {
+    if (!explicitClubId) {
+      // Club-scoped mutation requires canonical clubId — never invent a fallback.
+      return;
+    }
+
     if (platformMode) {
-      savePlayersForClub(updatedPlayers, activeClubId);
+      savePlayersForClub(updatedPlayers, explicitClubId);
       void loadPlatformPlayers();
       return;
     }
 
     setPlayers(updatedPlayers);
-    savePlayersForClub(updatedPlayers, activeClubId);
+    savePlayersForClub(updatedPlayers, explicitClubId);
   };
 
   const updateForm = (field, value) => {
@@ -371,17 +411,22 @@ export default function Players() {
   );
 
   return (
-    <PlatformContextReadinessGate requireClub={!platformMode} showClubSwitcher={!platformMode}>
-    <Box>
-      <TournamentPageHeader
+    <Box data-testid="players-ready-content">
+      <AuthPageHeader
         title={platformMode ? "Vận động viên toàn hệ thống" : "Quản lý người chơi"}
-        description={
+        subtitle={
           platformMode
             ? "Xem mọi VĐV đã đăng ký tài khoản và VĐV trong danh sách CLB trên hệ thống."
             : "Theo dõi trình độ, giới tính, trạng thái tham gia và dữ liệu để AI xếp sân cân bằng."
         }
-        contextLine={contextLine}
-        action={headerActions}
+        context={
+          contextLine ? (
+            <Typography variant="body2" color="text.secondary">
+              {contextLine}
+            </Typography>
+          ) : null
+        }
+        primaryAction={headerActions}
       />
 
       {platformMode && (
@@ -399,9 +444,7 @@ export default function Players() {
       )}
 
       {platformLoading && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Đang tải danh sách VĐV toàn hệ thống...
-        </Typography>
+        <AuthLoadingState label="Đang tải danh sách VĐV toàn hệ thống..." />
       )}
 
       <PlayerStats stats={stats} />
@@ -438,7 +481,9 @@ export default function Players() {
         </Stack>
       )}
 
-      <PlayerFilters
+      <AuthFilterBar
+        filters={
+          <PlayerFilters
         search={search}
         onSearchChange={setSearch}
         genderFilter={genderFilter}
@@ -452,13 +497,16 @@ export default function Players() {
         totalCount={scopedPlayers.length}
         onClearFilters={clearFilters}
       />
+        }
+        resultCount={filteredPlayers.length}
+      />
 
-      <Grid container spacing={TOURNAMENT_LAYOUT.gridSpacing}>
+      <Grid container spacing={PLAYERS_LAYOUT.gridSpacing}>
         {filteredPlayers.map((player) => (
           <Grid key={player.id} size={{ xs: 12, sm: 6, lg: 4, xl: 3 }}>
             <PlayerCard
               player={player}
-              clubId={platformMode ? player.sourceClubId || activeClubId : activeClubId}
+              clubId={platformMode ? player.sourceClubId || explicitClubId : explicitClubId}
               players={scopedPlayers}
               checkedInIds={checkedInIds}
               canViewSkillLevel={canViewPlayerSkill(player.id)}
@@ -472,8 +520,8 @@ export default function Players() {
       </Grid>
 
       {filteredPlayers.length === 0 && (
-        <Box sx={{ mt: TOURNAMENT_LAYOUT.sectionGap }}>
-          <TournamentEmptyState
+        <Box sx={{ mt: PLAYERS_LAYOUT.sectionGap }}>
+          <AuthEmptyState
             icon={GroupsOutlinedIcon}
             title={players.length === 0 ? "Chưa có vận động viên" : "Không tìm thấy người chơi"}
             description={
@@ -571,21 +619,20 @@ export default function Players() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={deletePlayer !== null} onClose={() => setDeletePlayer(null)}>
-        <DialogTitle sx={{ fontWeight: 900 }}>Xác nhận xóa</DialogTitle>
-        <DialogContent>
-          <Typography>
+      <AuthConfirmDialog
+        open={deletePlayer !== null}
+        title="Xác nhận xóa"
+        message={
+          <>
             Bạn có chắc muốn xóa <strong>{deletePlayer?.name}</strong>?
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5 }}>
-          <Button onClick={() => setDeletePlayer(null)}>Hủy</Button>
-          <Button color="error" variant="contained" onClick={handleDelete}>
-            Xóa
-          </Button>
-        </DialogActions>
-      </Dialog>
+          </>
+        }
+        confirmLabel="Xóa"
+        cancelLabel="Hủy"
+        confirmTone="destructive"
+        onConfirm={handleDelete}
+        onCancel={() => setDeletePlayer(null)}
+      />
     </Box>
-    </PlatformContextReadinessGate>
   );
 }
