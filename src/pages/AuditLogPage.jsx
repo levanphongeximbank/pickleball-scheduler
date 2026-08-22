@@ -1,17 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  Alert,
   Box,
   Card,
   CardContent,
-  Chip,
   MenuItem,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
 } from "@mui/material";
@@ -21,6 +14,28 @@ import { PERMISSIONS } from "../auth/permissions.js";
 import { usePlatformRuntime } from "../core/platform/app/usePlatformRuntime.js";
 import { AUDIT_ACTIONS, listAuditLogs } from "../features/identity/services/auditService.js";
 import { mergeAuditEntries } from "./auditLogUtils.js";
+import {
+  AppSnackbar,
+  AuthFilterBar,
+  AuthPageHeader,
+  AuthResponsiveDataView,
+  StatusToneChip,
+} from "../features/web-app-ui/index.js";
+
+function auditActionTone(action) {
+  const value = String(action || "");
+  if (/FAIL|DELETE|DENIED|ERROR/i.test(value)) return "error";
+  if (/CREATE|LOGIN|SUCCESS|ASSIGN/i.test(value)) return "success";
+  if (/UPDATE|CHANGE|RESET|PERMISSION/i.test(value)) return "warning";
+  return "info";
+}
+
+function runtimePreviewTone(status) {
+  if (status === "ready") return "success";
+  if (status === "denied") return "warning";
+  if (status === "error") return "error";
+  return "neutral";
+}
 
 const ACTION_LABELS = {
   [AUDIT_ACTIONS.LOGIN]: "Đăng nhập",
@@ -174,12 +189,10 @@ export default function AuditLogPage() {
   return (
     <PermissionGate permissions={[PERMISSIONS.USER_MANAGE]}>
       <Box>
-        <Typography variant="h4" fontWeight={800} gutterBottom>
-          Nhật ký hệ thống
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Ghi nhận đăng nhập, quản lý user và thao tác nhạy cảm. Không hiển thị mật khẩu/token.
-        </Typography>
+        <AuthPageHeader
+          title="Nhật ký hệ thống"
+          subtitle="Ghi nhận đăng nhập, quản lý user và thao tác nhạy cảm. Không hiển thị mật khẩu/token."
+        />
 
         {runtimePreview && (
           <Card variant="outlined" sx={{ mb: 2 }}>
@@ -197,78 +210,108 @@ export default function AuditLogPage() {
                         : `Không thể ghi audit preview: ${runtimePreview.message}`}
                   </Typography>
                 </Box>
-                <Chip size="small" color={runtimePreview.status === "ready" ? "success" : runtimePreview.status === "denied" ? "warning" : "default"} label={runtimePreview.action || "audit"} />
+                <StatusToneChip
+                  tone={runtimePreviewTone(runtimePreview.status)}
+                  label={runtimePreview.action || "audit"}
+                />
               </Stack>
             </CardContent>
           </Card>
         )}
 
-        {message && (
-          <Alert severity={message.type} sx={{ mb: 2 }} onClose={() => setMessage(null)}>
-            {message.text}
-          </Alert>
-        )}
+        {message ? (
+          <AppSnackbar
+            open
+            message={message.text}
+            tone={message.type === "error" ? "error" : message.type === "success" ? "success" : "info"}
+            onClose={() => setMessage(null)}
+          />
+        ) : null}
 
         <Card>
           <CardContent>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2 }}>
-              <TextField
-                select
-                label="Hành động"
-                value={actionFilter}
-                onChange={(e) => setActionFilter(e.target.value)}
-                size="small"
-                sx={{ minWidth: 200 }}
-              >
-                <MenuItem value="">Tất cả</MenuItem>
-                {Object.entries(ACTION_LABELS).map(([value, label]) => (
-                  <MenuItem key={value} value={value}>
-                    {label}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <Chip label={loading ? "Đang tải…" : `${logs.length} bản ghi`} size="small" />
-            </Stack>
+            <AuthFilterBar
+              filters={
+                <TextField
+                  select
+                  label="Hành động"
+                  value={actionFilter}
+                  onChange={(e) => setActionFilter(e.target.value)}
+                  size="small"
+                  sx={{ minWidth: 200 }}
+                >
+                  <MenuItem value="">Tất cả</MenuItem>
+                  {Object.entries(ACTION_LABELS).map(([value, label]) => (
+                    <MenuItem key={value} value={value}>
+                      {label}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              }
+              resultCount={loading ? undefined : logs.length}
+              resultCountLabel="bản ghi"
+            />
 
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Thời gian</TableCell>
-                  <TableCell>Hành động</TableCell>
-                  <TableCell>Actor</TableCell>
-                  <TableCell>Đối tượng</TableCell>
-                  <TableCell>Chi tiết</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {logs.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} align="center">
-                      {loading ? "Đang tải…" : "Chưa có nhật ký."}
-                    </TableCell>
-                  </TableRow>
-                )}
-                {logs.map((entry) => (
-                  <TableRow key={entry.id || `${entry.created_at}-${entry.action}`}>
-                    <TableCell>{formatTime(entry.created_at)}</TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        label={ACTION_LABELS[entry.action] || entry.action}
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell>{entry.actor_email || entry.actor_id || "—"}</TableCell>
-                    <TableCell>
-                      {[entry.resource_type, entry.resource_id].filter(Boolean).join(" / ") || "—"}
-                    </TableCell>
-                    <TableCell sx={{ maxWidth: 280, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {summarizeMetadata(entry.metadata)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <AuthResponsiveDataView
+              loading={loading}
+              columns={[
+                {
+                  field: "created_at",
+                  headerName: "Thời gian",
+                  render: (row) => formatTime(row.created_at),
+                },
+                {
+                  field: "action",
+                  headerName: "Hành động",
+                  render: (row) => (
+                    <StatusToneChip
+                      tone={auditActionTone(row.action)}
+                      label={ACTION_LABELS[row.action] || row.action}
+                    />
+                  ),
+                },
+                {
+                  field: "actor",
+                  headerName: "Actor",
+                  render: (row) => row.actor_email || row.actor_id || "—",
+                },
+                {
+                  field: "resource",
+                  headerName: "Đối tượng",
+                  render: (row) =>
+                    [row.resource_type, row.resource_id].filter(Boolean).join(" / ") || "—",
+                },
+                {
+                  field: "detail",
+                  headerName: "Chi tiết",
+                  render: (row) => summarizeMetadata(row.metadata),
+                },
+              ]}
+              rows={logs}
+              getRowId={(row) => row.id || `${row.created_at}-${row.action}`}
+              emptyTitle="Chưa có nhật ký"
+              emptyDescription="Không có bản ghi audit nào cho bộ lọc hiện tại."
+              renderMobileRow={(row) => (
+                <>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {formatTime(row.created_at)}
+                  </Typography>
+                  <StatusToneChip
+                    tone={auditActionTone(row.action)}
+                    label={ACTION_LABELS[row.action] || row.action}
+                  />
+                  <Typography variant="body2">
+                    {row.actor_email || row.actor_id || "—"}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {[row.resource_type, row.resource_id].filter(Boolean).join(" / ") || "—"}
+                  </Typography>
+                  <Typography variant="body2" sx={{ wordBreak: "break-word" }}>
+                    {summarizeMetadata(row.metadata)}
+                  </Typography>
+                </>
+              )}
+            />
           </CardContent>
         </Card>
       </Box>

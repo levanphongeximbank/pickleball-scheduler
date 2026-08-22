@@ -62,6 +62,10 @@ import { bindClubCourtsToCluster } from "../features/venue-court/services/bindCl
 import { COURT_STATUSES, COURT_TYPES } from "../models/court.js";
 import { COURT_STATUS_LABELS } from "./courtManagement/courtManagement.constants.js";
 import ClubDataTransferPanel from "./ClubDataTransferPanel";
+import {
+  AuthEmptyState,
+  AuthPageHeader,
+} from "../features/web-app-ui/index.js";
 
 export default function Courts() {
   const { activeClubId, activeClub, revision, refreshClubs } = useClub();
@@ -301,19 +305,10 @@ export default function Courts() {
 
   return (
     <Box>
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 4,
-        }}
-      >
-        <Typography variant="h4" fontWeight="bold">
-          🏟️ Quản lý sân
-        </Typography>
-
-        <Stack direction="row" spacing={1}>
+      <AuthPageHeader
+        title="Quản lý sân"
+        subtitle="Danh sách sân vật lý theo cụm/cơ sở hiện tại. Không làm phẳng quan hệ cụm ↔ sân."
+        primaryAction={<Stack direction="row" spacing={1}>
           <Button
             variant="outlined"
             size="large"
@@ -338,8 +333,8 @@ export default function Courts() {
           >
             THÊM SÂN
           </Button>
-        </Stack>
-      </Box>
+        </Stack>}
+      />
 
       {courtCapacity && (
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -455,19 +450,14 @@ export default function Courts() {
       <Grid container spacing={3}>
         {courts.length === 0 && (
           <Grid size={{ xs: 12 }}>
-            <Alert severity="info">
-              {awaitingClusterClaim ? (
-                <>
-                  Chưa có cụm sân được duyệt. Vào sidebar → <strong>Cơ sở hiện tại</strong> để
-                  gửi yêu cầu gắn cụm sân.
-                </>
-              ) : (
-                <>
-                  Chưa có sân nào tại cơ sở hiện tại. Bấm <strong>THIẾT LẬP NHANH</strong> để tạo
-                  nhiều sân cùng lúc, hoặc <strong>THÊM SÂN</strong> để thêm từng sân.
-                </>
-              )}
-            </Alert>
+            <AuthEmptyState
+              title="Chưa có sân"
+              description={
+                awaitingClusterClaim
+                  ? "Chưa có cụm sân được duyệt. Vào sidebar → Cơ sở hiện tại để gửi yêu cầu gắn cụm sân."
+                  : "Chưa có sân nào tại cơ sở hiện tại. Bấm THIẾT LẬP NHANH để tạo nhiều sân cùng lúc, hoặc THÊM SÂN để thêm từng sân."
+              }
+            />
           </Grid>
         )}
         {courts.map((court, index) => (

@@ -646,5 +646,7 @@
   "tests/web-app-wave2-batch2c-primitives.test.js",
   "tests/web-app-wave2-batch2c-primitive-a11y.test.js",
   "tests/web-app-wave2-batch2d-shared-patterns.test.js",
-  "tests/web-app-wave2-batch2d-shared-pattern-a11y.test.js"
+  "tests/web-app-wave2-batch2d-shared-pattern-a11y.test.js",
+  "tests/web-app-wave2-batch2e-pilot-adoption.test.js",
+  "tests/web-app-wave2-batch2e-pilot-a11y.test.js"
 ]
