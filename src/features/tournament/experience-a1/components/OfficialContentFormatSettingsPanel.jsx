@@ -4,7 +4,8 @@
  * Draft editing only. Persistence via parent Save → event.competitionRules.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
@@ -48,6 +49,11 @@ import {
   outlinedActionSx,
   primaryActionSx,
 } from "../visual/tournamentExperienceTokens.js";
+import {
+  applyFormatSettingsSectionSearchParams,
+  readFormatSettingsSectionQuery,
+  resolveFormatSettingsSection,
+} from "./formatSettingsSectionNavigation.js";
 
 const STAGE_ROWS = [
   { key: "GROUP", label: "Vòng bảng" },
@@ -729,9 +735,15 @@ export default function OfficialContentFormatSettingsPanel({
 }) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
-  const [activeGroup, setActiveGroup] = useState("match-rules");
-  const resolvedActiveGroup =
-    activeGroup === "change-end" ? "match-rules" : activeGroup;
+  const [searchParams, setSearchParams] = useSearchParams();
+  // URL ?section= is presentation authority (F5 / Back / Forward). Not business data.
+  const resolvedActiveGroup = resolveFormatSettingsSection(
+    readFormatSettingsSectionQuery(searchParams)
+  ).sectionId;
+  const setActiveGroup = (sectionId) => {
+    const next = applyFormatSettingsSectionSearchParams(searchParams, sectionId);
+    setSearchParams(next, { replace: false });
+  };
 
   const patch = (path, value) => {
     setDraft((prev) => {

@@ -403,6 +403,7 @@
   "tests/official-open-tournament-phase2m3-semantic-diff-01.test.js",
   "tests/official-open-tournament-court-inventory-tenant-venue-scope-01.test.js",
   "tests/official-open-adapter-b-b11-boundary.test.js",
+  "tests/official-open-settings-format-section-f5-navigation-01.test.js",
   "tests/official-open-settings-match-rules-closure-01.test.js",
   "tests/official-open-settings-match-rules-pairing-final-closure-01.test.js",
   "tests/tournament-create-and-team-schema-remediation-01.test.js",
