@@ -1,0 +1,109 @@
+{
+  "capturedAt": "2026-08-22T07:27:16.463Z",
+  "flag": "VITE_CANONICAL_APP_SHELL_ENABLED=true",
+  "harness": "batch1c-topbar-evidence.html",
+  "results": [
+    {
+      "shot": "dashboard-1440",
+      "file": "docs/v5/web-app-experience/wave1/batch-1e/screenshots/dashboard-1440.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "sidebarPresent": true,
+      "sidebarWidth": "260",
+      "drawerOpen": false,
+      "help": 1,
+      "search": 1,
+      "shellOverflow": false
+    },
+    {
+      "shot": "tournament-1440",
+      "file": "docs/v5/web-app-experience/wave1/batch-1e/screenshots/tournament-1440.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "sidebarPresent": true,
+      "sidebarWidth": "260",
+      "drawerOpen": false,
+      "help": 1,
+      "search": 1,
+      "shellOverflow": false
+    },
+    {
+      "shot": "dashboard-1024",
+      "file": "docs/v5/web-app-experience/wave1/batch-1e/screenshots/dashboard-1024.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "sidebarPresent": true,
+      "sidebarWidth": "64",
+      "drawerOpen": false,
+      "help": 1,
+      "search": 1,
+      "shellOverflow": false
+    },
+    {
+      "shot": "tournament-1024",
+      "file": "docs/v5/web-app-experience/wave1/batch-1e/screenshots/tournament-1024.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "sidebarPresent": true,
+      "sidebarWidth": "64",
+      "drawerOpen": false,
+      "help": 1,
+      "search": 1,
+      "shellOverflow": false
+    },
+    {
+      "shot": "dashboard-430-closed",
+      "file": "docs/v5/web-app-experience/wave1/batch-1e/screenshots/dashboard-430-closed.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "sidebarPresent": false,
+      "sidebarWidth": null,
+      "drawerOpen": true,
+      "help": 1,
+      "search": 1,
+      "shellOverflow": false
+    },
+    {
+      "shot": "dashboard-430-drawer-open",
+      "file": "docs/v5/web-app-experience/wave1/batch-1e/screenshots/dashboard-430-drawer-open.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "sidebarPresent": false,
+      "sidebarWidth": null,
+      "drawerOpen": true,
+      "help": 1,
+      "search": 1,
+      "shellOverflow": false
+    },
+    {
+      "shot": "tournament-430",
+      "file": "docs/v5/web-app-experience/wave1/batch-1e/screenshots/tournament-430.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "sidebarPresent": false,
+      "sidebarWidth": null,
+      "drawerOpen": true,
+      "help": 1,
+      "search": 1,
+      "shellOverflow": false
+    }
+  ],
+  "failures": [],
+  "retainedFromBatch1D": [
+    "docs/v5/web-app-experience/wave1/batch-1e/screenshots/retained-1d-dashboard-1200.png",
+    "docs/v5/web-app-experience/wave1/batch-1e/screenshots/retained-1d-dashboard-1199.png",
+    "docs/v5/web-app-experience/wave1/batch-1e/screenshots/retained-1d-dashboard-900.png",
+    "docs/v5/web-app-experience/wave1/batch-1e/screenshots/retained-1d-dashboard-899.png",
+    "docs/v5/web-app-experience/wave1/batch-1e/screenshots/retained-1d-dashboard-1920.png",
+    "docs/v5/web-app-experience/wave1/batch-1e/screenshots/retained-1d-dashboard-768.png",
+    "docs/v5/web-app-experience/wave1/batch-1e/screenshots/retained-1d-dashboard-390.png",
+    "docs/v5/web-app-experience/wave1/batch-1e/screenshots/retained-1d-dashboard-360.png"
+  ]
+}
