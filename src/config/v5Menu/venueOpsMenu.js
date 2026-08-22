@@ -32,7 +32,8 @@ export const VENUE_OPS_MENU_ROOT = menuFolder({
       text: "Check-in",
       path: "/mobile/check-in",
       permissions: [PERMISSIONS.TOURNAMENT_VIEW],
-      excludeRoles: [ROLES.PLAYER],
+      // Batch 1B: CASHIER IA excludes tournament check-in / waitlist / director chrome.
+      excludeRoles: [ROLES.PLAYER, ROLES.CASHIER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
@@ -41,6 +42,7 @@ export const VENUE_OPS_MENU_ROOT = menuFolder({
       text: "Danh sách chờ",
       path: "/select-players",
       permissions: [PERMISSIONS.SCHEDULING_VIEW, PERMISSIONS.SCHEDULING_RUN],
+      excludeRoles: [ROLES.CASHIER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
@@ -59,6 +61,7 @@ export const VENUE_OPS_MENU_ROOT = menuFolder({
       path: "/court-engine",
       match: "court-engine",
       permissions: [PERMISSIONS.DIRECTOR_USE, PERMISSIONS.SCHEDULING_RUN],
+      excludeRoles: [ROLES.CASHIER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
   ],

@@ -34,15 +34,6 @@ export const CLUB_COACHING_MENU_ROOT = menuFolder({
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
-      key: "club-create",
-      icon: "club-list",
-      text: "Tạo CLB",
-      path: "/manage/clubs",
-      match: "manage-clubs",
-      permissions: [PERMISSIONS.CLUB_CREATE],
-      featureStatus: FEATURE_STATUS.LIVE,
-    }),
-    menuLeaf({
       key: "club-membership-requests",
       icon: "groups",
       text: "Yêu cầu gia nhập",
@@ -51,13 +42,16 @@ export const CLUB_COACHING_MENU_ROOT = menuFolder({
       permissions: [PERMISSIONS.CLUB_MEMBERSHIP_REVIEW],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
+    // Wave 1 Batch 1B — one canonical /manage/clubs leaf ("Quản lý CLB").
+    // Create remains in-page; do not expose Tạo CLB / Quản trị CLB as duplicate leaves.
     menuLeaf({
-      key: "club-governance-manage",
+      key: "club-list",
       icon: "club-list",
-      text: "Quản trị CLB",
+      text: "Quản lý CLB",
       path: "/manage/clubs",
       match: "manage-clubs",
       permissions: [PERMISSIONS.CLUB_VIEW],
+      excludeRoles: [ROLES.PLAYER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({
@@ -67,16 +61,6 @@ export const CLUB_COACHING_MENU_ROOT = menuFolder({
       path: "/platform/clubs",
       match: "platform-clubs",
       roles: [ROLES.PLATFORM_ADMIN, ROLES.SUPER_ADMIN],
-      featureStatus: FEATURE_STATUS.LIVE,
-    }),
-    menuLeaf({
-      key: "club-list",
-      icon: "club-list",
-      text: "Quản lý CLB",
-      path: "/manage/clubs",
-      match: "manage-clubs",
-      permissions: [PERMISSIONS.CLUB_VIEW],
-      excludeRoles: [ROLES.PLAYER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
     menuLeaf({

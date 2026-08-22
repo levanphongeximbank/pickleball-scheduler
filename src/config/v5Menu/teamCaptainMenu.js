@@ -7,6 +7,14 @@ function teamPortalPath(user) {
   return tournamentId ? `/team-portal/${tournamentId}` : null;
 }
 
+/**
+ * Captain home when no tournament context — truthful strangler list (not CRM).
+ * My-team / lineup stay null without tournamentId and are filtered from sidebar.
+ */
+function captainHomePath(user) {
+  return teamPortalPath(user) || "/tournament/list";
+}
+
 /** Menu Trưởng nhóm / Đội trưởng — V5.2 */
 export const TEAM_CAPTAIN_MENU_ROOT = menuFolder({
   key: "team-captain-root",
@@ -18,7 +26,7 @@ export const TEAM_CAPTAIN_MENU_ROOT = menuFolder({
       key: "captain-home",
       icon: "club-members",
       text: "Trang đội của tôi",
-      resolvePath: teamPortalPath,
+      resolvePath: captainHomePath,
       permissions: [PERMISSIONS.TEAM_VIEW],
       roles: [ROLES.TEAM_CAPTAIN],
       featureStatus: FEATURE_STATUS.LIVE,
@@ -72,7 +80,8 @@ export const TEAM_CAPTAIN_MENU_ROOT = menuFolder({
       key: "captain-results",
       icon: "statistics",
       text: "Kết quả",
-      path: "/statistics",
+      // Batch 1B: use strangler results hub — do not restore /statistics sidebar leaf.
+      path: "/tournament/results",
       permissions: [PERMISSIONS.TEAM_RESULT_VIEW],
       roles: [ROLES.TEAM_CAPTAIN],
       featureStatus: FEATURE_STATUS.LIVE,
@@ -86,22 +95,16 @@ export const TEAM_CAPTAIN_MENU_ROOT = menuFolder({
       roles: [ROLES.TEAM_CAPTAIN],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
+    // Batch 1B: messaging experience (/messages), not CRM outreach (/crm/messages).
     menuLeaf({
       key: "captain-messages",
       icon: "messages",
       text: "Tin nhắn đội",
-      path: "/crm/messages",
+      path: "/messages",
       permissions: [PERMISSIONS.TEAM_MESSAGE_SEND],
       roles: [ROLES.TEAM_CAPTAIN],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
-    menuLeaf({
-      key: "captain-support",
-      icon: "support",
-      text: "Hỗ trợ",
-      path: "/support",
-      roles: [ROLES.TEAM_CAPTAIN],
-      featureStatus: FEATURE_STATUS.LIVE,
-    }),
+    // Support hub lives under Hỗ trợ group — avoid duplicate /support leaf in captain zone.
   ],
 });

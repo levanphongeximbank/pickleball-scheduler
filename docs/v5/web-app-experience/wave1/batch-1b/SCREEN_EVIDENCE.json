@@ -1,0 +1,104 @@
+{
+  "capturedAt": "2026-08-22T06:12:31.702Z",
+  "flag": "VITE_CANONICAL_APP_SHELL_ENABLED=true",
+  "harness": "batch1a-shell-evidence.html (Batch 1B reuse — topbar unchanged)",
+  "note": "Owner role fixtures (TENANT_OWNER/PLAYER/CASHIER/TEAM_CAPTAIN) are covered by structural menu tests; harness captures chrome at desktop/tablet/mobile widths.",
+  "results": [
+    {
+      "route": "/dashboard",
+      "viewport": "1920",
+      "file": "docs/v5/web-app-experience/wave1/batch-1b/screenshots/dashboard-1920.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "bottomNav": 0,
+      "sideDrawers": 1,
+      "hasQuanLyClb": false,
+      "href": "http://localhost:5192/batch1a-shell-evidence.html?path=dashboard"
+    },
+    {
+      "route": "/tournament",
+      "viewport": "1920",
+      "file": "docs/v5/web-app-experience/wave1/batch-1b/screenshots/tournament-1920.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "bottomNav": 0,
+      "sideDrawers": 1,
+      "hasQuanLyClb": false,
+      "href": "http://localhost:5192/batch1a-shell-evidence.html?path=tournament"
+    },
+    {
+      "route": "/dashboard",
+      "viewport": "1440",
+      "file": "docs/v5/web-app-experience/wave1/batch-1b/screenshots/dashboard-1440.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "bottomNav": 0,
+      "sideDrawers": 1,
+      "hasQuanLyClb": false,
+      "href": "http://localhost:5192/batch1a-shell-evidence.html?path=dashboard"
+    },
+    {
+      "route": "/tournament",
+      "viewport": "1440",
+      "file": "docs/v5/web-app-experience/wave1/batch-1b/screenshots/tournament-1440.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "bottomNav": 0,
+      "sideDrawers": 1,
+      "hasQuanLyClb": false,
+      "href": "http://localhost:5192/batch1a-shell-evidence.html?path=tournament"
+    },
+    {
+      "route": "/dashboard",
+      "viewport": "1024",
+      "file": "docs/v5/web-app-experience/wave1/batch-1b/screenshots/dashboard-1024.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "bottomNav": 0,
+      "sideDrawers": 1,
+      "hasQuanLyClb": false,
+      "href": "http://localhost:5192/batch1a-shell-evidence.html?path=dashboard"
+    },
+    {
+      "route": "/tournament",
+      "viewport": "1024",
+      "file": "docs/v5/web-app-experience/wave1/batch-1b/screenshots/tournament-1024.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "bottomNav": 0,
+      "sideDrawers": 1,
+      "hasQuanLyClb": false,
+      "href": "http://localhost:5192/batch1a-shell-evidence.html?path=tournament"
+    },
+    {
+      "route": "/dashboard",
+      "viewport": "430",
+      "file": "docs/v5/web-app-experience/wave1/batch-1b/screenshots/dashboard-430.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "bottomNav": 1,
+      "sideDrawers": 1,
+      "hasQuanLyClb": false,
+      "href": "http://localhost:5192/batch1a-shell-evidence.html?path=dashboard"
+    },
+    {
+      "route": "/tournament",
+      "viewport": "430",
+      "file": "docs/v5/web-app-experience/wave1/batch-1b/screenshots/tournament-430.png",
+      "canonical": 1,
+      "legacy": 0,
+      "topbars": 1,
+      "bottomNav": 1,
+      "sideDrawers": 1,
+      "hasQuanLyClb": false,
+      "href": "http://localhost:5192/batch1a-shell-evidence.html?path=tournament"
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import { PERMISSIONS } from "../../auth/permissions.js";
+import { ROLES } from "../../auth/roles.js";
 import { FEATURE_STATUS, menuFolder, menuLeaf } from "./menuBuilders.js";
 
 const VIEW = [
@@ -31,6 +32,8 @@ export const DASHBOARD_MENU_ROOT = menuFolder({
       path: "/dashboard/rankings",
       match: "dashboard-rankings",
       permissions: [PERMISSIONS.RANKING_VIEW, PERMISSIONS.RANKING_MANAGE],
+      // Batch 1B: platform admins use Admin › Quản trị VPR; cashiers are not ranking operators.
+      excludeRoles: [ROLES.PLATFORM_ADMIN, ROLES.SUPER_ADMIN, ROLES.CASHIER],
       featureStatus: FEATURE_STATUS.LIVE,
     }),
   ],

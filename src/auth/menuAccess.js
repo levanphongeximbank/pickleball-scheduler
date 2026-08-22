@@ -53,6 +53,7 @@ const PUBLIC_MENU_PATHS = new Set([
   "/player/skill",
   "/player/skill-assessment",
   // /player/skill-assessment-v5 excluded — OD-B03 pilot-aligned shadow (not public menu path)
+  "/messages",
   "/mobile/notifications",
   "/403",
 ]);
