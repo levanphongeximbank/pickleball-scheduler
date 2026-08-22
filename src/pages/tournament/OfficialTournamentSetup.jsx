@@ -186,7 +186,10 @@ import {
 import {
   CONTENT_RULES_SOURCE,
   evaluateContentRegistrationCapacity,
+  resolveOfficialRegistrationEligibilityRules,
 } from "../../features/individual-tournament/engines/officialContentCompetitionRules.js";
+import { checkPlayerEligibility } from "../../features/individual-tournament/engines/eligibilityEngine.js";
+import { shouldActivateOfficialOpenRating } from "../../features/tournament/official-open-adapter-b/activation.js";
 
 const EVENT_OPTIONS = EVENT_TYPE_OPTIONS;
 
@@ -1303,6 +1306,36 @@ export default function OfficialTournamentSetup() {
             : "Nội dung đã đủ suất đăng ký."
         );
         return;
+      }
+
+      const eligibilityResolved = resolveOfficialRegistrationEligibilityRules(tournament, {
+        eventId: pairEventId || capacityEvent.id,
+        allowSoleEventInference: true,
+      });
+      if (!eligibilityResolved.ok) {
+        setError(eligibilityResolved.error || "Không kiểm tra được điều kiện Nội dung.");
+        return;
+      }
+      const requireRating =
+        eligibilityResolved.hasRatingBounds === true &&
+        shouldActivateOfficialOpenRating(tournament, {
+          eventId: eligibilityResolved.eventId,
+        });
+      for (const member of [playerA, playerB]) {
+        const check = checkPlayerEligibility(member, eligibilityResolved.rules, {
+          clubId: activeClubId,
+          requireCanonicalMembershipEvidence:
+            eligibilityResolved.rules.clubMembership?.enabled === true,
+          requireCanonicalRatingEvidence: requireRating,
+        });
+        if (!check.ok) {
+          setError(
+            `${member.name || "VĐV"}: ${
+              check.violations?.[0]?.message || "không đủ điều kiện đăng ký"
+            }`
+          );
+          return;
+        }
       }
     }
 

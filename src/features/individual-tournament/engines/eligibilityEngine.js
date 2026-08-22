@@ -18,6 +18,7 @@ export const ELIGIBILITY_VIOLATION = {
   RATING_TOO_LOW: "rating_too_low",
   RATING_TOO_HIGH: "rating_too_high",
   RATING_UNKNOWN: "rating_unknown",
+  INVALID_ELIGIBILITY_POLICY: "invalid_eligibility_policy",
   CLUB_REQUIRED: "club_membership_required",
   INVITE_ONLY: "invite_only",
   NOT_ON_WHITELIST: "not_on_whitelist",
@@ -448,7 +449,10 @@ export function findCrossEventDuplicates(tournament, playerIds = [], excludeEntr
 }
 
 export function checkEntryPlayersEligibility(tournament, playerIds = [], players = [], options = {}) {
-  const rules = getEligibilityRules(tournament);
+  // Prefer injected rules (Content-scoped Official path). Fallback: tournament legacy blob.
+  const rules = options.rules
+    ? normalizeEligibilityRules(options.rules)
+    : getEligibilityRules(tournament);
   const playerMap = new Map(players.map((player) => [String(player.id), player]));
   const results = [];
   const violations = [];

@@ -10,6 +10,7 @@ import {
   OFFICIAL_REGISTRATION_MODE,
 } from "../../individual-tournament/engines/officialTournamentSettingsEngine.js";
 import { getEligibilityRules } from "../../individual-tournament/engines/eligibilityEngine.js";
+import { contentHasRatingEligibilityBounds } from "../../individual-tournament/engines/officialContentCompetitionRules.js";
 
 function trimId(value) {
   return value != null ? String(value).trim() : "";
@@ -30,8 +31,20 @@ export function isAiBalanceMode(tournament) {
 
 /**
  * A: configured Official/Open rating eligibility threshold/bound exists.
+ * Prefer Content-scoped bounds when eventId is provided (G1-C).
  */
-export function hasConfiguredRatingEligibilityBound(tournament) {
+export function hasConfiguredRatingEligibilityBound(tournament, options = {}) {
+  const eventId = trimId(options.eventId || options.selectedEventId);
+  if (eventId || (tournament?.events || []).length === 1) {
+    if (
+      contentHasRatingEligibilityBounds(tournament, {
+        eventId: eventId || undefined,
+        allowSoleEventInference: !eventId,
+      })
+    ) {
+      return true;
+    }
+  }
   const rules = getEligibilityRules(tournament);
   return (
     rules.rating.enabled === true &&
@@ -61,9 +74,9 @@ export function hasExplicitRatingCompetitionRule(tournament) {
  * Rating adapter activation. OPEN pairing/draw stay rating-neutral even when
  * eligibility rating bounds activate evidence for eligibility only.
  */
-export function shouldActivateOfficialOpenRating(tournament) {
+export function shouldActivateOfficialOpenRating(tournament, options = {}) {
   return (
-    hasConfiguredRatingEligibilityBound(tournament) ||
+    hasConfiguredRatingEligibilityBound(tournament, options) ||
     aiBalanceIndividualPairingRequiresRating(tournament) ||
     hasExplicitRatingCompetitionRule(tournament)
   );

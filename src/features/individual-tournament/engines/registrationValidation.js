@@ -17,9 +17,13 @@ import {
 } from "./registrationEngine.js";
 import { createOfficialOpenAdapterB } from "../../tournament/official-open-adapter-b/createOfficialOpenAdapterB.js";
 import { shouldActivateOfficialOpenRating } from "../../tournament/official-open-adapter-b/activation.js";
+import { resolveOfficialRegistrationEligibilityRules } from "./officialContentCompetitionRules.js";
 
 function isOfficialTournament(tournament) {
-  return String(tournament?.mode || "") === "official_tournament";
+  return (
+    String(tournament?.mode || "") === "official_tournament" ||
+    Boolean(tournament?.officialMode)
+  );
 }
 
 function withOfficialOpenAuditSink(tournament, options = {}) {
@@ -42,8 +46,78 @@ function withOfficialOpenAuditSink(tournament, options = {}) {
   };
 }
 
+function resolveEligibilityOptions(tournament, options = {}) {
+  const eventId = String(options.eventId || "").trim();
+  const isOfficial = isOfficialTournament(tournament);
+
+  if (!isOfficial) {
+    return {
+      ok: true,
+      eligibilityOptions: {
+        ...options,
+        eventId: eventId || options.eventId,
+      },
+    };
+  }
+
+  const resolved = resolveOfficialRegistrationEligibilityRules(tournament, {
+    eventId: eventId || undefined,
+    allowSoleEventInference: !eventId && (tournament?.events || []).length === 1,
+  });
+  if (!resolved.ok) {
+    return {
+      ok: false,
+      error: resolved.error,
+      code: resolved.code || "EVENT_REQUIRED",
+      violations:
+        resolved.code === "INVALID_ELIGIBILITY_POLICY"
+          ? [
+              {
+                code: ELIGIBILITY_VIOLATION.INVALID_ELIGIBILITY_POLICY,
+                message: resolved.error,
+              },
+            ]
+          : [],
+    };
+  }
+
+  return {
+    ok: true,
+    eligibilityOptions: {
+      ...options,
+      eventId: resolved.eventId,
+      rules: resolved.rules,
+      requireCanonicalMembershipEvidence:
+        options.requireCanonicalMembershipEvidence === true ||
+        resolved.rules.clubMembership?.enabled === true,
+      requireCanonicalRatingEvidence:
+        options.requireCanonicalRatingEvidence === true ||
+        (resolved.hasRatingBounds === true &&
+          shouldActivateOfficialOpenRating(tournament, { eventId: resolved.eventId })),
+      eligibilitySource: resolved.source,
+      skillRatingAuthority: resolved.skillRatingAuthority,
+    },
+  };
+}
+
 export function validateRegistrationEligibility(tournament, playerIds, players = [], options = {}) {
-  const report = checkEntryPlayersEligibility(tournament, playerIds, players, options);
+  const scoped = resolveEligibilityOptions(tournament, options);
+  if (!scoped.ok) {
+    const policy = getRegistrationPolicy(tournament);
+    return {
+      ok: false,
+      violations: scoped.violations || [],
+      message: scoped.error || policy.eligibilityFailedMessage,
+      code: scoped.code,
+    };
+  }
+
+  const report = checkEntryPlayersEligibility(
+    tournament,
+    playerIds,
+    players,
+    scoped.eligibilityOptions
+  );
   const policy = getRegistrationPolicy(tournament);
 
   // Event-type gender via shared validation when entry has full roster
@@ -68,6 +142,7 @@ export function validateRegistrationEligibility(tournament, playerIds, players =
 
   return {
     ...report,
+    eligibilitySource: scoped.eligibilityOptions.eligibilitySource || null,
     message: report.ok
       ? ""
       : report.violations[0]?.message || policy.eligibilityFailedMessage,
@@ -78,9 +153,7 @@ export function gatedSubmitRegistration(tournament, payload = {}, options = {}) 
   const playerIds = payload.playerIds || [];
   const events = tournament.events || [];
   const wanted = String(payload.eventId || "").trim();
-  const isOfficial =
-    String(tournament?.mode || "") === "official_tournament" ||
-    Boolean(tournament?.officialMode);
+  const isOfficial = isOfficialTournament(tournament);
 
   if (isOfficial && !wanted && events.length > 1) {
     return {
@@ -107,19 +180,18 @@ export function gatedSubmitRegistration(tournament, payload = {}, options = {}) 
     };
   }
 
+  const eventId = wanted || (event ? String(event.id) : "");
+
   const eligibility = validateRegistrationEligibility(tournament, playerIds, options.players || [], {
-    eventId: wanted || event?.id,
+    eventId,
     event,
     clubId: options.clubId || tournament.clubId,
     hasInvite: Boolean(options.hasInvite),
     excludeEntryId: options.excludeEntryId,
-    requireCanonicalMembershipEvidence:
-      isOfficial &&
-      Boolean(tournament?.settings?.eligibilityRules?.clubMembership?.enabled),
-    requireCanonicalRatingEvidence:
-      isOfficial && shouldActivateOfficialOpenRating(tournament),
     membershipEvidence: options.membershipEvidence,
+    membershipEvidenceByPlayerId: options.membershipEvidenceByPlayerId,
     ratingEvidence: options.ratingEvidence,
+    ratingEvidenceByPlayerId: options.ratingEvidenceByPlayerId,
   });
 
   let working = tournament;
@@ -138,16 +210,20 @@ export function gatedSubmitRegistration(tournament, payload = {}, options = {}) 
     return {
       ok: false,
       error: eligibility.message,
-      code: "ELIGIBILITY_FAILED",
+      code: eligibility.code || "ELIGIBILITY_FAILED",
       violations: eligibility.violations,
       tournament: working,
     };
   }
 
-  const result = submitRegistration(working, {
-    ...payload,
-    eventId: wanted || event?.id || payload.eventId,
-  }, options);
+  const result = submitRegistration(
+    working,
+    {
+      ...payload,
+      eventId: eventId || payload.eventId,
+    },
+    options
+  );
   if (!result.ok) {
     return { ...result, tournament: result.tournament || working };
   }
@@ -171,8 +247,11 @@ export function gatedConfirmPartnerInvite(tournament, token, partnerPlayerId, op
     [partnerPlayerId],
     options.players || [],
     {
+      eventId: options.eventId,
       clubId: options.clubId || tournament.clubId,
       hasInvite: true,
+      membershipEvidence: options.membershipEvidence,
+      ratingEvidence: options.ratingEvidence,
     }
   );
 
@@ -186,7 +265,7 @@ export function gatedConfirmPartnerInvite(tournament, token, partnerPlayerId, op
     return {
       ok: false,
       error: eligibility.message,
-      code: "ELIGIBILITY_FAILED",
+      code: eligibility.code || "ELIGIBILITY_FAILED",
       violations: eligibility.violations,
       tournament: working,
     };
@@ -218,25 +297,39 @@ export function gatedApproveEntry(tournament, entryId, options = {}) {
         event,
         clubId: options.clubId || tournament.clubId,
         excludeEntryId: entryId,
+        membershipEvidence: options.membershipEvidence,
+        membershipEvidenceByPlayerId: options.membershipEvidenceByPlayerId,
+        ratingEvidence: options.ratingEvidence,
+        ratingEvidenceByPlayerId: options.ratingEvidenceByPlayerId,
       }
     );
     if (!eligibility.ok) {
       return {
         ok: false,
         error: eligibility.message,
-        code: "ELIGIBILITY_FAILED",
+        code: eligibility.code || "ELIGIBILITY_FAILED",
         violations: eligibility.violations,
       };
     }
   }
 
-  return approveEntry(tournament, entryId, options);
+  return approveEntry(tournament, entryId, {
+    ...options,
+    eventId: options.eventId || event?.id,
+  });
 }
 
 export function gatedPromoteFromWaitlist(tournament, options = {}) {
   const queueEvent =
     (tournament.events || []).find((item) => String(item.id) === String(options.eventId)) ||
-    tournament.events?.[0];
+    ((tournament.events || []).length === 1 ? tournament.events[0] : null);
+  if (!queueEvent && isOfficialTournament(tournament) && (tournament.events || []).length > 1) {
+    return {
+      ok: false,
+      error: "Chọn nội dung tường minh (eventId) trước khi duyệt danh sách chờ.",
+      code: "EVENT_REQUIRED",
+    };
+  }
   const waitlisted = (queueEvent?.entries || [])
     .filter((entry) => entry.status === "waitlisted")
     .sort((a, b) => (a.waitlistPosition || 0) - (b.waitlistPosition || 0));
@@ -251,5 +344,8 @@ export function gatedPromoteFromWaitlist(tournament, options = {}) {
     }
   }
 
-  return promoteFromWaitlist(tournament, options);
+  return promoteFromWaitlist(tournament, {
+    ...options,
+    eventId: options.eventId || queueEvent?.id,
+  });
 }

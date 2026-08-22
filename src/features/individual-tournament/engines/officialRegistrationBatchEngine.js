@@ -8,13 +8,14 @@
  */
 
 import { validateOpenRegistrationPlayers } from "../../../tournament/engines/officialTournamentEngine.js";
-import { checkPlayerEligibility, getEligibilityRules } from "./eligibilityEngine.js";
+import { checkPlayerEligibility, ELIGIBILITY_VIOLATION } from "./eligibilityEngine.js";
 import { OFFICIAL_REGISTRATION_MODE } from "./officialTournamentSettingsEngine.js";
 import { shouldActivateOfficialOpenRating } from "../../tournament/official-open-adapter-b/activation.js";
 import {
   CONTENT_RULES_SOURCE,
   evaluateContentRegistrationCapacity,
   resolveContentRegistrationModeDetailed,
+  resolveOfficialRegistrationEligibilityRules,
 } from "./officialContentCompetitionRules.js";
 import {
   canSubmitRegistration,
@@ -98,17 +99,27 @@ function prevalidateOnePlayer(tournament, event, player, eventType, options = {}
     return { ok: false, error: genderCheck.errors.join(" ") };
   }
 
-  const rules = getEligibilityRules(tournament);
-  const eligibility = checkPlayerEligibility(player, rules, {
+  const eligibilityRules = options.eligibilityRules;
+  if (!eligibilityRules) {
+    return { ok: false, error: "Thiếu chính sách điều kiện Nội dung.", code: "EVENT_REQUIRED" };
+  }
+
+  const eligibility = checkPlayerEligibility(player, eligibilityRules, {
     clubId: options.clubId || tournament?.clubId,
-    requireCanonicalMembershipEvidence: rules.clubMembership.enabled === true,
-    requireCanonicalRatingEvidence: shouldActivateOfficialOpenRating(tournament),
+    requireCanonicalMembershipEvidence: eligibilityRules.clubMembership?.enabled === true,
+    requireCanonicalRatingEvidence:
+      options.requireCanonicalRatingEvidence === true ||
+      shouldActivateOfficialOpenRating(tournament, { eventId: event?.id }),
     membershipEvidence: options.membershipEvidenceByPlayerId?.[String(player.id)],
     ratingEvidence: options.ratingEvidenceByPlayerId?.[String(player.id)],
   });
   if (!eligibility.ok) {
     const reason = eligibility.violations?.[0]?.message || "không đủ điều kiện đăng ký";
-    return { ok: false, error: reason };
+    return {
+      ok: false,
+      error: reason,
+      code: eligibility.violations?.[0]?.code || null,
+    };
   }
 
   const already = (event?.entries || []).some((entry) =>
@@ -213,6 +224,28 @@ export function registerOfficialIndividualsBatch(tournament, input = {}, options
     };
   }
 
+  const eligibilityResolved = resolveOfficialRegistrationEligibilityRules(tournament, {
+    eventId: event.id,
+    allowSoleEventInference: false,
+  });
+  if (!eligibilityResolved.ok) {
+    return {
+      ok: false,
+      error: eligibilityResolved.error || "Không đọc được điều kiện Nội dung.",
+      code: eligibilityResolved.code || "EVENT_REQUIRED",
+      failures:
+        eligibilityResolved.code === "INVALID_ELIGIBILITY_POLICY"
+          ? playerIds.map((playerId) => ({
+              playerId,
+              playerName: playerLabel(playerMap.get(playerId), playerId),
+              error: eligibilityResolved.error,
+              code: ELIGIBILITY_VIOLATION.INVALID_ELIGIBILITY_POLICY,
+            }))
+          : [],
+      persist: false,
+    };
+  }
+
   if (isRegistrationLocked(tournament) && !options.force) {
     return {
       ok: false,
@@ -272,7 +305,13 @@ export function registerOfficialIndividualsBatch(tournament, input = {}, options
   const failures = [];
   for (const playerId of playerIds) {
     const player = playerMap.get(playerId);
-    const check = prevalidateOnePlayer(tournament, event, player, eventType, options);
+    const check = prevalidateOnePlayer(tournament, event, player, eventType, {
+      ...options,
+      eligibilityRules: eligibilityResolved.rules,
+      requireCanonicalRatingEvidence:
+        eligibilityResolved.hasRatingBounds === true &&
+        shouldActivateOfficialOpenRating(tournament, { eventId: event.id }),
+    });
     if (!check.ok) {
       failures.push({
         playerId,

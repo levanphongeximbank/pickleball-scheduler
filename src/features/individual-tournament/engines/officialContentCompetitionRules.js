@@ -26,7 +26,7 @@ import {
   BEST_OF_3_OPERATIONAL,
 } from "./officialTournamentSettingsEngine.js";
 import { isDrawEligibleEntry } from "../../../models/tournament/entry.js";
-import { getEligibilityRules } from "./eligibilityEngine.js";
+import { getEligibilityRules, normalizeEligibilityRules } from "./eligibilityEngine.js";
 import { listTournamentEvents, resolveSelectedEvent } from "../../tournament/experience-a1/deriveOverview.js";
 
 export const CONTENT_COMPETITION_RULES_PROPERTY = "competitionRules";
@@ -66,7 +66,8 @@ export const CONTENT_CAPACITY_UNIT = Object.freeze({
  */
 export const LEGACY_GROUP1_FIELD_CLASS = Object.freeze({
   officialCompetition: "LEGACY_COMPATIBILITY_DRAFT",
-  eligibilityRules: "CONFLICTING_LEGACY_RUNTIME",
+  // G1-C: not skill/rating authority on explicit Content Official/Open path.
+  eligibilityRules: "LEGACY_RUNTIME_COMPATIBILITY",
   // G1-B: not authority on explicit Content Official/Open path; may remain for legacy-only callers.
   maxEntries: "LEGACY_RUNTIME_COMPATIBILITY",
 });
@@ -882,8 +883,8 @@ export function resolveContentCompetitionRules(tournament, options = {}) {
 
 /**
  * Group 1 Content resolver surface (registration / capacity / eligibility / seeding).
- * Does NOT gate registration. Does NOT read tournament.settings.eligibilityRules
- * or maxEntries as Content authority.
+ * Eligibility bounds are Content authority when CONTENT_EXPLICIT (G1-C runtime).
+ * Does NOT read tournament.settings.eligibilityRules as Content skill/rating authority.
  */
 export function resolveContentGroup1Settings(tournament, options = {}) {
   const resolved = resolveContentCompetitionRules(tournament, {
@@ -915,7 +916,7 @@ export function resolveContentGroup1Settings(tournament, options = {}) {
   };
 }
 
-/** Content eligibility bounds only. Does not switch registrationEngine. */
+/** Content eligibility bounds only. */
 export function resolveContentEligibilityBounds(tournament, options = {}) {
   const group1 = resolveContentGroup1Settings(tournament, options);
   if (!group1.ok) return group1;
@@ -928,6 +929,120 @@ export function resolveContentEligibilityBounds(tournament, options = {}) {
     ratingValueAuthority: "CANONICAL_RATING_ADAPTER",
     legacyRuntimeCompatibility: LEGACY_GROUP1_FIELD_CLASS.eligibilityRules,
   };
+}
+
+/**
+ * Map Content eligibility → eligibilityEngine rules shape for Official registration.
+ * CONTENT_EXPLICIT: skill/rating bounds from Content; other dimensions keep legacy blob.
+ * Otherwise: full tournament.settings.eligibilityRules (LEGACY_RUNTIME_COMPATIBILITY).
+ *
+ * Does not dual-write. Does not invent rating/skill values.
+ */
+function contentBoundOrNull(value) {
+  const n = decimalOrNull(value);
+  // Align with eligibilityEngine empty-input sentinel (0 is not a product floor).
+  return n === 0 ? null : n;
+}
+
+export function resolveOfficialRegistrationEligibilityRules(tournament, options = {}) {
+  const events = listTournamentEvents(tournament);
+  const wanted = trim(options.eventId);
+  if (!wanted && events.length > 1) {
+    return {
+      ok: false,
+      code: "EVENT_REQUIRED",
+      error: "Chọn nội dung tường minh (eventId) trước khi kiểm tra điều kiện.",
+    };
+  }
+
+  const content = resolveContentEligibilityBounds(tournament, {
+    eventId: wanted || undefined,
+    allowSoleEventInference:
+      options.allowSoleEventInference != null
+        ? options.allowSoleEventInference
+        : events.length === 1,
+  });
+  if (!content.ok) return content;
+
+  const eligibility = content.eligibility || {};
+  const minLevel = contentBoundOrNull(eligibility.minLevel);
+  const maxLevel = contentBoundOrNull(eligibility.maxLevel);
+  const minRating = contentBoundOrNull(eligibility.minRating);
+  const maxRating = contentBoundOrNull(eligibility.maxRating);
+
+  if (minLevel != null && maxLevel != null && minLevel > maxLevel) {
+    return {
+      ok: false,
+      code: "INVALID_ELIGIBILITY_POLICY",
+      error: `Chính sách trình độ không hợp lệ: minLevel (${minLevel}) > maxLevel (${maxLevel}).`,
+      eventId: content.eventId,
+      source: content.source,
+    };
+  }
+  if (minRating != null && maxRating != null && minRating > maxRating) {
+    return {
+      ok: false,
+      code: "INVALID_ELIGIBILITY_POLICY",
+      error: `Chính sách rating không hợp lệ: minRating (${minRating}) > maxRating (${maxRating}).`,
+      eventId: content.eventId,
+      source: content.source,
+    };
+  }
+
+  const legacy = getEligibilityRules(tournament);
+
+  if (content.source === CONTENT_RULES_SOURCE.CONTENT_EXPLICIT) {
+    const rules = normalizeEligibilityRules({
+      ...legacy,
+      skill: {
+        enabled: minLevel != null || maxLevel != null,
+        minLevel,
+        maxLevel,
+      },
+      rating: {
+        enabled: minRating != null || maxRating != null,
+        minRating,
+        maxRating,
+      },
+    });
+    return {
+      ok: true,
+      eventId: content.eventId,
+      source: "CONTENT",
+      contentRulesSource: content.source,
+      rules,
+      skillRatingAuthority: CONTENT_GROUP1_FIELD_AUTHORITY.eligibility,
+      hasSkillBounds: minLevel != null || maxLevel != null,
+      hasRatingBounds: minRating != null || maxRating != null,
+      ratingValueAuthority: "CANONICAL_RATING_ADAPTER",
+      legacyEligibilityClass: LEGACY_GROUP1_FIELD_CLASS.eligibilityRules,
+    };
+  }
+
+  return {
+    ok: true,
+    eventId: content.eventId,
+    source: "LEGACY_RUNTIME_COMPATIBILITY",
+    contentRulesSource: content.source,
+    rules: legacy,
+    skillRatingAuthority: LEGACY_GROUP1_FIELD_CLASS.eligibilityRules,
+    hasSkillBounds:
+      legacy.skill?.minLevel != null || legacy.skill?.maxLevel != null,
+    hasRatingBounds:
+      legacy.rating?.minRating != null || legacy.rating?.maxRating != null,
+    ratingValueAuthority: "CANONICAL_RATING_ADAPTER",
+    legacyEligibilityClass: LEGACY_GROUP1_FIELD_CLASS.eligibilityRules,
+  };
+}
+
+/**
+ * True when Content (or legacy fallback) configures rating eligibility bounds
+ * for the selected event — activates Canonical Rating Adapter evidence.
+ */
+export function contentHasRatingEligibilityBounds(tournament, options = {}) {
+  const resolved = resolveOfficialRegistrationEligibilityRules(tournament, options);
+  if (!resolved.ok) return false;
+  return resolved.hasRatingBounds === true;
 }
 
 /**
