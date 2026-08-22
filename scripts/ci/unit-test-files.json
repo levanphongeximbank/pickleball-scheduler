@@ -593,6 +593,7 @@
   "tests/public-catalog-02-portal-remote.test.js",
   "tests/public-portal-01c-clubs-courts-staging-cutover.test.js",
   "tests/public-portal-final-phase-a-readiness.test.js",
+  "tests/public-web-experience-slice-1a.test.js",
   "tests/reporting-analytics-reporting-01-foundation.test.js",
   "tests/reporting-analytics-reporting-01-authorization-execution.test.js",
   "tests/reporting-analytics-reporting-01-provenance-export.test.js",

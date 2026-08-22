@@ -35,7 +35,7 @@ const FOOTER_COLUMNS = [
   {
     title: "Dành cho",
     links: [
-      { label: "Ban tổ chức giải", path: "/tournaments" },
+      { label: "Ban tổ chức giải", path: "/login" },
       { label: "Câu lạc bộ", path: "/clubs" },
       { label: "Chủ sân", path: "/courts" },
       { label: "Vận động viên", path: "/rankings" },
@@ -58,7 +58,7 @@ export default function PublicFooter() {
       <Box sx={publicContainerSx}>
         <Grid container spacing={4}>
           <Grid size={{ xs: 12, md: 4 }}>
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+            <Stack direction="row" spacing={1} sx={{ mb: 2, alignItems: "center" }}>
               <SportsTennisIcon sx={{ color: PUBLIC_COLORS.lime }} />
               <Typography variant="h6" fontWeight={800} color={PUBLIC_COLORS.text}>
                 PICK_VN

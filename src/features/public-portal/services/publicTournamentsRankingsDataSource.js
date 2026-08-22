@@ -114,8 +114,12 @@ function mapLiveTournaments() {
     const tournaments = data?.tournaments || [];
     for (const t of tournaments) {
       const { status, statusLabel } = mapTournamentStatus(t.status);
+      const realId = t.id ? String(t.id).trim() : "";
       items.push({
-        id: t.id || `${club.id}-${t.name}`,
+        // Portal card key may be synthetic when blob row lacks id — not detail-safe alone.
+        id: realId || `${club.id}-${t.name}`,
+        // Proven organizer tournament id only when the blob row already carries it.
+        canonicalTournamentId: realId || null,
         name: t.name || "Giải đấu",
         type: t.competitionType || t.type || "community",
         typeLabel: (t.competitionType || t.type || "Phong trào").toUpperCase(),
@@ -184,8 +188,11 @@ function filterMockRankings(filters = {}) {
 export function mapCatalogTournamentDtoToPortalCard(dto) {
   const row = dto && typeof dto === "object" ? dto : {};
   const status = String(row.operationalStatus || "upcoming");
+  // Catalog `id` is an opaque projection PK — not proven as organizer tournamentId.
+  // Do not invent canonicalTournamentId until Slice 1B ID contract exists.
   return Object.freeze({
     id: String(row.id || ""),
+    canonicalTournamentId: null,
     name: String(row.displayName || "").trim() || "Giải công khai",
     type: "public",
     typeLabel: String(row.formatSummary || row.sport || "PICKLEBALL").toUpperCase(),
