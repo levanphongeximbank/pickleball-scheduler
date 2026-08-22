@@ -1,23 +1,22 @@
 # Tournament Outer Adoption Matrix
 
-`TOURNAMENT_OUTER_SCREEN_COUNT=10`
-`TOURNAMENT_OUTER_ADOPT_NOW_COUNT=4`
-`TOURNAMENT_LEGACY_DEFER_COUNT=3`
+`TOURNAMENT_OUTER_SCREEN_COUNT=9`
+`TOURNAMENT_OUTER_ADOPT_NOW_COUNT=1`
+`TOURNAMENT_LEGACY_DEFER_COUNT=4`
 
 | Route | Disposition | Reason |
 |---|---|---|
-| `/tournament` | REMAIN_DOMAIN_COMPOSITION | Outer shell selects canonical tournament center; do not alter Experience internals. |
+| `/tournament` | FROZEN | Experience A1 center is part of the frozen 23-screen system; legacy fallback defers. |
 | `/tournament/list` | ADOPT_SHARED_UI | Auth header/state/confirm/feedback fit; `TournamentListTable` remains domain-owned. |
-| `/tournaments` | ADOPT_SHARED_UI | High-reach “Giải của tôi” hub; keep dashboard permissions and status semantics. |
-| `/tournament/types` | ADOPT_SHARED_UI | Outer mode-selection hub only; keep `ModeCard` domain composition. |
-| `/tournament/config` | ADOPT_SHARED_UI | In-page navigation hub can consume authenticated page framing. |
-| `/tournament/roster` | REMAIN_DOMAIN_COMPOSITION | Canonical tournament picker and destination rules are domain behavior. |
-| `/tournament/organize` | REMAIN_DOMAIN_COMPOSITION | Engine/Director routing is domain-specific. |
-| `/tournament/operations` | REMAIN_DOMAIN_COMPOSITION | Referee/publish/withdraw destination logic is domain-specific. |
+| `/tournament/create` | REMAIN_DOMAIN_COMPOSITION | Broad mode-specific workflow; do not couple visual adoption to creation semantics. |
+| `/tournament/types` | REMAIN_DOMAIN_COMPOSITION | Outer mode-selection hub; keep `ModeCard` domain composition. |
+| `/tournament/config` | REMAIN_DOMAIN_COMPOSITION | RBAC-filtered in-page navigation and config writers remain domain-owned. |
+| `/tournament/roster` | DEFER_LEGACY_CONVERGENCE | Picker still resolves to legacy registration/setup destinations. |
+| `/tournament/organize` | DEFER_LEGACY_CONVERGENCE | Engine/Director destination adapters are not converged. |
+| `/tournament/operations` | DEFER_LEGACY_CONVERGENCE | Individual selection can resolve to global referee assignment without tournament context. |
 | `/tournament/results` | DEFER_LEGACY_CONVERGENCE | Multiple legacy result authorities; avoid visual work during convergence. |
-| `/tournament/create` | DEFER_LEGACY_CONVERGENCE | Creation workflow has broad mode-specific semantics. |
 
-Additional legacy defer: `/tournament/bracket` remains a selector hub outside the bounded ten-screen count.
+Adjacent `/tournaments`, `/tournament/bracket`, and deeper config/setup leaves remain outside this nine-screen outer audit and defer to legacy convergence or domain ownership.
 
 ## Freeze
 

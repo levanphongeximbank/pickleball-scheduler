@@ -1,37 +1,42 @@
 # Customer / Player Adoption Matrix
 
-`CUSTOMER_PLAYER_SCREEN_COUNT=12`
-`CUSTOMER_PLAYER_ADOPT_NOW_COUNT=6`
-`PLAYER_CROSS_DOMAIN_LEAK_COUNT=9`
+`CUSTOMER_PLAYER_SCREEN_COUNT=30`
+`CUSTOMER_PLAYER_ADOPT_NOW_COUNT=5`
+`PLAYER_CROSS_DOMAIN_LEAK_COUNT=8`
 
-| Route | Header / filter / data / state today | Disposition | Priority |
-|---|---|---|---|
-| `/players` | Canonical page patterns; card grid remains domain-specific | PILOT_ALREADY_ADOPTED, normalize three child imports | P1 |
-| `/players/profile/:playerId` | Ad-hoc detail composition | ADOPT_NOW framing/states | P1 |
-| `/players/skill` | Tournament header/card/layout leakage | ADOPT_NOW | P0 |
-| `/court-management/customers` | Ad-hoc actions/filter/table/Alert | ADOPT_NOW | P0 |
-| `/court-management/members` | Ad-hoc summary/filter/table/Alert | ADOPT_NOW | P0 |
-| `/mobile/check-in` | Mobile-local header/filter/data/status and tournament gutter | ADOPT_NOW | P0 |
-| `/profile` | Identity self profile | KEEP_DOMAIN_SPECIFIC | DEFER |
-| `/athletes` | Authenticated directory | DEFER_WAVE4 | P2 |
-| `/athletes/:playerId` | Directory detail | DEFER_WAVE4 | P2 |
-| `/player/profile` | Athlete self-service | DEFER_WAVE4 | P2 |
-| `/player/skill` | Rating self-service | DEFER_WAVE4 | P2 |
-| `/player/skill-assessment*` | Assessment runtime | KEEP_DOMAIN_SPECIFIC | DEFER |
+| Route group | Count | Adoption decision |
+|---|---:|---|
+| Operator player management (`/players`, skill, detail, select) | 4 | Keep `/players` pilot; adopt skill/detail; select remains domain-specific |
+| Self profile and rating | 5 | Defer except shared framing when touched |
+| Authenticated athlete directory | 2 | Defer Wave 4; preserve privacy projection |
+| Membership / club-player surfaces | 4 | Club batch owns shell/member adoption |
+| Verification / rating admin | 2 | Adopt `/admin/skill-level-requests`; verification queue defers |
+| Customer/member operations | 3 | Adopt customers and members; customer groups defer |
+| CRM outreach | 5 | Defer Wave 5; zero Tournament imports |
+| Mobile check-in/player routes | 5 | Operations batch owns check-in; other mobile routes remain runtime-specific |
 
-## Nine player-domain cross-imports
+## Five selected routes
 
-1. `PlayerCard.jsx` → `tournamentLayout.js`
-2. `PlayerFilters.jsx` → `tournamentLayout.js`
-3. `PlayerStats.jsx` → `tournamentLayout.js`
-4. `SkillLevelsPage.jsx` → `TournamentPageHeader`
-5. `SkillLevelsPage.jsx` → `TournamentSectionCard`
-6. `SkillLevelsPage.jsx` → `tournamentLayout.js`
-7. `PlayerHomePage.jsx` → tournament `mobileUi.js`
-8. `SelectPlayers.jsx` → tournament `EffectPreludeScreen`
-9. `SelectPlayers.jsx` → tournament effect-prelude configuration
+1. `/players/skill` — remove Tournament header/card/layout; preserve proposal engine, approval audit, and RBAC.
+2. `/admin/skill-level-requests` — remove Tournament header/layout; preserve rating writes and audit.
+3. `/players/profile/:playerId` — canonical page/state framing; preserve tenant, privacy, and rating guards.
+4. `/court-management/customers` — canonical filter/responsive data/feedback; preserve merge, debt, and booking semantics.
+5. `/court-management/members` — canonical filter/responsive data/status; preserve membership expiry and booking linkage.
 
-The first six are direct visual leaks with canonical authenticated replacements. The mobile player gutter and waiting-room animation coupling require ownership extraction before replacement; no animation or scheduling semantics may change.
+`/players` remains `PILOT_ALREADY_ADOPTED`; its three child layout-token imports are normalization work, not a second screen migration.
+
+## Eight inappropriate Tournament UI imports
+
+1. `SkillLevelsPage.jsx` → `TournamentPageHeader`
+2. `SkillLevelsPage.jsx` → `TournamentSectionCard`
+3. `SkillLevelsPage.jsx` → `TOURNAMENT_LAYOUT`
+4. `SkillLevelRequestsPage.jsx` → `TournamentPageHeader`
+5. `SkillLevelRequestsPage.jsx` → `TOURNAMENT_LAYOUT`
+6. `SelectPlayers.jsx` → `EffectPreludeScreen`
+7. `SelectPlayers.jsx` → `EFFECT_PRELUDE_SCOPE`
+8. `CourtManagementFuturePage.jsx` → `TournamentCourtScheduleManager`
+
+Separately, six mobile routes import the frozen `MOBILE_PAGE_GUTTER` bridge and one skill page imports a legitimate engine enum. They are classified in the cross-domain matrix, not counted as inappropriate player leaks.
 
 ## Safety
 

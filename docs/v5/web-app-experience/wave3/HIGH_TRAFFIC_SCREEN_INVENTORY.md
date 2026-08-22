@@ -2,16 +2,16 @@
 
 ## Counting and classification
 
-`TOTAL_AUTHENTICATED_SCREEN_COUNT=180`
+`TOTAL_AUTHENTICATED_SCREEN_COUNT=183`
 `HIGH_TRAFFIC_CANDIDATE_COUNT=42`
 `PROPOSED_WAVE3_SCREEN_COUNT=22`
 
-The count is route-entry based at `src/router.jsx`: rendered `MainLayout` destinations only. Four redirect aliases and the layout-only mobile parent are removed; the court-management index destination is included.
+The count is route-entry based at `src/router.jsx`: 187 `MainLayout` path entries minus four redirects and the layout-only mobile parent, plus standalone authenticated `/change-password`.
 
 Every authenticated destination is classified by the exhaustive route families below:
 
 - `CORE_HIGH_TRAFFIC`: the 42 routes in the candidate register.
-- `FROZEN`: `/tournament/:tournamentId/{overview,settings,registration,participants,pairs,pair-draw,group-draw,groups,schedule,matches,standings,knockout,bracket,director,courts,referees,exceptions,communications,media,awards,complete}`.
+- `FROZEN`: `/tournament` when Experience A1 is enabled, plus `/tournament/:tournamentId/{overview,settings,registration,participants,pairs,pair-draw,group-draw,groups,schedule,matches,standings,knockout,bracket,director,courts,referees,exceptions,communications,media,awards,complete}`.
 - `SPECIAL_RUNTIME`: `/referee`, `/referee/match/:matchId`, `/tournament/{daily,internal,official,team,director}/:tournamentId*`, `/team-portal/:tournamentId`, `/team-referee/:tournamentId`, `/tournaments/:tournamentId/{engine,seed,draw,schedule,courts,ranking,logs}`, `/mobile/{qr-scan,qr-generate,operations,player,notifications}`, and `/dev/pairing-intervention-preview`.
 - `ADMIN`: `/users*`, `/admin/*`, `/audit`, `/platform/clubs`, and `/internal/hard-cutover/operator-acceptance`.
 - `SECONDARY`: `/profile`, `/notifications`, `/messages`, `/statistics`, `/reports`, `/ai`, `/support*`, `/settings*`, `/marketplace*`, `/billing*`, `/finance/*`, and `/crm/*`.
@@ -25,13 +25,13 @@ Every authenticated destination is classified by the exhaustive route families b
 | # | Route | Module | Classification | Disposition |
 |---:|---|---|---|---|
 | 1 | `/dashboard` | Dashboard | CORE_HIGH_TRAFFIC | PILOT_ALREADY_ADOPTED |
-| 2 | `/court-management` | Court | CORE_HIGH_TRAFFIC | ADOPT_NOW |
-| 3 | `/court-management/calendar` | Court | CORE_HIGH_TRAFFIC | PARTIAL_ADOPT |
+| 2 | `/court-management` | Court | CORE_HIGH_TRAFFIC | PARTIAL_ADOPT |
+| 3 | `/court-management/calendar` | Court | CORE_HIGH_TRAFFIC | ADOPT_NOW |
 | 4 | `/court-management/bookings` | Court/Operations | CORE_HIGH_TRAFFIC | ADOPT_NOW |
 | 5 | `/court-management/courts` | Court | CORE_HIGH_TRAFFIC | PILOT_ALREADY_ADOPTED |
 | 6 | `/court-engine` | Court | SPECIAL_RUNTIME | KEEP_DOMAIN_SPECIFIC |
 | 7 | `/select-players` | Operations | CORE_HIGH_TRAFFIC | PARTIAL_ADOPT |
-| 8 | `/mobile/check-in` | Operations | CORE_HIGH_TRAFFIC | ADOPT_NOW |
+| 8 | `/mobile/check-in` | Operations | CORE_HIGH_TRAFFIC | PARTIAL_ADOPT |
 | 9 | `/mobile/qr-scan` | Operations | SPECIAL_RUNTIME | KEEP_DOMAIN_SPECIFIC |
 | 10 | `/mobile/qr-generate` | Operations | SPECIAL_RUNTIME | KEEP_DOMAIN_SPECIFIC |
 | 11 | `/mobile/operations` | Operations | SPECIAL_RUNTIME | PARTIAL_ADOPT |
@@ -42,41 +42,42 @@ Every authenticated destination is classified by the exhaustive route families b
 | 16 | `/players/skill` | Player/Rating | CORE_HIGH_TRAFFIC | ADOPT_NOW |
 | 17 | `/player/profile` | Player | SECONDARY | DEFER_WAVE4 |
 | 18 | `/player/skill` | Player/Rating | SECONDARY | DEFER_WAVE4 |
-| 19 | `/club` | Club | CORE_HIGH_TRAFFIC | ADOPT_NOW |
+| 19 | `/club` | Club | SECONDARY | DEFER_LEGACY_CONVERGENCE |
 | 20 | `/my-club` | Club | CORE_HIGH_TRAFFIC | ADOPT_NOW |
-| 21 | `/discover-clubs` | Club | CORE_HIGH_TRAFFIC | ADOPT_NOW |
+| 21 | `/discover-clubs` | Club | SECONDARY | DEFER_WAVE4 |
 | 22 | `/my-club/requests` | Club | CORE_HIGH_TRAFFIC | ADOPT_NOW |
 | 23 | `/manage/clubs` | Club | CORE_HIGH_TRAFFIC | ADOPT_NOW |
-| 24 | `/manage/clubs/:clubId` | Club | CORE_HIGH_TRAFFIC | PARTIAL_ADOPT |
+| 24 | `/manage/clubs/:clubId` | Club | CORE_HIGH_TRAFFIC | ADOPT_NOW |
 | 25 | `/coaching/coaches` | Coaching | CORE_HIGH_TRAFFIC | ADOPT_NOW |
 | 26 | `/coaching/students` | Coaching | CORE_HIGH_TRAFFIC | ADOPT_NOW |
 | 27 | `/coaching/classes` | Coaching | CORE_HIGH_TRAFFIC | ADOPT_NOW |
 | 28 | `/coaching/schedule` | Coaching | CORE_HIGH_TRAFFIC | ADOPT_NOW |
 | 29 | `/coaching/packages` | Coaching | CORE_HIGH_TRAFFIC | ADOPT_NOW |
 | 30 | `/coaching/attendance` | Coaching | CORE_HIGH_TRAFFIC | ADOPT_NOW |
-| 31 | `/coaching/evaluations` | Coaching | SECONDARY | DEFER_WAVE4 |
-| 32 | `/tournament` | Tournament outer | CORE_HIGH_TRAFFIC | REMAIN_DOMAIN_COMPOSITION |
+| 31 | `/coaching/evaluations` | Coaching | CORE_HIGH_TRAFFIC | ADOPT_NOW |
+| 32 | `/tournament` | Tournament outer | FROZEN | FROZEN |
 | 33 | `/tournament/list` | Tournament outer | CORE_HIGH_TRAFFIC | ADOPT_SHARED_UI |
-| 34 | `/tournaments` | Tournament outer | CORE_HIGH_TRAFFIC | ADOPT_SHARED_UI |
-| 35 | `/tournament/types` | Tournament outer | CORE_HIGH_TRAFFIC | ADOPT_SHARED_UI |
+| 34 | `/tournaments` | Tournament outer | CORE_HIGH_TRAFFIC | REMAIN_DOMAIN_COMPOSITION |
+| 35 | `/tournament/types` | Tournament outer | CORE_HIGH_TRAFFIC | REMAIN_DOMAIN_COMPOSITION |
 | 36 | `/tournament/roster` | Tournament outer | CORE_HIGH_TRAFFIC | REMAIN_DOMAIN_COMPOSITION |
 | 37 | `/tournament/organize` | Tournament outer | CORE_HIGH_TRAFFIC | REMAIN_DOMAIN_COMPOSITION |
 | 38 | `/tournament/operations` | Tournament outer | CORE_HIGH_TRAFFIC | REMAIN_DOMAIN_COMPOSITION |
 | 39 | `/tournament/results` | Tournament outer | CORE_HIGH_TRAFFIC | REMAIN_DOMAIN_COMPOSITION |
-| 40 | `/tournament/config` | Tournament outer | SECONDARY | ADOPT_SHARED_UI |
-| 41 | `/tournament/create` | Tournament outer | CORE_HIGH_TRAFFIC | DEFER_LEGACY_CONVERGENCE |
-| 42 | `/tournament/bracket` | Tournament outer | SECONDARY | DEFER_LEGACY_CONVERGENCE |
+| 40 | `/tournament/config` | Tournament outer | SECONDARY | REMAIN_DOMAIN_COMPOSITION |
+| 41 | `/admin/skill-level-requests` | Player/Rating admin | CORE_HIGH_TRAFFIC | ADOPT_NOW |
+| 42 | `/platform/clubs` | Club admin | CORE_HIGH_TRAFFIC | ADOPT_NOW |
 
 ## Locked Wave 3 priority set
 
 | Priority | Screen routes | Adoption scope |
 |---|---|---|
-| P0 | `/court-management`, `/court-management/bookings`, `/mobile/check-in`, `/court-management/customers`, `/court-management/members`, `/players/skill` | Header, filters, state, responsive data, feedback/status; preserve writers |
-| P0 | `/coaching/coaches`, `/coaching/students`, `/coaching/classes`, `/coaching/schedule`, `/coaching/packages`, `/coaching/attendance` | One shared `CoachingEntityPage` migration serving six routes |
-| P1 | `/select-players`, `/players/profile/:playerId`, `/club`, `/my-club`, `/discover-clubs`, `/my-club/requests`, `/manage/clubs` | Shared framing/states only; retain domain composition |
-| P1 | `/tournament/list`, `/tournaments`, `/tournament/types` | Shared auth framing on outer hubs only |
+| P0 | `/court-management/calendar`, `/court-management/bookings`, `/court-management/customers`, `/court-management/members`, `/players/skill`, `/admin/skill-level-requests` | Header, filters, state, responsive data, feedback/status; preserve writers |
+| P0 | `/manage/clubs`, `/platform/clubs`, `/manage/clubs/:clubId` | Shared registry/header/responsive member patterns; preserve V2 fail-closed reads and governance |
+| P0 | `/coaching/coaches`, `/coaching/students`, `/coaching/classes`, `/coaching/schedule`, `/coaching/packages`, `/coaching/attendance`, `/coaching/evaluations` | One shared `CoachingEntityPage` migration serving seven routes |
+| P0 | `/tournament/list` | Shared auth framing/states only; preserve tournament row and destination rules |
+| P1 | `/court-management`, `/mobile/check-in`, `/players/profile/:playerId`, `/my-club`, `/my-club/requests` | Shared framing/feedback only; retain domain composition |
 | DEFER | all other candidates | Wave 4/5/6 or domain/frozen ownership |
 
-The selected list contains 22 routes: six P0 operations/customer/player, six coaching routes, seven P1 operations/player/club routes, and three tournament outer hubs.
+The selected list contains 22 routes: six court/customer/rating routes, three registry/detail routes, seven coaching routes, one tournament outer hub, and five partial-adoption operational/player/club routes.
 
 For every selected route: route, authorization, source, mutations, and domain authority remain unchanged.

@@ -14,7 +14,7 @@ Audit only: `SAFE_DELETE_NOW=NO` for every entry.
 | tournament `mobileUi` outside tournament | 7 pages | neutral auth/mobile layout contract | NO | ownership extraction |
 | coaching native confirm | 1 shared implementation | `AuthConfirmDialog` | YES | NO |
 | ad-hoc coaching table/state/header family | 1 implementation serving 7 routes | canonical auth patterns | YES after route certification | NO |
-| dashboard local `StatCard` and club-operation states | 4 legacy families | retain KPI composition; canonical generic states/tones | CONDITIONAL | KPI redesign deferred |
+| dashboard local `StatCard`, states, alternate widgets, lists, and layout | 6 legacy families | retain KPI composition; canonical generic states/tones | CONDITIONAL | KPI redesign deferred |
 | `ClubDataTransferPanel` inside Courts | 1 | club-owned entry/composition | NO | ownership decision |
 
 Deletion gates:

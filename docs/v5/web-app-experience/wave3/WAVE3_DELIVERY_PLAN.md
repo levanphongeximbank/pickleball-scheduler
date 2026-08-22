@@ -9,27 +9,27 @@ Docs only. Owner review and scope lock. No implementation.
 
 ## 3B — Court / Daily Operations
 
-Routes: `/court-management`, `/court-management/bookings`, `/mobile/check-in`, `/select-players`.
+Routes: `/court-management/calendar`, `/court-management/bookings`, `/mobile/check-in`, `/court-management`.
 
-Adopt page framing, filters, generic states, responsive data, feedback, and visual status. Keep calendar matrix, QR runtime, allocation engine, offline queue, booking forms, assignment rules, and writers domain-owned.
+Adopt page framing, filters, generic states, responsive data, feedback, and visual status. Keep the calendar matrix, QR runtime, offline queue, booking forms, assignment rules, and writers domain-owned.
 
 ## 3C — Customer / Player
 
-Routes: `/court-management/customers`, `/court-management/members`, `/players/skill`, `/players/profile/:playerId`; minor pilot normalization in `/players` does not increase the proposed screen count.
+Routes: `/court-management/customers`, `/court-management/members`, `/players/skill`, `/admin/skill-level-requests`, `/players/profile/:playerId`; minor pilot normalization in `/players` does not increase the proposed screen count.
 
 Preserve CRUD, rating, membership, privacy, and permission behavior.
 
 ## 3D — Club / Coaching
 
-Routes: `/club`, `/my-club`, `/discover-clubs`, `/my-club/requests`, `/manage/clubs`, plus six route wrappers served by `CoachingEntityPage`: coaches, students, classes, schedule, packages, attendance.
+Routes: `/manage/clubs`, `/platform/clubs`, `/manage/clubs/:clubId`, `/my-club`, `/my-club/requests`, plus seven route wrappers served by `CoachingEntityPage`: coaches, students, classes, schedule, packages, attendance, evaluations.
 
 Retain club governance, membership, coaching ACL/concurrency, and all writers.
 
 ## 3E — Tournament Outer Hubs
 
-Routes: `/tournament/list`, `/tournaments`, `/tournament/types`.
+Route: `/tournament/list`.
 
-Adopt authenticated generic framing/states only. Experience 23, tournament pickers, route destinations, status enums, and internal workflows remain frozen/domain-owned.
+Adopt authenticated generic framing/states only. Experience 23, tournament pickers, route destinations, status enums, and internal workflows remain frozen/domain-owned. Roster/organize/operations/results defer until legacy destination convergence.
 
 ## 3F — Regression / Certification
 

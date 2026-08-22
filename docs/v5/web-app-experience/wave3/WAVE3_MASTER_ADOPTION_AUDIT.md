@@ -15,24 +15,24 @@ Wave 3 should adopt the locked Wave 2 system through a 22-screen strangler migra
 
 | Measure | Count / status |
 |---|---:|
-| Authenticated rendered route screens | 180 |
+| Authenticated rendered route screens | 183 |
 | High-traffic candidates | 42 |
 | Proposed Wave 3 screens | 22 |
 | Proposed batches | 6 |
-| Dashboard | `PILOT_ALREADY_ADOPTED_PARTIAL_NORMALIZATION` |
-| Dashboard remaining legacy families | 4 |
-| Court screens / adopt now / domain keep / Wave 6 | 13 / 6 / 3 / 1 |
-| Customer-player screens / adopt now / leaks | 12 / 6 / 9 |
-| Club-coaching screens / adopt now / duplicate families | 16 / 8 / 4 |
-| Tournament outer screens / adopt now / legacy defer | 10 / 4 / 3 |
-| Operations screens / adopt now | 7 / 5 |
-| Curated cross-domain UI imports / inappropriate | 27 / 17 |
+| Dashboard | `PILOT_ALREADY_ADOPTED` |
+| Dashboard remaining legacy families | 6 |
+| Court screens / adopt now / domain keep / Wave 6 | 12 / 2 / 3 / 1 |
+| Customer-player screens / adopt now / leaks | 30 / 5 / 8 |
+| Club-coaching screens / adopt now / duplicate families | 18 / 12 / 7 |
+| Tournament outer screens / adopt now / legacy defer | 9 / 1 / 4 |
+| Operations screens / adopt now | 7 / 2 |
+| Cross-domain UI imports / inappropriate | 42 / 18 |
 | A11y critical / major / minor gaps | 0 / 9 / 7 |
 
-Counting rule: a screen is a rendered route under `MainLayout`; four redirect-only aliases and the layout-only `/mobile` parent are excluded, while the nested court-management index is included. Public/auth routes, the public referee token route, and public Tournament Experience are excluded. Frozen authenticated Tournament Experience routes remain in the total but are not Wave 3 candidates.
+Counting rule: `src/router.jsx` contains 187 path entries under `MainLayout`; subtract four redirect-only aliases and the layout-only `/mobile` parent, then add the standalone authenticated `/change-password` route. Public routes, the public referee token route, and public Tournament Experience are excluded. Frozen authenticated Tournament Experience routes remain in the total but are not Wave 3 candidates.
 
-`DASHBOARD_ADOPTION_STATUS=PILOT_ALREADY_ADOPTED_PARTIAL_NORMALIZATION`
-`DASHBOARD_REMAINING_LEGACY_PATTERN_COUNT=4`
+`DASHBOARD_ADOPTION_STATUS=PILOT_ALREADY_ADOPTED`
+`DASHBOARD_REMAINING_LEGACY_PATTERN_COUNT=6`
 
 ## Frozen boundaries
 
@@ -47,7 +47,7 @@ Counting rule: a screen is a rendered route under `MainLayout`; four redirect-on
 
 | Route | Status | Finding |
 |---|---|---|
-| `/dashboard` | partial normalization only | Canonical analytics header/filter/states are present; four legacy families remain in the club-operations continuation. |
+| `/dashboard` | adopted pilot; legacy continuation inventoried | Canonical analytics header/filter/states and all seven preserved widgets are present; six legacy families remain outside the pilot slice in the club-operations continuation. |
 | `/players` | partial normalization only | Page uses canonical patterns, but `PlayerCard`, `PlayerFilters`, and `PlayerStats` still import tournament layout tokens. |
 | `/audit` | adopted | Do not reopen W6-PAGE-002. |
 | `/court-management/courts` | partial normalization only | Canonical page primitives are present; `Courts.jsx` still embeds club data-transfer UI. |
