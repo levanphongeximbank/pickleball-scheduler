@@ -71,6 +71,7 @@ function setsEqual(a, b) {
  *   tenantId: string,
  *   divisionId?: string,
  *   categoryId?: string|null,
+ *   competitionVersionId?: string|null,
  *   participants: Array<{ entryId?: string, participantId?: string, seedNumber?: number }|string>,
  *   deterministicSeed: string,
  *   formatOverrides?: object,
@@ -197,6 +198,7 @@ export function composeIndividualPoolKnockout(input) {
     tenantId,
     divisionId: input.divisionId,
     categoryId: input.categoryId,
+    competitionVersionId: input.competitionVersionId,
     deterministicSeed: input.deterministicSeed,
     competitionRulesProfile: admissionAware
       ? input.competitionRulesProfile
@@ -266,6 +268,7 @@ export function composeIndividualPoolKnockout(input) {
         deterministicSeed: input.deterministicSeed,
         knockoutRequired: true,
         competitionId,
+        competitionVersionId: input.competitionVersionId,
         divisionId: input.divisionId,
         categoryId: input.categoryId,
         competitionUnitKind: input.competitionUnitKind,
@@ -281,6 +284,7 @@ export function composeIndividualPoolKnockout(input) {
         tenantId,
         divisionId: input.divisionId,
         categoryId: input.categoryId,
+        competitionVersionId: input.competitionVersionId,
         deterministicSeed: input.deterministicSeed,
         poolStageComplete: true,
         placementMode: knockoutAdmission.drawPlacementMode,
@@ -301,6 +305,7 @@ export function composeIndividualPoolKnockout(input) {
         tenantId,
         divisionId: input.divisionId,
         categoryId: input.categoryId,
+        competitionVersionId: input.competitionVersionId,
         deterministicSeed: input.deterministicSeed,
         poolStageComplete: true,
       });

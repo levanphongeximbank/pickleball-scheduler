@@ -30,12 +30,21 @@ export function normalizeEffectiveScopeId(value) {
  * Historical pool/knockout execution uses division fallback `"div-1"` when omitted —
  * validation must use that same effective division, never a divergent null.
  *
+ * competitionVersionId is exact null-aware (null is NOT a wildcard) and is never
+ * invented — only pass-through of Competition Version identity when supplied.
+ *
  * @param {{
  *   competitionId: string,
+ *   competitionVersionId?: string|null,
  *   divisionId?: string|null,
  *   categoryId?: string|null,
  * }} input
- * @returns {{ competitionId: string, effectiveDivisionId: string, effectiveCategoryId: string|null }}
+ * @returns {{
+ *   competitionId: string,
+ *   effectiveCompetitionVersionId: string|null,
+ *   effectiveDivisionId: string,
+ *   effectiveCategoryId: string|null,
+ * }}
  */
 export function resolveEffectiveCompetitionScope(input) {
   const competitionId = String(input?.competitionId || "").trim();
@@ -47,6 +56,9 @@ export function resolveEffectiveCompetitionScope(input) {
     );
   }
 
+  const effectiveCompetitionVersionId = normalizeEffectiveScopeId(
+    input?.competitionVersionId
+  );
   const suppliedDivision = normalizeEffectiveScopeId(input?.divisionId);
   // Must match poolStage / poolGrouping / knockoutStage draw context fallback.
   const effectiveDivisionId = suppliedDivision || "div-1";
@@ -54,6 +66,7 @@ export function resolveEffectiveCompetitionScope(input) {
 
   return Object.freeze({
     competitionId,
+    effectiveCompetitionVersionId,
     effectiveDivisionId,
     effectiveCategoryId,
   });
@@ -135,18 +148,19 @@ export function resolveCore07AuthoritativeProjection(input) {
 
 /**
  * Exact effective-scope match for canonical admission-aware CORE-07 consumption.
- * divisionId/categoryId null on the projection is NOT a wildcard.
+ * divisionId/categoryId/competitionVersionId null on the projection is NOT a wildcard.
  * stageId null remains competition-wide (may serve GROUP/KNOCKOUT).
  *
  * @param {object} projection
  * @param {{
  *   competitionId: string,
+ *   competitionVersionId?: string|null,
  *   divisionId: string,
  *   categoryId: string|null,
  *   stageId?: string|null,
  *   competitionUnitKind?: string|null,
  *   role: "GROUP" | "KNOCKOUT",
- * }} expected — divisionId/categoryId MUST be the resolved effective scope
+ * }} expected — divisionId/categoryId/competitionVersionId MUST be the resolved effective scope
  */
 export function assertCore07ProjectionScopeCompatible(projection, expected) {
   const scope = projection?.seedingScope || projection?.scope || {};
@@ -159,6 +173,24 @@ export function assertCore07ProjectionScopeCompatible(projection, expected) {
         expected: competitionId,
         actual: scope.competitionId ?? null,
         role: expected.role,
+      }
+    );
+  }
+
+  const wantVersion = normalizeEffectiveScopeId(expected.competitionVersionId);
+  const gotVersion = normalizeEffectiveScopeId(scope.competitionVersionId);
+  if (!scopeIdsExactEqual(wantVersion, gotVersion)) {
+    failE2E02(
+      E2E02_ERROR_CODE.INVALID_CONFIGURATION,
+      "CORE-07 seeding projection competitionVersionId mismatch against effective execution scope",
+      {
+        expected: wantVersion,
+        actual: gotVersion,
+        role: expected.role,
+        COMPETITION_VERSION_NULL_AS_WILDCARD: false,
+        CROSS_VERSION_SEED_PROJECTION: true,
+        UNKNOWN_VERSION_WITH_VERSIONED_PROJECTION:
+          wantVersion == null && gotVersion != null,
       }
     );
   }

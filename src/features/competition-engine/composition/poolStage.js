@@ -25,6 +25,7 @@ import { computeDeterministicFingerprint, deepFreeze } from "./fingerprint.js";
  *   tenantId: string,
  *   divisionId?: string,
  *   categoryId?: string|null,
+ *   competitionVersionId?: string|null,
  *   deterministicSeed: string,
  *   competitionRulesProfile?: object,
  *   knockoutAdmissionPlan?: object|null,
@@ -49,6 +50,7 @@ export function composePoolStage(input) {
     competitionId: input.competitionId,
     divisionId: input.divisionId,
     categoryId: input.categoryId,
+    competitionVersionId: input.competitionVersionId,
     deterministicSeed: input.deterministicSeed,
     competitionRulesProfile: input.competitionRulesProfile,
     knockoutAdmissionPlan: input.knockoutAdmissionPlan,
@@ -63,6 +65,7 @@ export function composePoolStage(input) {
 
   const effectiveScope = resolveEffectiveCompetitionScope({
     competitionId: input.competitionId,
+    competitionVersionId: input.competitionVersionId,
     divisionId: input.divisionId,
     categoryId: input.categoryId,
   });

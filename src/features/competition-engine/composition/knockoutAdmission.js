@@ -116,6 +116,7 @@ function buildPopulationSet(ids) {
  *   deterministicSeed?: string,
  *   directQualifiersPerGroup?: number,
  *   competitionId?: string,
+ *   competitionVersionId?: string|null,
  *   divisionId?: string|null,
  *   categoryId?: string|null,
  *   competitionUnitKind?: string|null,
@@ -335,6 +336,7 @@ export function composeKnockoutAdmission(input) {
   ).trim();
   const effectiveScope = resolveEffectiveCompetitionScope({
     competitionId,
+    competitionVersionId: input.competitionVersionId,
     divisionId: input.divisionId ?? plan.divisionId,
     categoryId: input.categoryId ?? plan.categoryId,
   });
@@ -438,6 +440,7 @@ export function composeKnockoutAdmission(input) {
       admitted.map((a) => a.entryId),
       {
         competitionId: effectiveScope.competitionId,
+        competitionVersionId: effectiveScope.effectiveCompetitionVersionId,
         divisionId: effectiveScope.effectiveDivisionId,
         categoryId: effectiveScope.effectiveCategoryId,
         stageId: knockoutStageId,

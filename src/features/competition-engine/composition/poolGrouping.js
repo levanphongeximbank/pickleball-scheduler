@@ -33,6 +33,7 @@ import { applyGroupStageBypassPopulation } from "./groupStageBypassPopulation.js
  *   competitionId: string,
  *   divisionId?: string,
  *   categoryId?: string|null,
+ *   competitionVersionId?: string|null,
  *   deterministicSeed: string,
  *   competitionRulesProfile?: object,
  *   knockoutAdmissionPlan?: object|null,
@@ -102,6 +103,7 @@ export function composePoolGrouping(input) {
   const poolStageId = "stage-pool";
   const effectiveScope = resolveEffectiveCompetitionScope({
     competitionId,
+    competitionVersionId: input.competitionVersionId,
     divisionId: input.divisionId,
     categoryId: input.categoryId,
   });
@@ -134,6 +136,7 @@ export function composePoolGrouping(input) {
         normalized.map((p) => p.entryId),
         {
           competitionId: effectiveScope.competitionId,
+          competitionVersionId: effectiveScope.effectiveCompetitionVersionId,
           divisionId: effectiveScope.effectiveDivisionId,
           categoryId: effectiveScope.effectiveCategoryId,
           stageId: poolStageId,

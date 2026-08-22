@@ -24,6 +24,7 @@ import { computeDeterministicFingerprint, deepFreeze } from "./fingerprint.js";
  *   tenantId: string,
  *   divisionId?: string,
  *   categoryId?: string|null,
+ *   competitionVersionId?: string|null,
  *   deterministicSeed: string,
  *   poolStageComplete?: boolean,
  *   placementMode?: string,
@@ -56,6 +57,7 @@ export function composeKnockoutStage(input) {
 
   const effectiveScope = resolveEffectiveCompetitionScope({
     competitionId: input.competitionId,
+    competitionVersionId: input.competitionVersionId,
     divisionId: input.divisionId,
     categoryId: input.categoryId,
   });
